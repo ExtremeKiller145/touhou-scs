@@ -1,0 +1,23 @@
+Remember these things:
+
+Trigger adding: on per spell basis configureNewSpell creates a new index in triggerGroups[] 
+in which all triggers of the same spell will be in the same list. at the end, a function is called to add all triggers, where it is automatically scattered to prevent clustering/obj_density & lag
+
+New Spell: be aware of durations for scale triggers & re-use other spells for efficiency using remaps 
+
+TODO:
+
+Health system
+3 Character movement profiles
+Keybind editor
+Bullet types
+Lazers
+Main Bullet SFX
+Player Shot types
+
+Within library.js:
+
+Finish ConfigureNewSpell
+Finish testing ColorShift
+Finish adding all other useful triggers
+Set all Y positions in those to 0. let the insert function clean it upon compilation 
