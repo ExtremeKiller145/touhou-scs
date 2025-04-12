@@ -23,7 +23,7 @@ var editor_layer = 4;
 /** Group array for function-calling */
 var currentGroups = [];
 /** Global trigger storage, is a list of lists of trigger objects*/
-const triggerObjs = {};
+var triggerObjs = {};
 /** Index for trigger clusters, so **triggerObjs[spellName]** is a list of triggers for the spell */
 var spellName;
 
@@ -62,9 +62,10 @@ function ConfigureNewSpell(groups, editorLayer, spell_name) {
 
 /** Call at the end of the file. Adds all objects in the triggerObs list */
 function SaveToLevel(){
-    for (const spell in triggerObjs) {
-        console.log("Spell type:", spell);
-        for (const obj of buffer[spell]) {
+	// console.log(JSON.stringify(triggerObjs, null, 2));
+    for (let spell in triggerObjs){
+		console.log(JSON.stringify(spell, null, 2));
+        for (let obj of triggerObjs[spell]){
             $.add(object(obj));
         }
     }      
@@ -86,8 +87,14 @@ function spacingProjectile(speedOfProjectile, studsOfSpacing){
     return studsOfSpacing / speedOfProjectile * plrSpeed;
 }
 
+/** Set the current group context. @param {Array<import('group').group>} arr*/
+function setCurrentGroups(arr){
+    currentGroups = arr;
+}
+
 /**
  * Toggles a group on or off
+ * @param {boolean} activateGroup - Activate or Deactivate group
 */
 function Toggle(xpos, target, activateGroup){
 	triggerObjs[spellName].push({
@@ -154,7 +161,7 @@ function ColorShift(xpos, target, h,s,b){
 function Scale(xpos, target, scaleFactor, duration){
 	triggerObjs[spellName].push({
 		OBJ_ID: 2067, // scale trigger id
-		X: xpos + gridX, Y: 0,
+		X: xpos, Y: 0,
 		150: scaleFactor, // scale x
 		151: scaleFactor, // scale y
 		51: target, // target group
@@ -206,8 +213,8 @@ function MoveTowardsGroup(xpos, target, targetDir, distance, time, easing, easeR
 /**
  * Moves a group by a change in X and Y
  * @param {number} target - Target group to move
- * @param {number} xchange - In studs per second
- * @param {number} ychange - In studs per second
+ * @param {number} xchange - In studs
+ * @param {number} ychange - In studs
  * @param {number} easing - Ease option type, 0=none
  * @param {number} easeRate - Easing rate, float or int
  */
@@ -235,7 +242,7 @@ function MoveBy(xpos, target, xchange, ychange, duration, easing, easeRate){
 function GotoGroup(xpos, target, location, time, easing, easeRate){
 	triggerObjs[spellName].push({
 		OBJ_ID: 901, // move trigger id
-		X: xpos + gridX, Y: 0,
+		X: xpos, Y: 0,
 		TARGET_DIR_CENTER: group(target),
 		TARGET_POS: group(location),
 		TARGET: group(target),
@@ -282,6 +289,7 @@ function Rotate(xpos, target, center, angle, time){
 		CENTER: group(center), // center group	
 		TARGET: group(target),
 		DURATION: time,
+		EASING: easing, EASING_RATE: easeRate,
 		EDITOR_LAYER_1: editor_layer,
 		GROUPS: currentGroups,
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
@@ -302,6 +310,7 @@ module.exports = {
     ConfigureNewSpell,
     timeToDistance,
     spacingProjectile,
+    setCurrentGroups,
     Toggle,
     Spawn,
     ColorShift,
@@ -310,5 +319,6 @@ module.exports = {
     MoveBy,
     GotoGroup,
     PointToGroup,
-    Rotate, 
+    Rotate,
+	SaveToLevel
 }
