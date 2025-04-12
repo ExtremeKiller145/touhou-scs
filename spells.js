@@ -9,8 +9,8 @@ function radial(numOfBullets, speed, centerGroup, nextBullet, pointInDirection){
     
 }
 
-function Fairy1(fairyGroup, spellGroup, optimizerGroup, speed){
-    ConfigureNewSpell([group(optimizerGroup)],4,'sigma');
+function Fairy1(fairyGroup, spellGroup, optimizerGroup, speed, spellName){
+    ConfigureNewSpell([group(optimizerGroup)],4,spellName);
     
     GotoGroup(0,10,fairyGroup,0,0,0);
     ColorShift(1,10,40,0,0);
@@ -18,20 +18,18 @@ function Fairy1(fairyGroup, spellGroup, optimizerGroup, speed){
     Toggle(3,10,true);
 
     setCurrentGroups([group(spellGroup)]); // changes the global currentGroups
-    let i = 0;
-    let jew = 0;
     // Removed the outside for loop to reduce object count for easier testing
-    // for (let i = 0; i < 5; i++){
-        for (let j = 0; j < 6; j++){
+    for (let i = 0; i < 5; i++){
+        for (let j = 0; j < 10; j++){
             let bullet = nextBullet3();
-            let angle = jew * 2 * Math.PI / 10;
+            let angle = j * 2 * Math.PI / 10;
             let x = 10 * 30 * Math.cos(angle) - i * 5;
             let y = 10 * 30 * Math.sin(angle) - i * 5;
-            Spawn(jew*30, optimizerGroup, `10.${bullet}`, true);
+            Spawn(j*30, optimizerGroup, `10.${bullet}`, true);
             
-            MoveBy(3 + jew*30,bullet,x,y,300 / speed,0,0);
+            MoveBy(3 + j*30,bullet,x,y,300 / speed,0,0);
         }
-    // }
+    }
 }
 
 function DaiyouseiNonSpell1(){

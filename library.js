@@ -63,12 +63,15 @@ function ConfigureNewSpell(groups, editorLayer, spell_name) {
 /** Call at the end of the file. Adds all objects in the triggerObs list */
 function SaveToLevel(){
 	// console.log(JSON.stringify(triggerObjs, null, 2));
-    for (let spell in triggerObjs){
-		console.log(JSON.stringify(spell, null, 2));
-        for (let obj of triggerObjs[spell]){
-            $.add(object(obj));
-        }
-    }      
+
+	let flatList = [];
+	for (let spell in triggerObjs) {
+		flatList.push(...triggerObjs[spell]);
+	}
+
+	for (let obj of flatList) {
+		$.add(object(obj));
+	}
 }
 
 
@@ -102,7 +105,7 @@ function Toggle(xpos, target, activateGroup){
 		X: xpos, Y: 0,
 		HOLD: target,
 		TARGET: group(target),
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true,
 		MULTI_TRIGGER: true,
 		EDITOR_LAYER_1: editor_layer,
@@ -118,7 +121,7 @@ function Spawn(xpos, target, remapID, spawnOrdered){
 		OBJ_ID: 1268, // spawn trigger id
 		X: xpos, Y: 0,
 		TARGET: group(target),
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		REMAPS: remapID, // 3.5.2.10 -> remaps 3 to 5, 2 to 10
 		581: true, // reset remaps
 		441: spawnOrdered,
@@ -141,7 +144,7 @@ function ColorShift(xpos, target, h,s,b){
 		X: xpos, Y: 0,
 		TARGET: group(target),
 		TARGET_TYPE: true, // bool, false = color channel, true = group ID
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		49: `${h}a${s}a${b}a${0}a${0}`, // works???
 		HOLD: 10000, // should be seconds of duration, untested
 		PULSE_HSV: true,
@@ -167,7 +170,7 @@ function Scale(xpos, target, scaleFactor, duration){
 		51: target, // target group
 		71: target, // center group
 		DURATION: 0, // goes to scale instantly
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
 		EDITOR_LAYER_1: editor_layer,
 	},{
@@ -178,7 +181,7 @@ function Scale(xpos, target, scaleFactor, duration){
         DIV_BY_X: true, DIV_BY_Y: true,
 		51: target, // target group
 		71: target, // center group
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		DURATION: 0, // instant reset
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
 		EDITOR_LAYER_1: editor_layer,
@@ -205,7 +208,7 @@ function MoveTowardsGroup(xpos, target, targetDir, distance, time, easing, easeR
 		394: true, // directionMode
 		396: distance, // distance, 30 studs =  1 block
 		EDITOR_LAYER_1: editor_layer,
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
     });
 }
@@ -227,7 +230,7 @@ function MoveBy(xpos, target, xchange, ychange, duration, easing, easeRate){
 		EASING: easing, EASING_RATE: easeRate,
 		MOVE_X: xchange, MOVE_Y: ychange,
 		EDITOR_LAYER_1: editor_layer,
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
     });
 }
@@ -250,7 +253,7 @@ function GotoGroup(xpos, target, location, time, easing, easeRate){
 		EASING: easing, EASING_RATE: easeRate,
 		100: true, // target mode
 		EDITOR_LAYER_1: editor_layer,
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
 	});
 }
@@ -270,7 +273,7 @@ function PointToGroup(xpos, target, targetDir, time, easing, easeRate) {
 		DURATION: time,
 		EASING: easing, EASING_RATE: easeRate,
 		EDITOR_LAYER_1: editor_layer,
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
 		100: true // aim mode boolean
 	});
@@ -291,7 +294,7 @@ function Rotate(xpos, target, center, angle, time){
 		DURATION: time,
 		EASING: easing, EASING_RATE: easeRate,
 		EDITOR_LAYER_1: editor_layer,
-		GROUPS: currentGroups,
+		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
 		68: angle // degrees
 	});
