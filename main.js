@@ -1,5 +1,5 @@
-const { SaveToLevel, MoveTowardsGroup, ConfigureNewSpell, ColorShift, Scale, Toggle, Spawn, GotoGroup, triggerObjs, setCurrentGroups } = require('./library');
-const { Fairy1 } = require('./spells');
+const { SaveToLevel } = require('./library');
+const { Fairy1, Fairy } = require('./spells');
 
 require('@g-js-api/g.js');
 
@@ -13,6 +13,7 @@ $.exportConfig({
 	}
 }).then(a => {
     // call trigger builder function stuff here
-    Fairy1(37,36,20,100,`call1`);
+    // Fairy1(37,36,20,20,`call1`);
+	Fairy(37,36,20,21,120,`call1`);
     SaveToLevel();
 });

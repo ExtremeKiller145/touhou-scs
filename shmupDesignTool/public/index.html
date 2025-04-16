@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Touhou Bullet Designer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="container">
+    <canvas id="gameArea" width="630" height="735"></canvas>
+    <div id="sidebar">
+      <h2>Bullet Editor</h2>
+      <select id="bulletSelect">
+        <option value="">— Select Bullet —</option>
+      </select>
+      <button id="deleteBullet">Delete Selected Bullet</button>
+      <div id="editor">
+        <!-- command containers will be injected here -->
+      </div>
+      <button id="addContainer">Create Empty Container</button>
+      <h3>Generated Commands</h3>
+      <textarea id="output" readonly></textarea>
+      <button id="copyBtn">Copy</button>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

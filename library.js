@@ -41,9 +41,9 @@ function createGroupCycler(lowerRange, upperRange) {
     let currentIndex = 0; // Tracks the current position in the array
     return function nextGroup() {
         const next = arr[currentIndex];
-        currentIndex = (currentIndex + 1) % arr.length; // Loop back to start
+        currentIndex = (currentIndex + 1) % arr.length;
         if (currentIndex === 0) {
-            console.warn(`Warning: exceeded groups w/ group cycler '${arr[0]} to ${arr[arr.length - 1]}'`);
+            currentIndex = 0; // Loop back to start
         }
         return next;
     };
@@ -285,7 +285,7 @@ function PointToGroup(xpos, target, targetDir, time, easing, easeRate) {
  * @param {number} center - Group, center of rotation
  * @param {number} angle - In degrees, clockwise is +
  */
-function Rotate(xpos, target, center, angle, time){
+function Rotate(xpos, target, center, angle, time, easing, easeRate){
 	triggerObjs[spellName].push({
 		OBJ_ID: 1346, // rotate trigger id
 		X: xpos, Y: 0,
