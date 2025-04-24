@@ -1,5 +1,5 @@
-const { SaveToLevel } = require('./library');
-const { Fairy1, Fairy } = require('./spells');
+const lib = require('./library');
+const spell = require('./spells');
 
 require('@g-js-api/g.js');
 
@@ -12,8 +12,11 @@ $.exportConfig({
 		level_name: "test",
 	}
 }).then(a => {
-    // call trigger builder function stuff here
+    // call builder function stuff here
     // Fairy1(37,36,20,20,`call1`);
-	Fairy(37,36,20,21,120,`call1`);
-    SaveToLevel();
+	
+	spell.FairyTest(37,36,20,21,120,`call1`);
+	lib.ConfigureSpell([group(36)],4,'main');
+	// lib.Spawn(0,36,lib.remapSpell('call1',spell.nextBullet2),true);
+    lib.SaveToLevel();
 });

@@ -4,11 +4,16 @@ Trigger adding: on per spell basis configureNewSpell creates a new index in trig
 in which all triggers of the same spell will be in the same list. at the end, a function is called to add all triggers, where it is automatically scattered to prevent clustering/obj_density & lag
 
 New Spell: be aware of durations for scale triggers & re-use other spells for efficiency using remaps 
+,
+Difficulties:
+When choosing a difficulty toggle off all spells, toggle on the spells for the difficulty, or the triggers within the spells
+For stage practice, 
+
 
 TODO:
 
 Health system
-3 Character movement profiles
+3 Character movement profiles --> has been set, not finalized
 Keybind editor
 Bullet types
 Lazers

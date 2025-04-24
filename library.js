@@ -53,8 +53,10 @@ function createGroupCycler(lowerRange, upperRange) {
  * @param {Array<import('group').group>} groups - List of 'group()'s
  * @param {string} spell_name - For referencing later to grab
  */
-function ConfigureNewSpell(groups, editorLayer, spell_name) {
-    triggerObjs[spell_name] = [];
+function ConfigureSpell(groups, editorLayer, spell_name) {
+    if (!Array.isArray(triggerObjs[spell_name])) {
+        triggerObjs[spell_name] = []; // reason: if spell_name already exists, dont overrwrite the list.
+    }
     spellName = spell_name;
     currentGroups = groups;
     editor_layer = editorLayer;
@@ -62,15 +64,14 @@ function ConfigureNewSpell(groups, editorLayer, spell_name) {
 
 /** Call at the end of the file. Adds all objects in the triggerObs list */
 function SaveToLevel(){
-	// console.log(JSON.stringify(triggerObjs, null, 2));
-
-	let flatList = [];
-	for (let spell in triggerObjs) {
-		flatList.push(...triggerObjs[spell]);
-	}
-
-	for (let obj of flatList) {
-		$.add(object(obj));
+	// randomize positions: over time for each spell, they should spread out more statistically
+	for (let spell in triggerObjs){
+		let xOffset = RandomInt(0,100)*30 + 1125; // same for each spell to preserve SpawnOrder
+		for (let obj of triggerObjs[spell]){
+			obj.X = obj.X + xOffset;
+			obj.Y = 4085 + RandomInt(0,100)*30;
+			$.add(object(obj));
+		}
 	}
 }
 
@@ -300,6 +301,63 @@ function Rotate(xpos, target, center, angle, time, easing, easeRate){
 	});
 }
 
+/**
+ * Changes radius of a circle by scale. By default every circle will be 
+ * @param {number} targetCircle - Target circle to scale
+ * @param {number} radius - in base units, i.e. 1/30 of a block
+ * @param {boolean} divByValue - Whether the scale is multiplied or divided (for resetting size accurately)
+ */
+function changeRadius(xpos, targetCircle, radius, divByValue, time, easing, easeRate){
+	let scaleFactor = radius / radius;
+	triggerObjs[spellName].push({
+		OBJ_ID: 2067, // scale trigger id
+		X: xpos, Y: 0,
+        DIV_BY_X: divByValue, DIV_BY_Y: divByValue,
+		150: scaleFactor, // scale x
+		151: scaleFactor, // scale y
+		51: targetCircle, // target group
+		71: targetCircle, // center group
+		DURATION: time, // goes to scale instantly
+		GROUPS: [...currentGroups],
+		EASING: easing, EASING_RATE: easeRate,
+		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
+		EDITOR_LAYER_1: editor_layer,
+	});
+}
+
+/**
+ * 
+ * @param {string} spell_name
+ * @param {function(): number} nextBullet - IMPORTANT: define cycler function globally; dont redefine
+ * @param {function({}): boolean} obj_condition - custom filter function for which objects to remap
+ * @returns {string} - string remap for spawn triggers
+ */
+function remapSpell(spell_name, nextBullet, obj_condition){
+	const spellObjects = triggerObjs[spell_name];
+	if (!Array.isArray(spellObjects)){
+		console.warn(`REMAP_SPELL ERROR: Spell name ${spell_name} doesnt exist`);
+	}
+
+	const remapParts = [];
+
+    for (const obj of spellObjects) {
+		if (obj_condition(obj.TARGET)){
+        	remapParts.push(`${obj.TARGET["value"]}.${nextBullet()}`);
+		}
+    }
+
+    return remapParts.join('.') + '.';
+}
+
+class ObjectIDs {
+	constructor(){
+		this.scale_trigger = 2067;
+		this.move_trigger = 901;
+		this.rotate_trigger = 1346;
+		this.toggle_trigger = 1049;
+		this.spawn_trigger = 1268;
+	}
+}
 
 
 module.exports = {
@@ -310,7 +368,7 @@ module.exports = {
     triggerObjs,
     createGroupCycler,
     RandomInt,
-    ConfigureNewSpell,
+    ConfigureSpell,
     timeToDistance,
     spacingProjectile,
     setCurrentGroups,
@@ -323,5 +381,8 @@ module.exports = {
     GotoGroup,
     PointToGroup,
     Rotate,
-	SaveToLevel
+	SaveToLevel,
+	changeRadius,
+	remapSpell,
+	ObjectIDs
 }
