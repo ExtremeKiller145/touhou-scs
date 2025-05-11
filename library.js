@@ -5,12 +5,6 @@
  * ig its too late tho now i have to continue  
 */
 
-/**
- * TODO:
- * Test ColorShift
- * Test Scale (especially with Divide/reset)
- * Test adding triggers in general
- */
 
 require('@g-js-api/g.js');
 

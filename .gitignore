@@ -1,3 +1,7 @@
+# Webstorm
+.idea
+# intellisense fix
+types
 # Logs
 logs
 *.log
