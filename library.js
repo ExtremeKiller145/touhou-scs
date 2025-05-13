@@ -190,8 +190,9 @@ function Scale(xpos, target, scaleFactor, duration){
  * @param {number} distance - Keep at least 400 to ensure the bullet leaves the screen (or despawn it)
  * @param {number} easing - Ease option type, 0=none
  * @param {number} easeRate - Easing rate/exponent, float or int
+ * @param {boolean} dynamic - Whether the distance is dynamic or not
  */
-function MoveTowardsGroup(xpos, target, targetDir, distance, time, easing, easeRate){
+function MoveTowardsGroup(xpos, target, targetDir, distance, time, easing, easeRate, dynamic){
 	triggerObjs[spellName].push({
 		OBJ_ID: 901, // move trigger id
 		X: xpos, Y: 0,
@@ -202,6 +203,7 @@ function MoveTowardsGroup(xpos, target, targetDir, distance, time, easing, easeR
 		EASING: easing, EASING_RATE: easeRate,
 		394: true, // directionMode
 		396: distance, // distance, 30 studs =  1 block
+		397: dynamic, // dynamic mode checkbox (updates velocity direction if target moves)
 		EDITOR_LAYER_1: editor_layer,
 		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
@@ -344,13 +346,11 @@ function remapSpell(spell_name, nextBullet, obj_condition){
 }
 
 class ObjectIDs {
-	constructor(){
-		this.scale_trigger = 2067;
-		this.move_trigger = 901;
-		this.rotate_trigger = 1346;
-		this.toggle_trigger = 1049;
-		this.spawn_trigger = 1268;
-	}
+	static scale_trigger = 2067;
+	static move_trigger = 901;
+	static rotate_trigger = 1346;
+	static toggle_trigger = 1049;
+	static spawn_trigger = 1268;
 }
 
 
