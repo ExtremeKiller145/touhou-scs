@@ -53,18 +53,31 @@ class TriggerSet {
     }
 }
 
+class GuiderCircle {
+    constructor(center, all, pointer, groups) {
+        this.center = center;
+        this.all = all;
+        this.pointer = pointer;
+        this.groups = groups;
+    }
+
+    static c1 = new GuiderCircle(
+        2221, // Center group
+        2222, // All group
+        2101, // Pointer group
+        (() => {
+            let groups = [];
+            for (let i = 2101; i <= 2220; i++) {
+                groups.push(i); // Starts at 2101 and goes clockwise
+            }
+            return groups;
+        })()
+    );
+}
+
 class Circular {
-    // note for later: 
+    // note for later:
     // if necessary, create more circles to be used w/ multiple emitters simultaneously
-    static ptrCircleCenter = 2221; // not permanent
-    static ptrCircleAll = 2222; // not permanent
-    static ptrCircleGroups = (() => {
-        let groups = [];
-        for (let i = 2101; i <= 2220; i++){
-            groups.push(i); // starts at 2101 and goes clockwise
-        }
-        return groups;
-    })();
 
     static allTriggerSets = [];
     static allMoveTriggers = [];
@@ -129,49 +142,79 @@ class Circular {
                 this.allDynamicRotateDurations.push(triggerSet.dynamicRotateDuration);
             }
         });
+        return undefined; // no duplicates found
     }
     
     static baseRadialGroup = unknown_g();
+    static baseBullet = unknown_g();
+    static baseTargetCircle = unknown_g();
+    static baseOptimizer = unknown_g();
+    static baseEmitter = unknown_g();
+    static baseCircleGroups = []; // logic for this does not include multiple circles
     static firstRun = true;
     /**
      * You may need to rerun the ConfigureSpell method again after running this function
      * @param {TriggerSet} triggerSet
      */
-    static Radial(xPosition, triggerSet){
+    static Radial(xPosition, triggerSet, circle = GuiderCircle.c1, spellName){
+        if (circle.groups.length != 120){
+            throw new TypeError(`GuiderCircle groups must be 120. Received: ${circle.groups.length}`);
+        }
         if (this.firstRun){
             this.firstRun = false;
-            let baseOptimizer = unknown_g();
-            let baseEmitter = unknown_g();
-            let baseTargetCircle = unknown_g();
-            let baseBullet = unknown_g();
-            lib.ConfigureSpell([baseOptimizer],5,'RadialOptimizer');
-            lib.GotoGroup(0, baseOptimizer, baseEmitter, 0,0,0);
-            lib.Toggle(1,baseBullet,true);
-            lib.PointToGroup(0, baseBullet, baseTargetCircle, 0,0,0);
-            triggerSet.moveTriggers.forEach((moveTrig) => {
-                lib.MoveTowardsGroup(2, baseBullet, baseTargetCircle, 
-                    moveTrig.Distance, moveTrig.Time,moveTrig.Easing, moveTrig.EaseRate, moveTrig.Dynamic, moveTrig.X);
-            });
+            lib.ConfigureSpell([this.baseOptimizer],5,'RadialOptimizer');
+            lib.GotoGroup(0, this.baseOptimizer, this.baseEmitter, 0,0,0);
+            lib.PointToGroup(1, this.baseBullet, this.baseTargetCircle, 0,0,0);
+            lib.Toggle(2,this.baseBullet,true);
+            // no move trigger because they will be added in
             lib.ConfigureSpell([this.baseRadialGroup], 5, 'BaseRadial');
-            for (i = 1; i <= 121; i++){
-                // IMPORTANT: If using multiple circles, 
-                lib.Spawn(0, group(i), `${baseBullet}.${i}.${baseTargetCircle}.${2100+i}`,0,0,0);
+            for (i = 0; i < 120; i++){
+                lib.Spawn(0,this.baseOptimizer,`${this.baseBullet}.${i+1}.${this.baseTargetCircle}.${circle.groups[i]}`,true);
             }
-        } else {
-            // compare with allTriggerSets. If it is a repeat for unique trigger settings,
-            // then dont add, just apply to new bullets
-            const duplicateSet = this.#processTriggerSet(triggerSet);
-            if (duplicateSet != undefined){
-                let activateGroup = duplicateSet.activatorGroup;
-                // run a spawn trigger with a full remap string to remap
-                console.log(`Duplicate trigger set found. Remapping bullets for group ${activateGroup}`);
+            this.baseCircleGroups = circle.groups;
+            console.log(`First run, Base radial created. w/ given settings.`);
+        }
+
+        // compare with allTriggerSets. If it is a repeat for unique trigger settings,
+        // then dont add, just apply to new bullets
+        const duplicateSet = this.#processTriggerSet(triggerSet);
+        if (duplicateSet != undefined){ // if duplicate found
+            let remapString = ``;
+            const circleGroupsAreEqual = this.baseCircleGroups == circle.groups;
+            for (let i = 0; i < 120; i++) {
+                if (circleGroupsAreEqual){
+                    remapString += `${i+1}.${triggerSet.nextBullet()}.${this.baseCircleGroups[i]}`
+                } else {
+                    remapString += `${i+1}.${triggerSet.nextBullet()}.${this.baseCircleGroups[i]}.${circle.groups[i]}.`;
+                }
             }
+
+
+            lib.ConfigureSpell([duplicateSet.activatorGroup],5,spellName);
+            lib.Toggle(xPosition, duplicateSet.toggleOnGroup, true);
+            lib.Toggle(xPosition, duplicateSet.toggleOffGroup, false);
+            lib.Spawn(xPosition +1, this.baseRadialGroup, remapString, true); // ordered by xpos to run after toggles
+
+            console.log(`Duplicate trigger set found. Remapping bullets for spell ${spellName}.`);
         }
     }
 
     static CompileRadials(){
         // reconfigure BaseRadial with the extra triggers & assign the toggleOn/toggleOff groups
         lib.ConfigureSpell([this.baseRadialGroup], 5, 'BaseRadial');
+        this.allMoveTriggers.forEach((moveTrig) => {
+            lib.MoveTowardsGroup(moveTrig.X, this.baseBullet, this.baseTargetCircle, moveTrig.Distance, moveTrig.Time, moveTrig.Easing, moveTrig.EaseRate, moveTrig.Dynamic);
+        });
+        this.allColorTriggers.forEach((colorTrig) => {
+            lib.ColorShift(colorTrig.X, this.baseBullet, colorTrig.H, colorTrig.S, colorTrig.V);
+        });
+        this.allScales.forEach((scaleTrig) => {
+            lib.Scale(scaleTrig.X, this.baseBullet, scaleTrig.scale, scaleTrig.duration);
+        });
+        this.allDynamicRotateDurations.forEach((dynamicRotate) => {
+            
+            lib.PointToGroup(2, this.baseBullet, this.baseTargetCircle, dynamicRotate.duration, 0,0,true);
+        });
     }
 }
 

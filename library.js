@@ -260,7 +260,7 @@ function GotoGroup(xpos, target, location, time, easing, easeRate){
  * @param {number} target - Target group to rotate
  * @param {number} targetDir - Target direction group
  */
-function PointToGroup(xpos, target, targetDir, time, easing, easeRate) {
+function PointToGroup(xpos, target, targetDir, time, easing, easeRate, dynamic) {
 	triggerObjs[spellName].push({
 		OBJ_ID: 1346, // rotate trigger id
 		X: xpos, Y:0,
@@ -272,7 +272,8 @@ function PointToGroup(xpos, target, targetDir, time, easing, easeRate) {
 		EDITOR_LAYER_1: editor_layer,
 		GROUPS: [...currentGroups],
 		SPAWN_TRIGGERED: true, MULTI_TRIGGER: true,
-		100: true // aim mode boolean
+		100: true, // aim mode boolean
+		397: dynamic
 	});
 }
 
