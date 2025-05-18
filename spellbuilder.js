@@ -90,59 +90,79 @@ class Circular {
      * @param {TriggerSet} triggerSet
      * @returns {TriggerSet} - true if triggerSet is a duplicate, false if it is new
      */
-    static #processTriggerSet(triggerSet){
-        this.allTriggerSets.forEach((set) => {
-            if (JSON.stringify(triggerSet.moveTriggers) == JSON.stringify(set.moveTriggers) &&
-                JSON.stringify(triggerSet.colorTriggers) == JSON.stringify(set.colorTriggers) &&
-                triggerSet.scale == set.scale &&
-                triggerSet.dynamicRotateDuration == set.dynamicRotateDuration){
-                return set; // duplicate found, returning to call as remaps
+    static #processTriggerSet(triggerSet) {
+        // Check for duplicate trigger set
+        for (const set of this.allTriggerSets) {
+            if (
+                JSON.stringify(triggerSet.moveTriggers) === JSON.stringify(set.moveTriggers) &&
+                JSON.stringify(triggerSet.colorTriggers) === JSON.stringify(set.colorTriggers) &&
+                triggerSet.scale === set.scale &&
+                triggerSet.dynamicRotateDuration === set.dynamicRotateDuration
+            ) {
+                return set;
             }
-        });
-        // if no duplicates found, add to allTriggerSets
+        }
+        // No duplicate found, add to allTriggerSets
         this.allTriggerSets.push(triggerSet);
-        this.allMoveTriggers.forEach((storedMoveTrig) => {
-            triggerSet.moveTriggers.forEach((moveTrig) => {
-                // if in  list, toggle on, if not, add trig to list w/ toggle on
-                if (JSON.stringify(moveTrig) == JSON.stringify(storedMoveTrig)){
+
+        let found = false;
+        for (const moveTrig of triggerSet.moveTriggers) {
+            for (const storedMoveTrig of this.allMoveTriggers) {
+                if (JSON.stringify(moveTrig) === JSON.stringify(storedMoveTrig)) {
                     storedMoveTrig.groups.push(triggerSet.toggleOnGroup);
-                } else {
-                    moveTrig.groups = [];
-                    moveTrig.groups.push(triggerSet.toggleOnGroup);
-                    this.allMoveTriggers.push(moveTrig);
+                    found = true;
+                    break;
                 }
-            });
-        });
-        this.allColorTriggers.forEach((storedColorTrig) => {
-            triggerSet.colorTriggers.forEach((colorTrig) => {
-                // if in list, toggle on, if not, add trig to list w/ toggle on
-                if (JSON.stringify(colorTrig) == JSON.stringify(storedColorTrig)){
+            }
+            if (!found) {
+                moveTrig.groups = [triggerSet.toggleOnGroup];
+                this.allMoveTriggers.push(moveTrig);
+            }
+        }
+
+        found = false;
+        for (const colorTrig of triggerSet.colorTriggers) {
+            let found = false;
+            for (const storedColorTrig of this.allColorTriggers) {
+                if (JSON.stringify(colorTrig) === JSON.stringify(storedColorTrig)) {
                     storedColorTrig.groups.push(triggerSet.toggleOnGroup);
-                } else {
-                    colorTrig.groups = [];
-                    colorTrig.groups.push(triggerSet.toggleOnGroup);
-                    this.allColorTriggers.push(colorTrig);
+                    found = true;
+                    break;
                 }
-            });
-        });
-        this.allScales.forEach((storedScaleTrigger) => {
-            if (triggerSet.scaleTrigger.scale == storedScaleTrigger.scale){
+            }
+            if (!found) {
+                colorTrig.groups = [triggerSet.toggleOnGroup];
+                this.allColorTriggers.push(colorTrig);
+            }
+        }
+
+        found = false;
+        for (const storedScaleTrigger of this.allScales) {
+            if (triggerSet.scaleTrigger.scale === storedScaleTrigger.scale) {
                 storedScaleTrigger.groups.push(triggerSet.toggleOnGroup);
-            } else {
-                triggerSet.scaleTrigger.groups.push(triggerSet.toggleOnGroup);
-                this.allScales.push(triggerSet.scaleTrigger);
+                found = true;
+                break;
             }
-        });
-        this.allDynamicRotateDurations.forEach((storedDynamicRotateDuration) => {
-            if (triggerSet.dynamicRotateDuration.duration == storedDynamicRotateDuration.duration){
+        }
+        if (!found) {
+            triggerSet.scaleTrigger.groups = [triggerSet.toggleOnGroup];
+            this.allScales.push(triggerSet.scaleTrigger);
+        }
+        
+        found = false;
+        for (const storedDynamicRotateDuration of this.allDynamicRotateDurations) {
+            if (triggerSet.dynamicRotateDuration.duration === storedDynamicRotateDuration.duration) {
                 storedDynamicRotateDuration.groups.push(triggerSet.toggleOnGroup);
-            } else {
-                triggerSet.allDynamicRotateDurations.groups = [];
-                triggerSet.allDynamicRotateDurations.groups.push(triggerSet.toggleOnGroup);
-                this.allDynamicRotateDurations.push(triggerSet.dynamicRotateDuration);
+                found = true;
+                break;
             }
-        });
-        return undefined; // no duplicates found
+        }
+        if (!found) {
+            triggerSet.dynamicRotateDuration.groups = [triggerSet.toggleOnGroup];
+            this.allDynamicRotateDurations.push(triggerSet.dynamicRotateDuration);
+        }
+
+        return undefined; // No duplicate found
     }
     
     static baseRadialGroup = unknown_g();
@@ -212,7 +232,6 @@ class Circular {
             lib.Scale(scaleTrig.X, this.baseBullet, scaleTrig.scale, scaleTrig.duration);
         });
         this.allDynamicRotateDurations.forEach((dynamicRotate) => {
-            
             lib.PointToGroup(2, this.baseBullet, this.baseTargetCircle, dynamicRotate.duration, 0,0,true);
         });
     }
