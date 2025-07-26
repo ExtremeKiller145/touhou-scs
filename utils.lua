@@ -12,7 +12,7 @@ function util.readonly(tbl)
         end
     end
     return setmetatable(proxy, {
-        __index = proxy,
+        __index = tbl,
         __newindex = function() error("Attempt to modify read-only table") end,
         __metatable = false
     })

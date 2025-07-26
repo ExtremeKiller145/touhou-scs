@@ -1,6 +1,7 @@
 # Webstorm
 .idea
-# intellisense fix
+# intellisense fix (i dont think it worked)
+triggers.json
 types
 # Logs
 logs

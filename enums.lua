@@ -7,26 +7,22 @@ local enum = {
     PLR_GROUP = 2,
     EDITOR_LAYER = 4,
 
-    DEFAULT_EASING = {
-        Time = 0,
-        Easing_type = 0,
-        Easing_rate = 1
-    },
-
     Properties = {
+        -- Note to self: MAKE ABSULUTELY SURE TO KEEP THESE IN ORDER WITH 0 MISTAKES: NO MISMATCHED NAMES
         OBJ_ID = 1,
         X = 2,
         Y = 3,
         DURATION = 10,
         EDITOR_LAYER = 20,
         EASING = 30,
+        TARGET = 51, -- general target for triggers
         GROUPS = 57,
         EDITOR_LAYER_2 = 61,
         SPAWN_TRIGGERED = 62,
-        TOGGLE_ACTIVATE_GROUP = 56,
-        ROTATE_CENTER = 71, -- for Rotate triggers
+        ACTIVATE_GROUP = 56, -- for Toggle triggers
+        ROTATE_CENTER = 71, -- for Rotate triggers, type group
         FOLLOW_GROUP = 71, -- for Follow triggers
-        TARGET_GROUP = 71, -- for Move Triggers
+        TARGET_DIR = 71, -- for Move Triggers
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
         RESET_REMAP = 581,
