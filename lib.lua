@@ -6,7 +6,8 @@
 
 local lib = {}
 
-local enum = require("Enums")
+local enum = require("enums")
+local util = require("utils")
 local ppt = enum.Properties
 
 
@@ -28,35 +29,38 @@ function SpellBuilder:SetGroups(groups)
     self.groups = groups
 end
 
-function SpellBuilder:Spawn(x, target, spawnOrdered, remapString)
+function SpellBuilder:Spawn(x, target, spawnOrdered, delay, remapString)
     table.insert(self.triggers, {
         [ppt.X] = x,
         [ppt.Y] = 0,
+        [ppt.DELAY] = delay or 0,
         [ppt.TARGET] = target or error('Missing "target" arg'),
         [ppt.SPAWN_ORDERED] = spawnOrdered or false,
         [ppt.REMAP_STRING] = remapString or "",
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
-        [ppt.RESET_REMAPS] = true
+        [ppt.RESET_REMAP] = true
     })
     return self
 end
 
 function SpellBuilder:MoveTowards(x, target, targetDir, easing)
+    util.validateArgs("MoveTowards", x, target, targetDir, easing)
     table.insert(self.triggers, {
-        [ppt.X] = x or error('missing argument "x"'),
+        [ppt.X] = x,
         [ppt.Y] = 0,
-        [ppt.TARGET] = target or error('missing argument "target"'),
-        [ppt.TARGET_DIR] = targetDir or error('missing argument "targetDir"'),
+        [ppt.TARGET] = target,
+        [ppt.TARGET_DIR] = targetDir,
         [ppt.OBJ_ID] = enum.ObjectID.Move,
+        [ppt.EASING] = easing or enum.Easing.defaultEasing,
     })
     return self
 end
 
-function lib.CreateEase(time, easingType, easingRate)
+function lib.CreateEasing(time, easingType, easingRate)
     return {
-        [ppt.TIME] = time or 0,
-        [ppt.EASING_TYPE] = easingType or enum.Easing.NONE,
-        [ppt.EASING_RATE] = easingRate or 1
+        Time = time or 0,
+        Easing_type = easingType or enum.Easing.NONE,
+        Easing_rate = easingRate or 1
     }
 end
 

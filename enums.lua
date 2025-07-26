@@ -1,16 +1,37 @@
 -- Contains definitions for all enums
 
-local util = require('Utils')
+local util = require('utils')
 
 local enum = {
     PLR_SPEED = 311.58,
     PLR_GROUP = 2,
     EDITOR_LAYER = 4,
 
+    DEFAULT_EASING = {
+        Time = 0,
+        Easing_type = 0,
+        Easing_rate = 1
+    },
+
     Properties = {
+        OBJ_ID = 1,
+        X = 2,
+        Y = 3,
+        DURATION = 10,
+        EDITOR_LAYER = 20,
+        EASING = 30,
+        GROUPS = 57,
+        EDITOR_LAYER_2 = 61,
+        SPAWN_TRIGGERED = 62,
         TOGGLE_ACTIVATE_GROUP = 56,
-        RESET_REMAPS = 581,
+        ROTATE_CENTER = 71, -- for Rotate triggers
+        FOLLOW_GROUP = 71, -- for Follow triggers
+        TARGET_GROUP = 71, -- for Move Triggers
+        EASING_RATE = 85,
+        MULTI_TRIGGERED = 87,
+        RESET_REMAP = 581,
         SPAWN_ORDERED = 441,
+        REMAP_STRING = 442,
     },
 
     ObjectID = {
