@@ -2,21 +2,9 @@
 
 local util = {}
 
-function util.readonly(tbl)
-    local proxy = {}
-    for k, v in pairs(tbl) do
-        if type(v) == "table" then
-            proxy[k] = util.readonly(v)
-        else
-            proxy[k] = v
-        end
-    end
-    return setmetatable(proxy, {
-        __index = tbl,
-        __newindex = function() error("Attempt to modify read-only table") end,
-        __metatable = false
-    })
-end
+--- READONLY FUNCTION REMOVED: 
+--- was breaking intellisense from reading contents of the table, 
+--- missing the point of having it as readonly
 
 --- To nil-check function arguments
 ---@param methodName string The name of the method for error messages.

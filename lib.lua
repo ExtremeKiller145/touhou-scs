@@ -66,23 +66,27 @@ function SpellBuilder:SetGroups(groups)
 end
 
 --- Moves a group towards another group
----@param target number
----@param targetDir number
+---@param target number Group to move
+---@param targetDir number Group to move towards
 ---@param easing EasingSetting
+---@param distance number in studs (1/30 of a block)
 ---@return SpellBuilder
-function SpellBuilder:MoveTowards(x, target, targetDir, easing)
-    print("Easing metatable:", getmetatable(easing))
-    print("SpellBuilder metatable:", getmetatable(SpellBuilder))
+function SpellBuilder:MoveTowards(x, target, targetDir, distance, easing)
     util.validateArgs("MoveTowards", x, target, targetDir)
     easing = easing or lib.EasingDefault
     table.insert(self.triggers, {
         [ppt.X] = x,
         [ppt.Y] = 0,
         [ppt.TARGET] = target,
+        [ppt.TARGET_CENTER] = target,
         [ppt.TARGET_DIR] = targetDir,
         [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.EASING] = easing.easingType,
         [ppt.EASING_RATE] = easing.easingRate,
+        [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.groups,
+        [ppt.SPAWN_TRIGGERED] = true,
+        [ppt.MULTI_TRIGGERED] = true,
     })
     return self
 end

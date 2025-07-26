@@ -8,7 +8,9 @@ local enum = {
     EDITOR_LAYER = 4,
 
     Properties = {
-        -- Note to self: MAKE ABSULUTELY SURE TO KEEP THESE IN ORDER WITH 0 MISTAKES: NO MISMATCHED NAMES
+        -- Note to self: 
+        -- MAKE ABSULUTELY SURE TO KEEP THESE IN ORDER WITH 0 MISTAKES: NO MISMATCHED NAMES
+
         OBJ_ID = 1,
         X = 2,
         Y = 3,
@@ -25,6 +27,7 @@ local enum = {
         TARGET_DIR = 71, -- for Move Triggers
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
+        TARGET_CENTER = 395, -- for Move triggers, target's center
         RESET_REMAP = 581,
         SPAWN_ORDERED = 441,
         REMAP_STRING = 442,
@@ -63,4 +66,4 @@ local enum = {
     },
 }
 
-return util.readonly(enum)
+return enum
