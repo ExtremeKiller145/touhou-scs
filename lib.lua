@@ -72,19 +72,22 @@ end
 ---@param distance number in studs (1/30 of a block)
 ---@return SpellBuilder
 function SpellBuilder:MoveTowards(x, target, targetDir, distance, easing)
-    util.validateArgs("MoveTowards", x, target, targetDir)
+    util.validateArgs("MoveTowards", x, target, targetDir, distance)
     easing = easing or lib.EasingDefault
     table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.X] = x,
         [ppt.Y] = 0,
         [ppt.TARGET] = target,
         [ppt.TARGET_CENTER] = target,
         [ppt.TARGET_DIR] = targetDir,
-        [ppt.OBJ_ID] = enum.ObjectID.Move,
+        [ppt.DIRECTION_MODE_DISTANCE] = distance,
+        [ppt.DURATION] = easing.time,
         [ppt.EASING] = easing.easingType,
         [ppt.EASING_RATE] = easing.easingRate,
         [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.GROUPS] = self.groups,
+        [ppt.DIRECTION_MODE] = true,
         [ppt.SPAWN_TRIGGERED] = true,
         [ppt.MULTI_TRIGGERED] = true,
     })

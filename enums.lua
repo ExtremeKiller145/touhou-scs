@@ -6,6 +6,7 @@ local enum = {
     PLR_SPEED = 311.58,
     PLR_GROUP = 2,
     EDITOR_LAYER = 4,
+    UNKNOWN_GROUP = "unknown_g", -- gets parsed at compile time
 
     Properties = {
         -- Note to self: 
@@ -27,7 +28,9 @@ local enum = {
         TARGET_DIR = 71, -- for Move Triggers
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
+        DIRECTION_MODE = 394, -- for Move triggers
         TARGET_CENTER = 395, -- for Move triggers, target's center
+        DIRECTION_MODE_DISTANCE = 396, -- for Move triggers
         RESET_REMAP = 581,
         SPAWN_ORDERED = 441,
         REMAP_STRING = 442,
