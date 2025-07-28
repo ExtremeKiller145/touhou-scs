@@ -35,10 +35,8 @@ function EasingSetting.new(time, easingType, easingRate)
     return self
 end
 
-lib.EasingDefault = EasingSetting.new(0,enum.Easing.NONE,0)
-
 ---@class SpellBuilder
----@field groups table
+---@field callerGroups table
 ---@field editorLayer number
 ---@field spellName string
 ---@field triggers table
@@ -47,13 +45,13 @@ SpellBuilder.__index = SpellBuilder
 lib.SpellBuilder = SpellBuilder
 
 ---Constructor
----@param groups table
+---@param callerGroups table
 ---@param editorLayer number
 ---@param spellName string
 ---@return SpellBuilder
-function SpellBuilder.new(spellName, groups, editorLayer)
+function SpellBuilder.new(spellName, callerGroups, editorLayer)
     local self = setmetatable({}, SpellBuilder)
-    self.groups = groups or {}
+    self.callerGroups = callerGroups or {}
     self.editorLayer = editorLayer or 4
     self.spellName = spellName or "unnamed"
     self.triggers = {}
@@ -61,19 +59,19 @@ function SpellBuilder.new(spellName, groups, editorLayer)
     return self
 end
 
-function SpellBuilder:SetGroups(groups)
-    self.groups = groups
+function SpellBuilder:SetCallerGroups(callerGroups)
+    self.callerGroups = callerGroups
 end
 
 --- Moves a group towards another group
 ---@param target number Group to move
 ---@param targetDir number Group to move towards
----@param easing EasingSetting
----@param distance number in studs (1/30 of a block)
+---@param easing table
 ---@return SpellBuilder
-function SpellBuilder:MoveTowards(x, target, targetDir, distance, easing)
-    util.validateArgs("MoveTowards", x, target, targetDir, distance)
-    easing = easing or lib.EasingDefault
+function SpellBuilder:MoveTowards(x, target, targetDir, easing)
+    util.validateArgs("MoveTowards", x, target, targetDir, easing)
+    util.validateEasing("MoveTowards", easing)
+    easing = easing or enum.DEFAULT_EASING
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.X] = x,
@@ -81,12 +79,12 @@ function SpellBuilder:MoveTowards(x, target, targetDir, distance, easing)
         [ppt.TARGET] = target,
         [ppt.TARGET_CENTER] = target,
         [ppt.TARGET_DIR] = targetDir,
-        [ppt.DIRECTION_MODE_DISTANCE] = distance,
-        [ppt.DURATION] = easing.time,
-        [ppt.EASING] = easing.easingType,
-        [ppt.EASING_RATE] = easing.easingRate,
+        [ppt.DIRECTION_MODE_DISTANCE] = easing.dist,
+        [ppt.DURATION] = easing.t,
+        [ppt.EASING] = easing.type,
+        [ppt.EASING_RATE] = easing.rate,
         [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.GROUPS] = self.groups,
+        [ppt.GROUPS] = self.callerGroups,
         [ppt.DIRECTION_MODE] = true,
         [ppt.SPAWN_TRIGGERED] = true,
         [ppt.MULTI_TRIGGERED] = true,
@@ -102,8 +100,8 @@ function lib.SaveAll()
         triggers = {}
     }
     
-    for _, spell in ipairs(AllSpells) do
-        for _, trigger in ipairs(spell.triggers) do
+    for _, spell in pairs(AllSpells) do
+        for _, trigger in pairs(spell.triggers) do
             table.insert(allTriggers.triggers, trigger)
         end
     end
@@ -111,6 +109,7 @@ function lib.SaveAll()
     local file = io.open(filename, "w")
     file:write(json.encode(allTriggers, { indent = "\t" }))
     file:close()
+    print("Saved to " .. filename .. " successfully!")
 end
 
 return lib

@@ -1,11 +1,13 @@
 
 local lib = require("lib")
 local enum = require("enums")
+local u = require("utils")
 
-local spell = lib.SpellBuilder.new("Test Spell", { 120, 200, enum.UNKNOWN_GROUP })
-local easing = lib.EasingSetting.new(3.75, enum.Easing.BACK_IN,1.5)
-spell:MoveTowards(30, 49, 69,250)
-    :MoveTowards(60, 50, 70, 300, easing)
-    :MoveTowards(90, 51, 71, 350, easing)
+local nextPointer = u.createNumberCycler(601,1100)
+local nextBullet2 = u.createNumberCycler(1101,1600)
+local nextBullet3 = u.createNumberCycler(1601,2100)
+
+local spell = lib.SpellBuilder.new("Test Spell", u.group({ 120, 200, enum.UNKNOWN_GROUP }))
+spell:MoveTowards(30, nextBullet2(), enum.PLR_GROUP, { t = 4, type = enum.Easing.BACK_IN, rate = 1.5, dist = enum.OFFSCREEN_DIST })
 
 lib.SaveAll()

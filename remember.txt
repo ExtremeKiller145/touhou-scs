@@ -1,14 +1,33 @@
+
+## OLD SYSTEM's THINGS TO REMEMBER ##
 Remember these things:
 
 Trigger adding: on per spell basis configureNewSpell creates a new index in triggerGroups[] 
 in which all triggers of the same spell will be in the same list. at the end, a function is called to add all triggers, where it is automatically scattered to prevent clustering/obj_density & lag
 
-New Spell: be aware of durations for scale triggers & re-use other spells for efficiency using remaps 
-,
+New Spell: be aware of durations for scale triggers & re-use other spells for efficiency using remaps
 Difficulties:
-When choosing a difficulty toggle off all spells, toggle on the spells for the difficulty, or the triggers within the spells
-For stage practice, 
+When choosing a difficulty:
+toggle off all spells, 
+toggle on the spells for the difficulty, 
+or the triggers within the spells
 
+Keep stage practice in mind: 
+all spells are modular and should be able to run in a vacuum
+
+Within library.js:
+
+Finish ConfigureNewSpell
+Finish testing ColorShift
+Finish adding all other useful triggers
+Set all Y positions in those to 0. let the insert function clean it upon compilation 
+
+## NEW SYSTEM ##
+
+Within lib.lua:
+Finish testing MoveTowards
+Add remaining trigger methods
+Add spread function to manipulate each spell's x and y positions to prevent clustering lag
 
 TODO:
 
@@ -19,10 +38,3 @@ Bullet types
 Lazers
 Main Bullet SFX
 Player Shot types
-
-Within library.js:
-
-Finish ConfigureNewSpell
-Finish testing ColorShift
-Finish adding all other useful triggers
-Set all Y positions in those to 0. let the insert function clean it upon compilation 
