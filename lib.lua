@@ -71,7 +71,6 @@ end
 function SpellBuilder:MoveTowards(x, target, targetDir, easing)
     util.validateArgs("MoveTowards", x, target, targetDir, easing)
     util.validateEasing("MoveTowards", easing)
-    easing = easing or enum.DEFAULT_EASING
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.X] = x,
@@ -86,6 +85,36 @@ function SpellBuilder:MoveTowards(x, target, targetDir, easing)
         [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.GROUPS] = self.callerGroups,
         [ppt.DIRECTION_MODE] = true,
+        [ppt.SPAWN_TRIGGERED] = true,
+        [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
+
+--- Moves a group by an X and Y change
+---@param target number Group to move
+---@param change table X and Y change in studs
+---@param easing table
+---@return SpellBuilder
+function SpellBuilder:MoveBy(x, target, change, easing)
+    util.validateArgs("MoveTowards", x, target, change, easing)
+    easing.MoveBy = true -- passes check for dist/angle
+    util.validateEasing("MoveTowards", easing)
+    if change.X == nil or change.Y == nil then
+        error("MoveBy: change must have X and Y fields")
+    end
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Move,
+        [ppt.X] = x,
+        [ppt.Y] = 0,
+        [ppt.TARGET] = target,
+        [ppt.DURATION] = easing.time,
+        [ppt.EASING] = easing.type,
+        [ppt.EASING_RATE] = easing.rate,
+        [ppt.MOVE_X] = change.X,
+        [ppt.MOVE_Y] = change.Y,
+        [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroups,
         [ppt.SPAWN_TRIGGERED] = true,
         [ppt.MULTI_TRIGGERED] = true,
     })

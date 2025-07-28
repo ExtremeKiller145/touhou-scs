@@ -8,6 +8,9 @@ local nextBullet2 = u.createNumberCycler(1101,1600)
 local nextBullet3 = u.createNumberCycler(1601,2100)
 
 local spell = lib.SpellBuilder.new("Test Spell", u.group({ 120, 200, enum.UNKNOWN_GROUP }))
-spell:MoveTowards(30, nextBullet2(), enum.PLR_GROUP, { t = 4, type = enum.Easing.BACK_IN, rate = 1.5, dist = enum.OFFSCREEN_DIST })
+spell:MoveTowards(30, nextBullet2(), enum.PLR_GROUP, 
+{ t = 4, type = enum.Easing.BACK_IN, rate = 1.5, dist = enum.OFFSCREEN_DIST })
+    :MoveBy(30, nextBullet3(), { X = 10, Y = 10 }, 
+    { t = 4, type = enum.Easing.BACK_IN, rate = 1.5 })
 
 lib.SaveAll()

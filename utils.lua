@@ -58,11 +58,12 @@ function util.validateEasing(methodName, easing)
         end
     end
 
-    -- Must have either 'dist' or 'angle'
+    -- Must have either 'dist' or 'angle' or 'MoveBy'
     local hasDist = easing.dist ~= nil
     local hasAngle = easing.angle ~= nil
+    local hasMoveBy = easing.MoveBy ~= nil
 
-    if not hasDist and not hasAngle then
+    if not hasDist and not hasAngle and not hasMoveBy then
         error(methodName .. ": easing must have either 'dist' or 'angle' field")
     end
 end
