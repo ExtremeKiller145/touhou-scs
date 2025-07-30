@@ -68,8 +68,49 @@ function SpellBuilder:SetCallerGroups(callerGroups)
     self.callerGroups = callerGroups
 end
 
+
+--- Spawns a group
+---@param remapID string Remap string, dot-seperated list, e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
+---@param spawnOrdered boolean Execute from left to right w/ gap time
+---@return SpellBuilder
+function SpellBuilder:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
+    util.validateArgs("Spawn", x, target, remapID)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Spawn,
+        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.TARGET] = target,
+
+        [ppt.REMAP_STRING] = remapID,
+        [ppt.RESET_REMAP] = true,
+        [ppt.SPAWN_ORDERED] = spawnOrdered,
+        [ppt.SPAWN_DELAY] = spawnDelay,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
+
+--- Toggles a group on or off. 
+--- WARNING: A deactivated object cannot be reactivated by a different group 
+--- (collision triggers might be different)
+---@param activateGroup boolean Activate or deactivate group
+function SpellBuilder:Toggle(x, target, activateGroup)
+    util.validateArgs("Toggle", x, target, activateGroup)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Toggle,
+        [ppt.X] = x, [ppt.Y] = 0,
+
+        [ppt.TARGET] = target,
+        [ppt.ACTIVATE_GROUP] = activateGroup,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })  
+    return self
+end
+
 --- Moves a group towards another group
----@param target number Group to move
 ---@param targetDir number Group to move towards
 ---@param easing table
 ---@return SpellBuilder
@@ -78,28 +119,23 @@ function SpellBuilder:MoveTowards(x, target, targetDir, easing)
     util.validateEasing("MoveTowards", easing)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = x,
-        [ppt.Y] = 0,
-        [ppt.TARGET] = target,
-        [ppt.MOVE_TARGET_CENTER] = target,
+        [ppt.X] = x, [ppt.Y] = 0,
+
+        [ppt.TARGET] = target, [ppt.MOVE_TARGET_CENTER] = target,
         [ppt.MOVE_TARGET_DIR] = targetDir,
-        [ppt.MOVE_DIRECTION_MODE] = true,
-        [ppt.MOVE_DIRECTION_MODE_DISTANCE] = easing.dist,
+        [ppt.MOVE_DIRECTION_MODE] = true, [ppt.MOVE_DIRECTION_MODE_DISTANCE] = easing.dist,
         [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type,
-        [ppt.EASING_RATE] = easing.rate,
+        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
         [ppt.DYNAMIC] = easing.dynamic or false,
         [ppt.MOVE_SILENT] = (easing.t == 0),
-        [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.GROUPS] = self.callerGroups,
-        [ppt.SPAWN_TRIGGERED] = true,
-        [ppt.MULTI_TRIGGERED] = true,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
 end
 
 --- Moves a group by an X and Y change
----@param target number Group to move
 ---@param vector2 table X and Y change in studs
 ---@param easing table
 ---@return SpellBuilder
@@ -111,25 +147,21 @@ function SpellBuilder:MoveBy(x, target, vector2, easing)
     if easing.dynamic then error("MoveBy does not support dynamic mode") end
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = x,
-        [ppt.Y] = 0,
-        [ppt.MOVE_X] = vector2.X,
-        [ppt.MOVE_Y] = vector2.Y,
+        [ppt.X] = x, [ppt.Y] = 0,
+
+        [ppt.MOVE_X] = vector2.X, [ppt.MOVE_Y] = vector2.Y,
         [ppt.TARGET] = target,
         [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type,
-        [ppt.EASING_RATE] = easing.rate,
+        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
         [ppt.MOVE_SILENT] = (easing.t == 0),
-        [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.GROUPS] = self.callerGroups,
-        [ppt.SPAWN_TRIGGERED] = true,
-        [ppt.MULTI_TRIGGERED] = true,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
 end
 
 --- Moves a group to a group in a certain amount of time
----@param target number Group to move
 ---@param location number Group location to move to
 ---@param easing table
 ---@return SpellBuilder
@@ -138,24 +170,23 @@ function SpellBuilder:GotoGroup(x, target, location, easing)
     util.validateEasing("GotoGroup", easing)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = x,
-        [ppt.Y] = 0,
-        [ppt.TARGET] = target,
-        [ppt.MOVE_TARGET_CENTER] = target,
-        [ppt.MOVE_TARGET_MODE] = true,
-        [ppt.MOVE_TARGET_LOCATION] = location,
+        [ppt.X] = x, [ppt.Y] = 0,
+
+        [ppt.TARGET] = target, [ppt.MOVE_TARGET_CENTER] = target,
+        [ppt.MOVE_TARGET_MODE] = true, [ppt.MOVE_TARGET_LOCATION] = location,
         [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type,
-        [ppt.EASING_RATE] = easing.rate,
+        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
         [ppt.DYNAMIC] = easing.dynamic or false,
         [ppt.MOVE_SILENT] = (easing.t == 0),
-        [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.GROUPS] = self.callerGroups,
-        [ppt.SPAWN_TRIGGERED] = true,
-        [ppt.MULTI_TRIGGERED] = true,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
 end
+
+
+
 
 function lib.SaveAll()
     local json = require("dkjson")

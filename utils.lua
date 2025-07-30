@@ -14,7 +14,7 @@ function util.validateArgs(methodName, ...)
     end
 end
 
----Creates a number cycler that returns sequential numbers in a range
+--- Creates a number cycler that returns sequential numbers in a range.
 ---@param min number The minimum value (inclusive)
 ---@param max number The maximum value (inclusive) 
 ---@return function A function that returns the next number in sequence, cycling back to min after max
@@ -39,8 +39,18 @@ function util.createNumberCycler(min, max)
     end
 end
 
---- Sematic wrapper for group tables or individual values for 'self-documenting code'
+--- Semantic wrapper for group tables or individual values for 'self-documenting code'
 function util.group(val) return val end
+
+--- Converts time in seconds to distance in studs
+function util.timeToDist(time) return 311.58 * time end
+
+--- Convert block studs & projectile speed to projectile spacing.
+---@param speedOfProjectile number in studs/second
+---@param studsOfSpacing number in studs/second
+function util.spacingBullet(speedOfProjectile, studsOfSpacing)
+    return studsOfSpacing / speedOfProjectile * 311.58
+end
 
 --- Creates a vector2 table for MoveBy w/ simple type checking
 ---@param x number X value of vector2

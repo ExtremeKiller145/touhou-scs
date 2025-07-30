@@ -2,10 +2,10 @@
 
 local enum = {
     PLR_SPEED = 311.58,
-    PLR_GROUP = 2,
+    PLR = 2,
     EDITOR_LAYER = 4,
     UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
-    REMAP_G = 10, -- Empty group for remapping 10 > whatever
+    REMAP_G = 10, -- Empty group for remapping 10 -> whatever
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
 
@@ -19,9 +19,6 @@ local enum = {
     },
 
     Properties = {
-        -- Note to self: 
-        -- MAKE ABSULUTELY SURE TO KEEP THESE IN ORDER WITH 0 MISTAKES: NO MISMATCHED NAMES
-
         OBJ_ID = 1,
         X = 2,
         Y = 3,
@@ -38,9 +35,12 @@ local enum = {
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
         DYNAMIC = 397,
-        RESET_REMAP = 581,
-        SPAWN_ORDERED = 441,
-        REMAP_STRING = 442,
+
+        -- Spawn trigger properties
+        REMAP_STRING = 442, -- dot seperated. e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
+        RESET_REMAP = 581, -- blocks other spawn triggers from remapping the spawn trigger's remap string
+        SPAWN_ORDERED = 441, -- boolean
+        SPAWN_DELAY = 63,
 
         -- Move trigger properties
         MOVE_X = 28,
