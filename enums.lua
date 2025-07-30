@@ -6,8 +6,8 @@ local enum = {
     PLR_SPEED = 311.58,
     PLR_GROUP = 2,
     EDITOR_LAYER = 4,
-    UNKNOWN_GROUP = "unknown_g", -- Gets parsed at compile time
-    REMAP_GROUP = 10, -- Empty group for remapping 10 > whatever
+    UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
+    REMAP_G = 10, -- Empty group for remapping 10 > whatever
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
 

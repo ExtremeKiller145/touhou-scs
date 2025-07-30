@@ -42,6 +42,30 @@ end
 --- Sematic wrapper for group tables or individual values for 'self-documenting code'
 function util.group(val) return val end
 
+--- Creates a vector2 table for MoveBy w/ simple type checking
+---@param x number X value of vector2
+---@param y number Y value of vector2
+---@return table Vector2
+function util.vector2(x, y) 
+    if not (type(x) == "number" and type(y) == "number") then 
+        error("Invalid args for 'vector2': x and y must be numbers")
+    end
+    return { X = x, Y = y }
+end
+
+--- Validates vector2 table structure
+---@param vector2 table The vector2 table to validate
+---@param methodName string Function name for error messages
+function util.validateVector2(methodName, vector2)
+    if type(vector2) ~= "table" then
+        error(methodName .. ": vector2 must be a table")
+    end
+
+    if vector2["X"] == nil or vector2["Y"] == nil then
+        error(methodName .. ": vector2 missing required field 'X' or 'Y'")
+    end
+end
+
 --- Validates easing table structure
 ---@param easing table The easing table to validate
 ---@param methodName string Function name for error messages

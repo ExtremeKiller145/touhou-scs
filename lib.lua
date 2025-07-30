@@ -11,6 +11,11 @@ local enum = require("enums")
 local util = require("utils")
 local ppt = enum.Properties
 
+-- Area for spreading triggers out
+local TriggerArea = {
+    bottom_left = util.vector2(450,300),
+    top_right = util.vector2(900,600)
+}
 
 local AllSpells = {}
 
@@ -93,26 +98,24 @@ end
 
 --- Moves a group by an X and Y change
 ---@param target number Group to move
----@param change table X and Y change in studs
+---@param vector2 table X and Y change in studs
 ---@param easing table
 ---@return SpellBuilder
-function SpellBuilder:MoveBy(x, target, change, easing)
-    util.validateArgs("MoveTowards", x, target, change, easing)
+function SpellBuilder:MoveBy(x, target, vector2, easing)
+    util.validateArgs("MoveBy", x, target, vector2, easing)
     easing.MoveBy = true -- passes check for dist/angle
-    util.validateEasing("MoveTowards", easing)
-    if change.X == nil or change.Y == nil then
-        error("MoveBy: change must have X and Y fields")
-    end
+    util.validateEasing("MoveBy", easing)
+    util.validateVector2("MoveBy", vector2)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.X] = x,
         [ppt.Y] = 0,
         [ppt.TARGET] = target,
-        [ppt.DURATION] = easing.time,
+        [ppt.DURATION] = easing.t,
         [ppt.EASING] = easing.type,
         [ppt.EASING_RATE] = easing.rate,
-        [ppt.MOVE_X] = change.X,
-        [ppt.MOVE_Y] = change.Y,
+        [ppt.MOVE_X] = vector2.X,
+        [ppt.MOVE_Y] = vector2.Y,
         [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.GROUPS] = self.callerGroups,
         [ppt.SPAWN_TRIGGERED] = true,
