@@ -76,6 +76,7 @@ function util.validateEasing(methodName, easing)
 
     -- Required fields
     local required = {"t", "type", "rate"}
+    if easing.type > 6 then easing.rate = 1 end -- only easing types 1-6 use ease rate field
     for _, field in pairs(required) do
         if easing[field] == nil then
             error(methodName .. ": easing missing required field '" .. field .. "'")

@@ -1,7 +1,5 @@
 -- Contains definitions for all enums
 
-local util = require('utils')
-
 local enum = {
     PLR_SPEED = 311.58,
     PLR_GROUP = 2,
@@ -17,6 +15,7 @@ local enum = {
         rate = 1,
         dist = 480,
         angle = 90,
+        dynamic = false
     },
 
     Properties = {
@@ -28,8 +27,6 @@ local enum = {
         Y = 3,
         DURATION = 10,
         EDITOR_LAYER = 20,
-        MOVE_X = 28,
-        MOVE_Y = 29,
         EASING = 30,
         TARGET = 51, -- General target for triggers
         GROUPS = 57, -- Requires JS-side translation
@@ -38,15 +35,23 @@ local enum = {
         ACTIVATE_GROUP = 56, -- For Toggle triggers
         ROTATE_CENTER = 71, -- For Rotate triggers, type group
         FOLLOW_GROUP = 71, -- For Follow triggers
-        TARGET_DIR = 71, -- For Move Triggers
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
-        DIRECTION_MODE = 394, -- For Move triggers
-        TARGET_CENTER = 395, -- For Move triggers, target's center
-        DIRECTION_MODE_DISTANCE = 396, -- For Move triggers
+        DYNAMIC = 397,
         RESET_REMAP = 581,
         SPAWN_ORDERED = 441,
         REMAP_STRING = 442,
+
+        -- Move trigger properties
+        MOVE_X = 28,
+        MOVE_Y = 29,
+        MOVE_TARGET_CENTER = 395, -- target's center for Direction/Goto
+        MOVE_TARGET_DIR = 71, -- target for Direction mode
+        MOVE_TARGET_LOCATION = 71, -- target for Goto mode
+        MOVE_TARGET_MODE = 100, -- 'Goto' mode boolean
+        MOVE_DIRECTION_MODE = 394, -- Direction mode boolean
+        MOVE_DIRECTION_MODE_DISTANCE = 396,
+        MOVE_SILENT = 544, -- Platformer mode 'silent' boolean. activate if t = 0. unsure if more efficent
     },
 
     ObjectID = {

@@ -1,3 +1,5 @@
+console.log("\n\nRUNNING main.js:\n\n");
+
 require('@g-js-api/g.js');
 
 $.exportConfig({
