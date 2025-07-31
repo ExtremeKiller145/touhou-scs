@@ -106,13 +106,13 @@ function SpellBuilder:Toggle(x, target, activateGroup)
 
         [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })  
+    })
     return self
 end
 
 --- Moves a group towards another group
 ---@param targetDir number Group to move towards
----@param easing table
+---@param easing table Requires 'dist', 'time', 'type', 'rate' fields
 ---@return SpellBuilder
 function SpellBuilder:MoveTowards(x, target, targetDir, easing)
     util.validateArgs("MoveTowards", x, target, targetDir, easing)
@@ -137,7 +137,7 @@ end
 
 --- Moves a group by an X and Y change
 ---@param vector2 table X and Y change in studs
----@param easing table
+---@param easing table Requires 'time', 'type', 'rate' fields
 ---@return SpellBuilder
 function SpellBuilder:MoveBy(x, target, vector2, easing)
     util.validateArgs("MoveBy", x, target, vector2, easing)
@@ -163,7 +163,7 @@ end
 
 --- Moves a group to a group in a certain amount of time
 ---@param location number Group location to move to
----@param easing table
+---@param easing table Requires 'time', 'type', 'rate' fields
 ---@return SpellBuilder
 function SpellBuilder:GotoGroup(x, target, location, easing)
     util.validateArgs("GotoGroup", x, target, location, easing)
@@ -185,7 +185,84 @@ function SpellBuilder:GotoGroup(x, target, location, easing)
     return self
 end
 
+--- Rotates a group by a certain amount
+---@param easing table Must contain angle field
+---@return SpellBuilder
+function SpellBuilder:Rotate(x, target, easing)
+    util.validateArgs("Rotate", x, target, easing)
+    if not easing.angle then error("Rotate: 'easing' missing required field 'angle'") end
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Rotate,
+        [ppt.X] = x, [ppt.Y] = 0,
 
+        [ppt.TARGET] = target, [ppt.ROTATE_CENTER] = target,
+        [ppt.ROTATE_ANGLE] = easing.angle, -- degrees, clockwise is +
+        [ppt.DURATION] = easing.t or 0,
+        [ppt.EASING] = easing.type or 0,
+        [ppt.EASING_RATE] = easing.rate or 1,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
+
+--- Rotates a group to point towards another group
+---@param targetDir number Group to point towards
+---@param easing table not required, defaults to none
+function SpellBuilder:PointToGroup(x, target, targetDir, easing)
+    util.validateArgs("PointToGroup", x, target, targetDir)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Rotate,
+        [ppt.X] = x, [ppt.Y] = 0,
+
+        [ppt.TARGET] = target,
+        [ppt.ROTATE_TARGET] = targetDir,
+        [ppt.ROTATE_AIM_MODE] = true,
+        [ppt.DYNAMIC] = easing.dynamic or false,
+        [ppt.ROTATE_DYNAMIC_EASING] = easing.rate or 0, -- range from 0 to 100, only if dynamic is true
+        [ppt.DURATION] = easing.t or 0,
+        [ppt.EASING] = easing.type or 0, [ppt.EASING_RATE] = easing.rate or 1,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
+
+--- Scales a group by a certain amount, resets after some duration
+---@param easing table not required, defaults to none
+---@param scaleFactor number to scale down to, e.g. 0.5 is half size
+---@param duration number time in seconds to scale for, instant resets after
+function SpellBuilder:Scale(x, target, scaleFactor, duration, easing)
+    util.validateArgs("Scale", x, target, scaleFactor, duration)
+    easing = easing or enum.DEFAULT_EASING
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Scale,
+        [ppt.X] = x, [ppt.Y] = 0,
+
+        [ppt.TARGET] = target, [ppt.SCALE_CENTER] = target,
+        [ppt.SCALE_X] = scaleFactor, [ppt.SCALE_Y] = scaleFactor,
+        [ppt.DURATION] = easing.t,
+        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Scale,
+        [ppt.X] = x + util.timeToDist(duration), [ppt.Y] = 0,
+
+        [ppt.TARGET] = target, [ppt.SCALE_CENTER] = target,
+        [ppt.SCALE_X] = scaleFactor, [ppt.SCALE_Y] = scaleFactor,
+        [ppt.SCALE_DIV_BY_X] = true, [ppt.SCALE_DIV_BY_Y] = true,
+        [ppt.DURATION] = 0, -- instant reset scale once offscreen
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
 
 
 function lib.SaveAll()

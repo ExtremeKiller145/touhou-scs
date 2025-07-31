@@ -8,6 +8,7 @@ local enum = {
     REMAP_G = 10, -- Empty group for remapping 10 -> whatever
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
+    ROTATE_INFINITE_DURATION = -1,
 
     DEFAULT_EASING = {
         t = 0,
@@ -30,11 +31,24 @@ local enum = {
         EDITOR_LAYER_2 = 61,
         SPAWN_TRIGGERED = 62,
         ACTIVATE_GROUP = 56, -- For Toggle triggers
-        ROTATE_CENTER = 71, -- For Rotate triggers, type group
         FOLLOW_GROUP = 71, -- For Follow triggers
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
         DYNAMIC = 397,
+
+        -- Scale trigger properties
+        SCALE_X = 150,
+        SCALE_Y = 151,
+        SCALE_CENTER = 71,
+        SCALE_DIV_BY_X = 153,
+        SCALE_DIV_BY_Y = 154,
+
+        -- Rotate trigger properties
+        ROTATE_ANGLE = 68, -- In degrees, clockwise is +
+        ROTATE_CENTER = 71, -- For Rotate triggers, type group
+        ROTATE_TARGET = 401,
+        ROTATE_AIM_MODE = 100,
+        ROTATE_DYNAMIC_EASING = 403,
 
         -- Spawn trigger properties
         REMAP_STRING = 442, -- dot seperated. e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
