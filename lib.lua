@@ -262,6 +262,32 @@ function SpellBuilder:Scale(x, target, scaleFactor, duration, easing)
     return self
 end
 
+--- Pulses a group by a certain amount, resets after some duration
+--- DOES NOT INCLUDE: Saturation & Brightness check boxes
+--- Hue: [-180 to +180]
+--- Saturation: [x0.0 to x2.0], x1.0 is default
+--- Brightness: [x0.0 to x2.0], x1.0 is default
+---@param fading table requires 't', 'fadeIn', 'fadeOut' fields
+function SpellBuilder:Pulse(x, target, hsb, fading)
+    util.validateArgs("Pulse", x, target, hsb, fading)
+    util.validatePulse(hsb, fading)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Pulse,
+        [ppt.X] = x, [ppt.Y] = 0,
+
+        [ppt.TARGET] = target,
+        [ppt.PULSE_TARGET_TYPE] = true,
+        [ppt.PULSE_HSV] = true,
+        [ppt.PULSE_HSV_STRING] = string.format("%da%da%da0a0", hsb.h, hsb.s, hsb.b),
+        [ppt.PULSE_EXCLUSIVE] = hsb.exclusive,
+        [ppt.PULSE_HOLD] = fading.t,
+        [ppt.PULSE_FADE_IN] = fading.fadeIn, [ppt.PULSE_FADE_OUT] = fading.fadeOut,
+
+        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
 
 function lib.SaveAll()
     local json = require("dkjson")

@@ -36,6 +36,15 @@ local enum = {
         MULTI_TRIGGERED = 87,
         DYNAMIC = 397,
 
+        -- Pulse trigger properties
+        PULSE_FADE_IN = 45,
+        PULSE_HOLD = 46,
+        PULSE_FADE_OUT = 47,
+        PULSE_HSV = 48, -- hsv mode
+        PULSE_HSV_STRING = 49, -- 'a' seperated string like 'HaSaBa0a0'
+        PULSE_TARGET_TYPE = 52, -- false = color channel, true = group ID
+        PULSE_EXCLUSIVE = 86,
+
         -- Scale trigger properties
         SCALE_X = 150,
         SCALE_Y = 151,

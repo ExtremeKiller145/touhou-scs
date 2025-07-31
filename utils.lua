@@ -103,4 +103,27 @@ function util.validateEasing(methodName, easing)
     end
 end
 
+--- Validates pulse param table structures
+---@param hsb table The pulse table to validate
+---@param fading table The fading table to validate
+function util.validatePulse(hsb, fading)
+    if type(hsb) ~= "table" then
+        error("Pulse: 'hsb' must be a table")
+    end
+
+    if type(fading) ~= "table" then
+        error("Pulse: 'fading' must be a table")
+    end
+
+    if not hsb["h"] or not hsb["s"] or not hsb["b"] or not hsb["exclusive"] then
+        error("Pulse: 'hsb' missing required field 'h', 's', 'b', or 'exclusive'")
+    end
+
+    if not fading["t"] or not fading['fadeIn'] then
+        error("Pulse: 'fading' missing required field 't' or 'fadeIn'")
+    end
+
+    fading['fadeOut'] = fading['fadeOut'] or 0
+end
+
 return util
