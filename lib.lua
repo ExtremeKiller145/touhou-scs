@@ -72,9 +72,8 @@ end
 --- Spawns a group
 ---@param remapID string Remap string, dot-seperated list, e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
----@return SpellBuilder
 function SpellBuilder:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
-    util.validateArgs("Spawn", x, target, remapID)
+    util.validateArgs("Spawn", x, target, spawnOrdered, remapID)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -83,7 +82,7 @@ function SpellBuilder:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
         [ppt.REMAP_STRING] = remapID,
         [ppt.RESET_REMAP] = true,
         [ppt.SPAWN_ORDERED] = spawnOrdered,
-        [ppt.SPAWN_DELAY] = spawnDelay,
+        [ppt.SPAWN_DELAY] = spawnDelay or 0,
 
         [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
@@ -113,7 +112,6 @@ end
 --- Moves a group towards another group
 ---@param targetDir number Group to move towards
 ---@param easing table Requires 'dist', 'time', 'type', 'rate' fields
----@return SpellBuilder
 function SpellBuilder:MoveTowards(x, target, targetDir, easing)
     util.validateArgs("MoveTowards", x, target, targetDir, easing)
     util.validateEasing("MoveTowards", easing)
@@ -138,7 +136,6 @@ end
 --- Moves a group by an X and Y change
 ---@param vector2 table X and Y change in studs
 ---@param easing table Requires 'time', 'type', 'rate' fields
----@return SpellBuilder
 function SpellBuilder:MoveBy(x, target, vector2, easing)
     util.validateArgs("MoveBy", x, target, vector2, easing)
     easing.MoveBy = true -- passes check for dist/angle
@@ -164,7 +161,6 @@ end
 --- Moves a group to a group in a certain amount of time
 ---@param location number Group location to move to
 ---@param easing table Requires 'time', 'type', 'rate' fields
----@return SpellBuilder
 function SpellBuilder:GotoGroup(x, target, location, easing)
     util.validateArgs("GotoGroup", x, target, location, easing)
     util.validateEasing("GotoGroup", easing)
@@ -186,16 +182,18 @@ function SpellBuilder:GotoGroup(x, target, location, easing)
 end
 
 --- Rotates a group by a certain amount
----@param easing table Must contain angle field
----@return SpellBuilder
-function SpellBuilder:Rotate(x, target, easing)
-    util.validateArgs("Rotate", x, target, easing)
+---@param easing table Must contain 'angle' field
+---@param targets table Must contain 'target' and 'center' fields
+function SpellBuilder:Rotate(x, targets, easing)
+    util.validateArgs("Rotate", x, targets, easing)
     if not easing.angle then error("Rotate: 'easing' missing required field 'angle'") end
+    if not targets.target then error("Rotate: 'targets' missing required field 'target'") end
+    if not targets.center then error("Rotate: 'targets' missing required field 'center'") end
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
         [ppt.X] = x, [ppt.Y] = 0,
 
-        [ppt.TARGET] = target, [ppt.ROTATE_CENTER] = target,
+        [ppt.TARGET] = targets.target, [ppt.ROTATE_CENTER] = targets.center,
         [ppt.ROTATE_ANGLE] = easing.angle, -- degrees, clockwise is +
         [ppt.DURATION] = easing.t or 0,
         [ppt.EASING] = easing.type or 0,
@@ -216,7 +214,7 @@ function SpellBuilder:PointToGroup(x, target, targetDir, easing)
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
         [ppt.X] = x, [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
+        [ppt.TARGET] = target, [ppt.ROTATE_CENTER] = target,
         [ppt.ROTATE_TARGET] = targetDir,
         [ppt.ROTATE_AIM_MODE] = true,
         [ppt.DYNAMIC] = easing.dynamic or false,
