@@ -42,6 +42,30 @@ end
 --- Semantic wrapper for group tables or individual values for 'self-documenting code'
 function util.group(val) return val end
 
+-- Unknown group management
+local unknownGroupCycler = util.createNumberCycler(1, 9998) -- Max 9999 unknown groups
+
+--- Creates a unique unknown group string for automatic remapping
+--- @return string Unique unknown group identifier
+function util.unknown_g()
+    local id = unknownGroupCycler()
+    if id > 2000 then print("\nWARNING: High unknown group usage (" .. id .. "/9998)\n") end
+    return "unknown_g" .. id
+end
+
+function util.validateGroups(methodName, ...)
+    local args = {...}
+    for _, arg in pairs(args) do
+        if type(arg) == "number" and arg >= 0 and arg <= 9999 then goto continue
+        elseif type(arg) == "string" and arg:match("^unknown_g%d+$") then
+            error(methodName .. ": Unknown groups are only allowed in Spawn triggers")
+        else
+            error(methodName .. ": Invalid group type: " .. type(arg))
+        end
+        ::continue::
+    end
+end
+
 --- Converts time in seconds to distance in studs
 function util.timeToDist(time) return 311.58 * time end
 

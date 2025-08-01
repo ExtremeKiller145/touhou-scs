@@ -47,7 +47,7 @@ function Spell:AddComponent(component)
     return self
 end
 ---@class Component
----@field callerGroups table
+---@field callerGroup number
 ---@field editorLayer number
 ---@field componentName string
 ---@field triggers table
@@ -57,14 +57,14 @@ lib.Component = Component
 
 ---Constructor for Component
 ---@param componentName string
----@param callerGroups table
+---@param callerGroup number
 ---@param editorLayer number
 ---@return Component
-function Component.new(componentName, callerGroups, editorLayer)
-    util.validateArgs("Component.new", componentName, callerGroups)
+function Component.new(componentName, callerGroup, editorLayer)
+    util.validateArgs("Component.new", componentName, callerGroup)
     local self = setmetatable({}, Component)
     self.componentName = componentName
-    self.callerGroups = callerGroups
+    self.callerGroup = callerGroup
     self.editorLayer = editorLayer or 4
     self.triggers = {}
     table.insert(AllComponents, self)
@@ -77,6 +77,7 @@ end
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
 function Component:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
     util.validateArgs("Spawn", x, target, spawnOrdered, remapID)
+    -- Validate group and remap string on JS side
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -87,7 +88,7 @@ function Component:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
         [ppt.SPAWN_ORDERED] = spawnOrdered,
         [ppt.SPAWN_DELAY] = spawnDelay or 0,
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -105,7 +106,7 @@ function Component:Toggle(x, target, activateGroup)
         [ppt.TARGET] = target,
         [ppt.ACTIVATE_GROUP] = activateGroup,
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -116,6 +117,7 @@ end
 function Component:MoveTowards(x, target, targetDir, easing)
     util.validateArgs("MoveTowards", x, target, targetDir, easing)
     util.validateEasing("MoveTowards", easing)
+    util.validateGroups("MoveTowards", target, targetDir)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -128,7 +130,7 @@ function Component:MoveTowards(x, target, targetDir, easing)
         [ppt.DYNAMIC] = easing.dynamic or false,
         [ppt.MOVE_SILENT] = (easing.t == 0),
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -138,6 +140,7 @@ end
 ---@param easing table Requires 'time', 'type', 'rate' fields
 function Component:MoveBy(x, target, vector2, easing)
     util.validateArgs("MoveBy", x, target, vector2, easing)
+    util.validateGroups("MoveBy", target)
     easing.MoveBy = true -- passes check for dist/angle
     util.validateEasing("MoveBy", easing)
     util.validateVector2("MoveBy", vector2)
@@ -152,7 +155,7 @@ function Component:MoveBy(x, target, vector2, easing)
         [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
         [ppt.MOVE_SILENT] = (easing.t == 0),
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -164,6 +167,7 @@ end
 function Component:GotoGroup(x, target, location, easing)
     util.validateArgs("GotoGroup", x, target, location, easing)
     util.validateEasing("GotoGroup", easing)
+    util.validateGroups("GotoGroup", target, location)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -175,7 +179,7 @@ function Component:GotoGroup(x, target, location, easing)
         [ppt.DYNAMIC] = easing.dynamic or false,
         [ppt.MOVE_SILENT] = (easing.t == 0),
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -189,6 +193,7 @@ function Component:Rotate(x, targets, easing)
     if not easing.angle then error("Rotate: 'easing' missing required field 'angle'") end
     if not targets.target then error("Rotate: 'targets' missing required field 'target'") end
     if not targets.center then error("Rotate: 'targets' missing required field 'center'") end
+    util.validateGroups("Rotate", targets.target, targets.center)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -199,7 +204,7 @@ function Component:Rotate(x, targets, easing)
         [ppt.EASING] = easing.type or 0,
         [ppt.EASING_RATE] = easing.rate or 1,
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -209,6 +214,7 @@ end
 ---@param easing table not required, defaults to none
 function Component:PointToGroup(x, target, targetDir, easing)
     util.validateArgs("PointToGroup", x, target, targetDir)
+    util.validateGroups("PointToGroup", target, targetDir)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -221,7 +227,7 @@ function Component:PointToGroup(x, target, targetDir, easing)
         [ppt.DURATION] = easing.t or 0,
         [ppt.EASING] = easing.type or 0, [ppt.EASING_RATE] = easing.rate or 1,
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -233,6 +239,7 @@ end
 ---@param duration number time in seconds to scale for, instant resets after
 function Component:Scale(x, target, scaleFactor, duration, easing)
     util.validateArgs("Scale", x, target, scaleFactor, duration)
+    util.validateGroups("Scale", target)
     easing = easing or enum.DEFAULT_EASING
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Scale,
@@ -243,7 +250,7 @@ function Component:Scale(x, target, scaleFactor, duration, easing)
         [ppt.DURATION] = easing.t,
         [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     table.insert(self.triggers, {
@@ -255,7 +262,7 @@ function Component:Scale(x, target, scaleFactor, duration, easing)
         [ppt.SCALE_DIV_BY_X] = true, [ppt.SCALE_DIV_BY_Y] = true,
         [ppt.DURATION] = 0, -- instant reset scale once offscreen
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -270,6 +277,7 @@ end
 function Component:Pulse(x, target, hsb, fading)
     util.validateArgs("Pulse", x, target, hsb, fading)
     util.validatePulse(hsb, fading)
+    util.validateGroups("Pulse", target)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Pulse,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -282,7 +290,7 @@ function Component:Pulse(x, target, hsb, fading)
         [ppt.PULSE_HOLD] = fading.t,
         [ppt.PULSE_FADE_IN] = fading.fadeIn, [ppt.PULSE_FADE_OUT] = fading.fadeOut,
 
-        [ppt.GROUPS] = self.callerGroups, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
     })
     return self
@@ -306,9 +314,7 @@ function lib.SaveAll()
 
     -- Separate shared components
     for component, usageCount in pairs(componentUsage) do
-        if usageCount > 1 then
-            sharedComponents[component] = true
-        end
+        if usageCount > 1 then sharedComponents[component] = true end
     end
 
     -- Process all triggers and count by category
@@ -327,15 +333,14 @@ function lib.SaveAll()
     for component in pairs(sharedComponents) do
         sharedTriggerCount = sharedTriggerCount + #component.triggers
     end
-    if sharedTriggerCount > 0 then
-        spellStats["Shared"] = sharedTriggerCount
-    end
+    if sharedTriggerCount > 0 then spellStats["Shared"] = sharedTriggerCount end
 
     -- Add all triggers to output
     for _, component in pairs(AllComponents) do
         for _, trigger in pairs(component.triggers) do
-            for _, group in pairs(trigger[ppt.GROUPS]) do
-                if group == 9999 then error("CRITICAL ERROR: RESERVED GROUP 9999 DETECTED") end
+            -- Wrap group in array (import fix)
+            if trigger[ppt.GROUPS] == 9999 then
+                error("CRITICAL ERROR: RESERVED GROUP 9999 DETECTED")
             end
             table.insert(allTriggers.triggers, trigger)
         end

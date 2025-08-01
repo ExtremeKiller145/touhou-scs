@@ -4,7 +4,7 @@ local e = require("enums")
 local u = require("utils")
 
 -- Create a test component with various triggers
-local testComponent = l.Component.new("TriggerTests", u.group({ 100, 200, 300 }), 4)
+local testComponent = l.Component.new("TriggerTests", 100, 4)
 
 testComponent:MoveTowards(15, 1001, e.PLR, { t = 3.01, type = e.Easing.EASE_IN, rate = 2.01, dist = 500, dynamic = true })
 :MoveBy(45, 1002, u.vector2(200, -150), { t = 2.51, type = e.Easing.EASE_OUT, rate = 1.81 })
@@ -17,8 +17,8 @@ testComponent:MoveTowards(15, 1001, e.PLR, { t = 3.01, type = e.Easing.EASE_IN, 
 :Pulse(255, 1012, { h = 54, s = 124, b = 156, exclusive = true }, { t = 1.2, fadeIn = 0.51, fadeOut = 0.53 })
 
 -- Create a spell that uses the component
-local testSpell = l.Spell.new("TestSpell", u.group(400), 4)
+local testSpell = l.Spell.new("TestSpell", 400, 4)
 testSpell:AddComponent(testComponent)
-local testSpell2 = l.Spell.new("TestSpell2", u.group(401), 4)
+local testSpell2 = l.Spell.new("TestSpell2", 401, 4)
 testSpell2:AddComponent(testComponent)
 l.SaveAll()
