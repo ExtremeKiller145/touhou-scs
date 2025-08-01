@@ -1,4 +1,4 @@
-console.log("\n\nRUNNING main.js:\n\n");
+console.log("\nRUNNING main.js:\n");
 
 require('@g-js-api/g.js');
 

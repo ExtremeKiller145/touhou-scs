@@ -17,62 +17,65 @@ local TriggerArea = {
     top_right = util.vector2(900,600)
 }
 
+local AllComponents = {}
 local AllSpells = {}
 
----@class EasingSetting
----@field time number
----@field easingType number
----@field easingRate number
-local EasingSetting = {}
-EasingSetting.__index = EasingSetting
-lib.EasingSetting = EasingSetting
-
----Constructor for Easing
----@param time number
----@param easingType number
----@param easingRate number
----@return EasingSetting
-function EasingSetting.new(time, easingType, easingRate)
-    local self = setmetatable({}, EasingSetting)
-    self.time = time or 0
-    self.easingType = easingType or enum.Easing.NONE
-    self.easingRate = easingRate or 1
-    return self
-end
-
----@class SpellBuilder
----@field callerGroups table
----@field editorLayer number
+---@class Spell
 ---@field spellName string
----@field triggers table
-local SpellBuilder = {}
-SpellBuilder.__index = SpellBuilder
-lib.SpellBuilder = SpellBuilder
+---@field callerGroup number
+---@field components table
+local Spell = {}
+Spell.__index = Spell
+lib.Spell = Spell
 
----Constructor
----@param callerGroups table
----@param editorLayer number
+---Constructor for Spell
 ---@param spellName string
----@return SpellBuilder
-function SpellBuilder.new(spellName, callerGroups, editorLayer)
-    local self = setmetatable({}, SpellBuilder)
-    self.callerGroups = callerGroups or {}
-    self.editorLayer = editorLayer or 4
-    self.spellName = spellName or "unnamed"
-    self.triggers = {}
+---@param callerGroup number
+---@return Spell
+function Spell.new(spellName, callerGroup)
+    util.validateArgs("Spell.new", spellName, callerGroup)
+    local self = setmetatable({}, Spell)
+    self.spellName = spellName
+    self.callerGroup = callerGroup
+    self.components = {}
     table.insert(AllSpells, self)
     return self
 end
 
-function SpellBuilder:SetCallerGroups(callerGroups)
+function Spell:AddComponent(component)
+    table.insert(self.components, component)
+    return self
+end
+---@class Component
+---@field callerGroups table
+---@field editorLayer number
+---@field componentName string
+---@field triggers table
+local Component = {}
+Component.__index = Component
+lib.Component = Component
+
+---Constructor for Component
+---@param componentName string
+---@param callerGroups table
+---@param editorLayer number
+---@return Component
+function Component.new(componentName, callerGroups, editorLayer)
+    util.validateArgs("Component.new", componentName, callerGroups)
+    local self = setmetatable({}, Component)
+    self.componentName = componentName
     self.callerGroups = callerGroups
+    self.editorLayer = editorLayer or 4
+    self.triggers = {}
+    table.insert(AllComponents, self)
+    return self
 end
 
-
---- Spawns a group
 ---@param remapID string Remap string, dot-seperated list, e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
+--- Nested remaps: outer remap must remap the inner, e.g. if inner is '1.2', other should be '2.3' not '1.3'. 
+--- inner must not have reset_remap on.
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
-function SpellBuilder:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
+function Component:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
     util.validateArgs("Spawn", x, target, spawnOrdered, remapID)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
@@ -90,11 +93,10 @@ function SpellBuilder:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
     return self
 end
 
---- Toggles a group on or off. 
 --- WARNING: A deactivated object cannot be reactivated by a different group 
 --- (collision triggers might be different)
 ---@param activateGroup boolean Activate or deactivate group
-function SpellBuilder:Toggle(x, target, activateGroup)
+function Component:Toggle(x, target, activateGroup)
     util.validateArgs("Toggle", x, target, activateGroup)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Toggle,
@@ -109,10 +111,9 @@ function SpellBuilder:Toggle(x, target, activateGroup)
     return self
 end
 
---- Moves a group towards another group
 ---@param targetDir number Group to move towards
 ---@param easing table Requires 'dist', 'time', 'type', 'rate' fields
-function SpellBuilder:MoveTowards(x, target, targetDir, easing)
+function Component:MoveTowards(x, target, targetDir, easing)
     util.validateArgs("MoveTowards", x, target, targetDir, easing)
     util.validateEasing("MoveTowards", easing)
     table.insert(self.triggers, {
@@ -133,10 +134,9 @@ function SpellBuilder:MoveTowards(x, target, targetDir, easing)
     return self
 end
 
---- Moves a group by an X and Y change
 ---@param vector2 table X and Y change in studs
 ---@param easing table Requires 'time', 'type', 'rate' fields
-function SpellBuilder:MoveBy(x, target, vector2, easing)
+function Component:MoveBy(x, target, vector2, easing)
     util.validateArgs("MoveBy", x, target, vector2, easing)
     easing.MoveBy = true -- passes check for dist/angle
     util.validateEasing("MoveBy", easing)
@@ -161,7 +161,7 @@ end
 --- Moves a group to a group in a certain amount of time
 ---@param location number Group location to move to
 ---@param easing table Requires 'time', 'type', 'rate' fields
-function SpellBuilder:GotoGroup(x, target, location, easing)
+function Component:GotoGroup(x, target, location, easing)
     util.validateArgs("GotoGroup", x, target, location, easing)
     util.validateEasing("GotoGroup", easing)
     table.insert(self.triggers, {
@@ -181,10 +181,10 @@ function SpellBuilder:GotoGroup(x, target, location, easing)
     return self
 end
 
---- Rotates a group by a certain amount
+--- Rotates a group by a certain angle (+, in degrees)
 ---@param easing table Must contain 'angle' field
 ---@param targets table Must contain 'target' and 'center' fields
-function SpellBuilder:Rotate(x, targets, easing)
+function Component:Rotate(x, targets, easing)
     util.validateArgs("Rotate", x, targets, easing)
     if not easing.angle then error("Rotate: 'easing' missing required field 'angle'") end
     if not targets.target then error("Rotate: 'targets' missing required field 'target'") end
@@ -205,10 +205,9 @@ function SpellBuilder:Rotate(x, targets, easing)
     return self
 end
 
---- Rotates a group to point towards another group
 ---@param targetDir number Group to point towards
 ---@param easing table not required, defaults to none
-function SpellBuilder:PointToGroup(x, target, targetDir, easing)
+function Component:PointToGroup(x, target, targetDir, easing)
     util.validateArgs("PointToGroup", x, target, targetDir)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
@@ -232,7 +231,7 @@ end
 ---@param easing table not required, defaults to none
 ---@param scaleFactor number to scale down to, e.g. 0.5 is half size
 ---@param duration number time in seconds to scale for, instant resets after
-function SpellBuilder:Scale(x, target, scaleFactor, duration, easing)
+function Component:Scale(x, target, scaleFactor, duration, easing)
     util.validateArgs("Scale", x, target, scaleFactor, duration)
     easing = easing or enum.DEFAULT_EASING
     table.insert(self.triggers, {
@@ -268,7 +267,7 @@ end
 --- Saturation: [x0.0 to x2.0], x1.0 is default
 --- Brightness: [x0.0 to x2.0], x1.0 is default
 ---@param fading table requires 't', 'fadeIn', 'fadeOut' fields
-function SpellBuilder:Pulse(x, target, hsb, fading)
+function Component:Pulse(x, target, hsb, fading)
     util.validateArgs("Pulse", x, target, hsb, fading)
     util.validatePulse(hsb, fading)
     table.insert(self.triggers, {
@@ -292,41 +291,75 @@ end
 function lib.SaveAll()
     local json = require("dkjson")
     local filename = "triggers.json"
-
     local allTriggers = { triggers = {} }
-    local totalTriggers = 0
+
+    -- Find shared components (used in multiple spells)
+    local componentUsage = {}
+    for _, spell in pairs(AllSpells) do
+        for _, component in pairs(spell.components) do
+            componentUsage[component] = (componentUsage[component] or 0) + 1
+        end
+    end
+
+    local sharedComponents = {}
     local spellStats = {}
 
-    for _, spell in pairs(AllSpells) do
-        local spellTriggerCount = #spell.triggers
-        spellStats[spell.spellName] = spellTriggerCount
-        totalTriggers = totalTriggers + spellTriggerCount
+    -- Separate shared components
+    for component, usageCount in pairs(componentUsage) do
+        if usageCount > 1 then
+            sharedComponents[component] = true
+        end
+    end
 
-        for _, trigger in pairs(spell.triggers) do
+    -- Process all triggers and count by category
+    for _, spell in pairs(AllSpells) do
+        local spellTriggerCount = 0
+        for _, component in pairs(spell.components) do
+            if not sharedComponents[component] then
+                spellTriggerCount = spellTriggerCount + #component.triggers
+            end
+        end
+        spellStats[spell.spellName] = spellTriggerCount
+    end
+
+    -- Count shared triggers
+    local sharedTriggerCount = 0
+    for component in pairs(sharedComponents) do
+        sharedTriggerCount = sharedTriggerCount + #component.triggers
+    end
+    if sharedTriggerCount > 0 then
+        spellStats["Shared"] = sharedTriggerCount
+    end
+
+    -- Add all triggers to output
+    for _, component in pairs(AllComponents) do
+        for _, trigger in pairs(component.triggers) do
             for _, group in pairs(trigger[ppt.GROUPS]) do
-                if group == 9999 then error("CRITICAL ERROR: 9999 GROUP DETECTED") end
+                if group == 9999 then error("CRITICAL ERROR: RESERVED GROUP 9999 DETECTED") end
             end
             table.insert(allTriggers.triggers, trigger)
         end
     end
 
     -- Budget analysis
+    local totalTriggers = #allTriggers.triggers
     local objectBudget = 200000
     local usagePercent = (totalTriggers / objectBudget) * 100
 
-    print(string.format("=== BUDGET ANALYSIS ==="))
-    print(string.format("Total triggers: %d", totalTriggers))
-    print(string.format("Budget usage: %.3f%% (%d/%d)", usagePercent, totalTriggers, objectBudget))
-    print(string.format("Remaining budget: %d triggers", objectBudget - totalTriggers))
+    print(string.format("\n=== BUDGET ANALYSIS ==="))
+    print(string.format("Total triggers: %d (%.3f%%)", totalTriggers, usagePercent))
+    print(string.format("Remaining budget: %d triggers\n", objectBudget - totalTriggers))
 
     for spellName, count in pairs(spellStats) do
         print(string.format("  %s: %d triggers", spellName, count))
     end
 
     local file = io.open(filename, "w")
+    if not file then error("Failed to open " .. filename .. " for writing!") end
+
     file:write(json.encode(allTriggers, { indent = "\t" }))
     file:close()
-    print("Saved to " .. filename .. " successfully!")
+    print("\nSaved to " .. filename .. " successfully!")
 end
 
 return lib

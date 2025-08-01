@@ -4,6 +4,7 @@ local enum = {
     PLR_SPEED = 311.58,
     PLR = 2,
     EDITOR_LAYER = 4,
+    SCREEN_CENTER = 30, -- center group of game window
     UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
     REMAP_G = 10, -- Empty group for remapping 10 -> whatever
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
