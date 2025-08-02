@@ -150,4 +150,29 @@ function util.validatePulse(hsb, fading)
     fading['fadeOut'] = fading['fadeOut'] or 0
 end
 
+--- Cleans up remap strings by removing redundant mappings (e.g., "10.10")
+--- @param methodName string, Name of the method for error messages.
+--- @param remapString string, Dot-separated remap string
+--- @return string, Cleaned remap string with redundant mappings removed
+function util.validateRemapString(methodName, remapString)
+    if type(remapString) ~= "string" then error("Invalid remap string: not a string") end
+
+    local parts = {}
+    for part in remapString:gmatch("[^.]+") do table.insert(parts, part) end
+    if #parts % 2 ~= 0 then error("Invalid remap string: must have even number of parts") end
+
+    local cleanParts = {}
+    for i = 1, #parts, 2 do
+        local source = parts[i]
+        local target = parts[i + 1]
+        -- Only include non-redundant mappings
+        if source ~= target then table.insert(cleanParts, source) table.insert(cleanParts, target) end
+    end
+    local cleanString = table.concat(cleanParts, ".")
+    if cleanString ~= remapString then 
+        warn(methodName .. ": WARNING! Remap string " .. remapString ..  " had redundant mappings")
+    end
+    return cleanString
+end
+
 return util

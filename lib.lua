@@ -46,6 +46,8 @@ function Spell:AddComponent(component)
     table.insert(self.components, component)
     return self
 end
+
+
 ---@class Component
 ---@field callerGroup number
 ---@field editorLayer number
@@ -78,6 +80,7 @@ end
 function Component:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
     util.validateArgs("Spawn", x, target, spawnOrdered, remapID)
     -- Validate group and remap string on JS side
+    remapID = util.validateRemapString("Spawn", remapID) -- Cleans up redundant mappings
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
         [ppt.X] = x, [ppt.Y] = 0,

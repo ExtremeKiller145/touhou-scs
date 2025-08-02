@@ -6,11 +6,15 @@ local enum = {
     EDITOR_LAYER = 4,
     SCREEN_CENTER = 30, -- center group of game window
     UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
-    EMPTY1 = 10, -- Empty group for remapping 10 -> whatever
-    EMPTY2 = 20, -- Empty group for remapping 20 -> whatever
+    EMPTY1 = 10, -- Empty group for targeting and remapping 10 -> whatever
+    EMPTY2 = 20, -- Empty group for targeting and remapping 20 -> whatever
+    EMPTY3 = 21, -- Empty group for targeting and remapping 21 -> whatever
+    EMPTY4 = 22, -- Empty group for targeting and remapping 22 -> whatever
+    EMPTY5 = 23, -- Empty group for targeting and remapping 23 -> whatever
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
     ROTATE_INFINITE_DURATION = -1,
+    -- NORTH_GROUP = 
 
     DEFAULT_EASING = {
         t = 0,
@@ -22,6 +26,10 @@ local enum = {
     },
 
     Properties = {
+        -- Properties that can target groups: for use in trigger validation systems
+        TargetFields = { 51, 71, 71, 71, 401, 395 },
+
+        -- General trigger properties
         OBJ_ID = 1,
         X = 2,
         Y = 3,

@@ -1,7 +1,10 @@
 # Webstorm
 .idea
-# intellisense fix (i dont think it worked)
+# testing file for adding objects in GD
+quicktesting.js
+# output of main.lua
 triggers.json
+# attempted type fixing from the old codebase
 types
 # Logs
 logs

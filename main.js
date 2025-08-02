@@ -102,4 +102,9 @@ $.exportConfig({
 	triggers.forEach(trigger => {
 		$.add(object(trigger));
 	});
+	$.add(object({ // adds True North group; good for resetting rotations.
+        OBJ_ID: 1764, // circle
+        X: 720, Y: 100000,
+        GROUPS: group(24)
+    }))
 });
