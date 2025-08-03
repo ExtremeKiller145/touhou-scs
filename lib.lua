@@ -49,9 +49,10 @@ end
 
 
 ---@class Component
----@field callerGroup number
+---@field callerGroup number | string
 ---@field editorLayer number
 ---@field componentName string
+---@field requireSpawnOrder boolean | nil
 ---@field triggers table
 local Component = {}
 Component.__index = Component
@@ -59,7 +60,7 @@ lib.Component = Component
 
 ---Constructor for Component
 ---@param componentName string
----@param callerGroup number
+---@param callerGroup number | string
 ---@param editorLayer number
 ---@return Component
 function Component.new(componentName, callerGroup, editorLayer)
@@ -68,8 +69,20 @@ function Component.new(componentName, callerGroup, editorLayer)
     self.componentName = componentName
     self.callerGroup = callerGroup
     self.editorLayer = editorLayer or 4
+    self.requireSpawnOrder = nil -- 3 settings: nil (any), true (required), false (forbidden)
     self.triggers = {}
     table.insert(AllComponents, self)
+    return self
+end
+
+--- Set the requirement for spawn ordering
+--- @param bool boolean True to require, false to forbid, nil to allow either
+function Component:assertSpawnOrder(bool)
+    if type(bool) ~= "boolean" then error("assertSpawnOrder: bool must be boolean") end
+    if self.requireSpawnOrder ~= nil and self.requireSpawnOrder ~= bool then
+        error("assertSpawnOrder: Conflicting spawn order requirements, originally set to " .. tostring(self.requireSpawnOrder) .. ", attempted to set to " .. tostring(bool))
+    end
+    self.requireSpawnOrder = bool
     return self
 end
 
@@ -166,11 +179,11 @@ end
 
 --- Moves a group to a group in a certain amount of time
 ---@param location number Group location to move to
----@param easing table Requires 'time', 'type', 'rate' fields
+---@param easing table Requires 'time' fields, defaults 'type', 'rate' and 'dynamic' to 0
 function Component:GotoGroup(x, target, location, easing)
     util.validateArgs("GotoGroup", x, target, location, easing)
-    util.validateEasing("GotoGroup", easing)
     util.validateGroups("GotoGroup", target, location)
+    if not easing.t then error("GotoGroup: 'easing' missing required field 't'") end
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -178,7 +191,8 @@ function Component:GotoGroup(x, target, location, easing)
         [ppt.TARGET] = target, [ppt.MOVE_TARGET_CENTER] = target,
         [ppt.MOVE_TARGET_MODE] = true, [ppt.MOVE_TARGET_LOCATION] = location,
         [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
+        [ppt.EASING] = easing.type or 0,
+        [ppt.EASING_RATE] = easing.rate or 0,
         [ppt.DYNAMIC] = easing.dynamic or false,
         [ppt.MOVE_SILENT] = (easing.t == 0),
 
@@ -244,6 +258,8 @@ function Component:Scale(x, target, scaleFactor, duration, easing)
     util.validateArgs("Scale", x, target, scaleFactor, duration)
     util.validateGroups("Scale", target)
     easing = easing or enum.DEFAULT_EASING
+    if self.requireSpawnOrder == false then error("Scale: Cannot be used with spawn ordering") end
+    Component:assertSpawnOrder(true)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Scale,
         [ppt.X] = x, [ppt.Y] = 0,
@@ -304,52 +320,23 @@ function lib.SaveAll()
     local filename = "triggers.json"
     local allTriggers = { triggers = {} }
 
-    -- Find shared components (used in multiple spells)
-    local componentUsage = {}
-    for _, spell in pairs(AllSpells) do
-        for _, component in pairs(spell.components) do
-            componentUsage[component] = (componentUsage[component] or 0) + 1
-        end
-    end
-
-    local sharedComponents = {}
-    local spellStats = {}
-
-    -- Separate shared components
-    for component, usageCount in pairs(componentUsage) do
-        if usageCount > 1 then sharedComponents[component] = true end
-    end
-
-    -- Process all triggers and count by category
-    for _, spell in pairs(AllSpells) do
-        local spellTriggerCount = 0
-        for _, component in pairs(spell.components) do
-            if not sharedComponents[component] then
-                spellTriggerCount = spellTriggerCount + #component.triggers
-            end
-        end
-        spellStats[spell.spellName] = spellTriggerCount
-    end
-
-    -- Count shared triggers
-    local sharedTriggerCount = 0
-    for component in pairs(sharedComponents) do
-        sharedTriggerCount = sharedTriggerCount + #component.triggers
-    end
-    if sharedTriggerCount > 0 then spellStats["Shared"] = sharedTriggerCount end
-
-    -- Add all triggers to output
+    -- Add all triggers to output, sorted by X position within each component
     for _, component in pairs(AllComponents) do
-        for _, trigger in pairs(component.triggers) do
-            -- Wrap group in array (import fix)
+        local sortedTriggers = { table.unpack(component.triggers) }
+        table.sort(sortedTriggers, function(a, b)
+            return (a[ppt.X] or 0) < (b[ppt.X] or 0)
+        end)
+
+        -- Add sorted triggers to output
+        for _, trigger in ipairs(sortedTriggers) do
             if trigger[ppt.GROUPS] == 9999 then
                 error("CRITICAL ERROR: RESERVED GROUP 9999 DETECTED")
             end
             table.insert(allTriggers.triggers, trigger)
         end
     end
-
-    -- Budget analysis
+    
+    -- Budget analysis and output
     local totalTriggers = #allTriggers.triggers
     local objectBudget = 200000
     local usagePercent = (totalTriggers / objectBudget) * 100
@@ -358,10 +345,11 @@ function lib.SaveAll()
     print(string.format("Total triggers: %d (%.3f%%)", totalTriggers, usagePercent))
     print(string.format("Remaining budget: %d triggers\n", objectBudget - totalTriggers))
 
-    for spellName, count in pairs(spellStats) do
+    for spellName, count in pairs(util.generateStatistics(AllSpells)) do
         print(string.format("  %s: %d triggers", spellName, count))
     end
 
+    -- Save to file
     local file = io.open(filename, "w")
     if not file then error("Failed to open " .. filename .. " for writing!") end
 

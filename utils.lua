@@ -153,7 +153,7 @@ end
 --- Cleans up remap strings by removing redundant mappings (e.g., "10.10")
 --- @param methodName string, Name of the method for error messages.
 --- @param remapString string, Dot-separated remap string
---- @return string, Cleaned remap string with redundant mappings removed
+--- @return string Cleaned remap string with redundant mappings removed
 function util.validateRemapString(methodName, remapString)
     if type(remapString) ~= "string" then error("Invalid remap string: not a string") end
 
@@ -173,6 +173,43 @@ function util.validateRemapString(methodName, remapString)
         warn(methodName .. ": WARNING! Remap string " .. remapString ..  " had redundant mappings")
     end
     return cleanString
+end
+
+function util.generateStatistics(AllSpells)
+    local spellStats = {}
+    
+    -- Find shared components (used in multiple spells)
+    local componentUsage = {}
+    for _, spell in pairs(AllSpells) do
+        for _, component in pairs(spell.components) do
+            componentUsage[component] = (componentUsage[component] or 0) + 1
+        end
+    end
+
+    local sharedComponents = {}
+    for component, usageCount in pairs(componentUsage) do
+        if usageCount > 1 then sharedComponents[component] = true end
+    end
+
+    -- Count triggers by category
+    for _, spell in pairs(AllSpells) do
+        local spellTriggerCount = 0
+        for _, component in pairs(spell.components) do
+            if not sharedComponents[component] then
+                spellTriggerCount = spellTriggerCount + #component.triggers
+            end
+        end
+        spellStats[spell.spellName] = spellTriggerCount
+    end
+
+    -- Count shared triggers
+    local sharedTriggerCount = 0
+    for component in pairs(sharedComponents) do
+        sharedTriggerCount = sharedTriggerCount + #component.triggers
+    end
+    if sharedTriggerCount > 0 then spellStats["Shared"] = sharedTriggerCount end
+
+    return spellStats
 end
 
 return util

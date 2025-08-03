@@ -4,6 +4,8 @@
 quicktesting.js
 # output of main.lua
 triggers.json
+# vscode
+.vscode
 # attempted type fixing from the old codebase
 types
 # Logs
