@@ -39,6 +39,9 @@ function util.createNumberCycler(min, max)
     end
 end
 
+--- Includes type checking w/ 'tonumber' function
+function util.isInteger(num) return tonumber(num,10) ~= nil end
+
 --- Semantic wrapper for group tables or individual values for 'self-documenting code'
 function util.group(val) return val end
 

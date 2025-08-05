@@ -48,7 +48,7 @@ function sb.Radial(component, guiderCircle, nextBullet, options)
 
     --#region Component Validation
     if component.requireSpawnOrder ~= false then
-        error("Radial: component must not require spawn order; seperate by x for order, but no time gaps. Recommended to and use assertSpawnOrder(false) in component and keep in mind guiderCircle is only there for the first 1-2 ticks of activation.")
+        error("Radial: component must not require spawn order; seperate by x for order, but no time gaps. \nRecommended to use assertSpawnOrder(false) in component and keep in mind guiderCircle is only there for the first 1-2 ticks of activation.")
     end
 
     local hasEmpty1, hasEmpty2, hasEmpty5 = false, false, false
@@ -71,20 +71,17 @@ function sb.Radial(component, guiderCircle, nextBullet, options)
     --#endregion
 
     --#region Spacing Validation
-    if options.spacing < 1 or options.spacing > 360 then error("Radial: spacing must be between 1 and 360") end
-    if 360 % options.spacing ~= 0 then error("Radial: spacing must be a factorof 360") end
-
-    if 360 % options.spacing ~= 0 then
-        error("Radial: Spacing of " .. options.spacing .. "degrees will not create a perfect circle.")
+    if options.spacing < 1 or options.spacing > 360 then 
+        error("Radial: spacing must be between 1 and 360")
+    end
+    if 360 % options.spacing ~= 0 then 
+        error("Radial: spacing must be a factor of 360 for perfect circles")
     end
     --#endregion
 
     local remap_string = ""
-
-    --- FIX AND DOUBLE CHECK REMAP STRING FORMATTING
-    --- 360 % spacing == 0
-    for i = 1, 360 do 
-        if (i - 1) % (options.spacing) == 0 then -- '-1' includes first
+    for i = 1, 360 do
+        if (i - 1) % options.spacing == 0 then
             -- Active bullet: map to real targets
             remap_string = remap_string .. (i + 500) .. '.' .. nextBullet() .. '.'
                 .. (i + 1000) .. '.' .. guiderCircle.groups[i] .. '.'
@@ -118,7 +115,7 @@ function sb.Arc(component, guiderCircle, nextBullet, options)
 
     --#region Component Validation (same as Radial)
     if component.requireSpawnOrder ~= false then
-        error("Arc: component must not require spawn order; seperate by x for order, but no time gaps. Recommended to and use assertSpawnOrder(false) in component and keep in mind guiderCircle is only there for the first 1-2 ticks of activation.")
+        error("Arc: component must not require spawn order; seperate by x for order, but no time gaps. \nRecommended to use assertSpawnOrder(false) in component and keep in mind guiderCircle is only there for the first 1-2 ticks of activation.")
     end
 
     local hasEmpty1, hasEmpty2, hasEmpty5 = false, false, false
@@ -140,17 +137,64 @@ function sb.Arc(component, guiderCircle, nextBullet, options)
     end
     --#endregion
 
+    
+    local totalArcSpan = (options.numOfBullets - 1) * options.spacing
     --#region Arc-specific Validation
-    --- MISSING FOR NOW
+    if not util.isInteger(options.centerAt) or not util.isInteger(options.centerAt*2) then
+        error("Arc: centerAt must be an integer or integer.5")
+    end
+    if not util.isInteger(options.centerAt - totalArcSpan/2) then
+        error()
+    end
+    if options.spacing < 1 or options.spacing > 360 then 
+        error("Arc: spacing must be between 1 and 360")
+    end
+    if options.numOfBullets <= 1 or options.numOfBullets > 360 then
+        error("Arc: number of bullets must be between 1 and 360, excluding 1")
+    end
+    if options.numOfBullets * options.spacing > 360 then
+        error("Arc: Number of bullets " .. options.numOfBullets .. " times spacing " .. options.spacing .. " exceeds 360 degrees")
+    end
+    if options.numOfBullets * options.spacing == 360 then
+        error("Arc: Number of bullets " .. options.numOfBullets .. " times spacing " .. options.spacing .. " is 360 degrees, making a circle.\n FIX: Use Radial instead.")
+    end
     --#endregion
 
-    --- REMAP STRING FORMATTING, MISSING FOR NOW. FIX RADIAL REMAP TOO.
     local remap_string = ""
+
+    -- Calculate arc positioning
+    local totalArcSpan = (options.numOfBullets - 1) * options.spacing
+    local centerOffset = totalArcSpan / 2
+    local startAngle = (options.centerAt - centerOffset + 360) % 360
+
+    -- Calculate where the arc is actually centered for user feedback
+    local actualCenter = (options.centerAt + centerOffset) % 360
+    local centeredAtGroup = guiderCircle.pointer + options.centerAt
+
+    for i = 1, 360 do 
+        local currentAngle = (i - 1) % 360
+        local relativeAngle = (currentAngle - startAngle + 360) % 360
+        
+        -- Check if within arc and on spacing boundary
+        local isInArc = relativeAngle <= totalArcSpan
+        local isOnSpacing = relativeAngle % options.spacing == 0
+        
+        if isInArc and isOnSpacing then
+            -- Apply centerAt offset to guider circle mapping
+            local guiderIndex = ((currentAngle + options.centerAt) % 360) + 1
+            remap_string = remap_string .. (i + 500) .. '.' .. nextBullet() .. '.'
+                .. (i + 1000) .. '.' .. guiderCircle.groups[guiderIndex] .. '.'
+        else
+            remap_string = remap_string .. (i + 500) .. '.' .. enum.EMPTY4 .. '.'
+                .. (i + 1000) .. '.' .. enum.EMPTY4 .. '.'
+        end
+    end
 
     -- Final mapping: EMPTY5 -> baseRadialComponent caller group
     remap_string = remap_string .. enum.EMPTY5 .. '.' .. component.callerGroup
 
     local spawnSettings = {}
+    spawnSettings.centeredAt = centeredAtGroup -- if e.g 2.5, between groups 2 & 3
     spawnSettings.callerGroup = baseRadialComponent.callerGroup
     spawnSettings.remapString = util.validateRemapString("Arc", remap_string)
     spawnSettings.spawnOrdered = false -- bullets are all shot at once without delay or order

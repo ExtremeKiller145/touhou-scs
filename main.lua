@@ -1,3 +1,4 @@
+---@diagnostic disable: missing-parameter
 
 local l = require("lib")
 local e = require("enums")
