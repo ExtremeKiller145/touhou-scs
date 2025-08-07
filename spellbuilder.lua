@@ -15,7 +15,7 @@ local sb = {}
 ---@field groups table<number, number> The groups that contain each bullet in the circle
 
 -- GuiderCircle definitions for radial patterns
-local GuiderCircles = {
+local GuiderCircle = {
     ---@type GuiderCircle
     circle1 = {
         center = 2221,
@@ -27,7 +27,7 @@ local GuiderCircles = {
 }
 
 for i = 1, 360 do
-    GuiderCircles.circle1.groups[i] = GuiderCircles.circle1.pointer + (i - 1)
+    GuiderCircle.circle1.groups[i] = GuiderCircle.circle1.pointer + (i - 1)
 end
 
 -- Base radial component (to be created once and reused)
@@ -41,10 +41,10 @@ end
 --- Creates a radial pattern spawn setting, to shoot all at once in a circular pattern
 ---@param component Component ; must have EMPTY1 and EMPTY2 as targets but not EMPTY5. requires assertSpawnOrder(false)
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
----@param options table, requires 'spacing' angle in degrees
+---@param args table, requires 'spacing' angle in degrees
 ---@return SpawnSettings ; includes 'callerGroup', 'remapString', 'spawnOrdered'
-function sb.Radial(component, guiderCircle, nextBullet, options)
-    util.validateArgs("Radial", component, guiderCircle, nextBullet, options.spacing)
+function sb.Radial(component, guiderCircle, nextBullet, args)
+    util.validateArgs("Radial", component, guiderCircle, nextBullet, args.spacing)
 
     --#region Component Validation
     if component.requireSpawnOrder ~= false then
@@ -71,17 +71,17 @@ function sb.Radial(component, guiderCircle, nextBullet, options)
     --#endregion
 
     --#region Spacing Validation
-    if options.spacing < 1 or options.spacing > 360 then 
+    if args.spacing < 1 or args.spacing > 360 then 
         error("Radial: spacing must be between 1 and 360")
     end
-    if 360 % options.spacing ~= 0 then 
+    if 360 % args.spacing ~= 0 then 
         error("Radial: spacing must be a factor of 360 for perfect circles")
     end
     --#endregion
 
     local remap_string = ""
     for i = 1, 360 do
-        if (i - 1) % options.spacing == 0 then
+        if (i - 1) % args.spacing == 0 then
             -- Active bullet: map to real targets
             remap_string = remap_string .. (i + 500) .. '.' .. nextBullet() .. '.'
                 .. (i + 1000) .. '.' .. guiderCircle.groups[i] .. '.'
@@ -103,15 +103,14 @@ function sb.Radial(component, guiderCircle, nextBullet, options)
 end
 
 
-
 --- Creates an arc pattern spawn setting, to shoot bullets in a partial circular pattern
 ---@param component Component ; must have EMPTY1 and EMPTY2 as targets but not EMPTY5. requires assertSpawnOrder(false)
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
----@param options table, requires 'numOfBullets', 'spacing' angle, optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
+---@param args table, requires 'numOfBullets', 'spacing' angle, optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
 ---@return SpawnSettings ; includes 'callerGroup', 'remapString', 'spawnOrdered'
-function sb.Arc(component, guiderCircle, nextBullet, options)
-    util.validateArgs("Arc", component, guiderCircle, nextBullet, options.spacing, options.numOfBullets)
-    options.centerAt = options.centerAt or 0 -- 0 represents pointer
+function sb.Arc(component, guiderCircle, nextBullet, args)
+    util.validateArgs("Arc", component, guiderCircle, nextBullet, args.spacing, args.numOfBullets)
+    args.centerAt = args.centerAt or 0 -- 0 represents pointer
 
     --#region Component Validation (same as Radial)
     if component.requireSpawnOrder ~= false then
@@ -137,54 +136,61 @@ function sb.Arc(component, guiderCircle, nextBullet, options)
     end
     --#endregion
 
-    
-    local totalArcSpan = (options.numOfBullets - 1) * options.spacing
     --#region Arc-specific Validation
-    if not util.isInteger(options.centerAt) or not util.isInteger(options.centerAt*2) then
+    -- arc logic checks
+    local centerAtisInt = util.isInteger(args.centerAt)
+    -- case 1: numOfBullets is odd, centerAt can be anything
+    -- case 2
+    if args.numOfBullets % 2 == 0 and args.spacing % 2 ~= 0 and centerAtisInt then
+        error("Arc: even bullets with odd spacing requires .5 centerAt")
+    end
+    -- case 3
+    if args.numOfBullets % 2 == 0 and args.spacing % 2 == 0 and not centerAtisInt then
+        error("Arc: odd bullets or even spacing requires integer centerAt")
+    end
+
+    -- Data restriction checks
+    if not centerAtisInt and not util.isInteger(args.centerAt*2) then
         error("Arc: centerAt must be an integer or integer.5")
     end
-    if not util.isInteger(options.centerAt - totalArcSpan/2) then
-        error()
+    if not util.isInteger(args.spacing) then
+        error("Arc: spacing must be an integer")
     end
-    if options.spacing < 1 or options.spacing > 360 then 
+    if args.spacing < 1 or args.spacing > 360 then 
         error("Arc: spacing must be between 1 and 360")
     end
-    if options.numOfBullets <= 1 or options.numOfBullets > 360 then
-        error("Arc: number of bullets must be between 1 and 360, excluding 1")
+    if not util.isInteger(args.numOfBullets) then
+        error("Arc: numOfBullets must be an integer")
     end
-    if options.numOfBullets * options.spacing > 360 then
-        error("Arc: Number of bullets " .. options.numOfBullets .. " times spacing " .. options.spacing .. " exceeds 360 degrees")
+    if args.numOfBullets < 1 or args.numOfBullets > 360 then
+        error("Arc: numOfBullets must be between 1 and 360")
     end
-    if options.numOfBullets * options.spacing == 360 then
-        error("Arc: Number of bullets " .. options.numOfBullets .. " times spacing " .. options.spacing .. " is 360 degrees, making a circle.\n FIX: Use Radial instead.")
+    if args.numOfBullets * args.spacing > 360 then
+        error("Arc: numOfBullets " .. args.numOfBullets .. " times spacing " .. args.spacing .. " exceeds 360 degrees")
+    end
+    if args.numOfBullets * args.spacing == 360 then
+        error("Arc: numOfBullets " .. args.numOfBullets .. " times spacing " .. args.spacing .. " is 360 degrees, making a circle.\n FIX: Use Radial instead.")
     end
     --#endregion
 
     local remap_string = ""
+    local arclength = (args.numOfBullets - 1) * args.spacing
+    local startpos = args.centerAt - (arclength/2)
+    if not util.isInteger(startpos) then
+        error("Arc: Startpos validation is faulty! review conditions.")
+    end
+    local guiderCycler = util.createNumberCycler(1, 360)
+    if startpos < 0 then startpos = 360 + startpos end
+    for _ = 1, startpos do guiderCycler() end -- offset num cycler
 
-    -- Calculate arc positioning
-    local totalArcSpan = (options.numOfBullets - 1) * options.spacing
-    local centerOffset = totalArcSpan / 2
-    local startAngle = (options.centerAt - centerOffset + 360) % 360
-
-    -- Calculate where the arc is actually centered for user feedback
-    local actualCenter = (options.centerAt + centerOffset) % 360
-    local centeredAtGroup = guiderCircle.pointer + options.centerAt
-
-    for i = 1, 360 do 
-        local currentAngle = (i - 1) % 360
-        local relativeAngle = (currentAngle - startAngle + 360) % 360
-        
-        -- Check if within arc and on spacing boundary
-        local isInArc = relativeAngle <= totalArcSpan
-        local isOnSpacing = relativeAngle % options.spacing == 0
-        
-        if isInArc and isOnSpacing then
-            -- Apply centerAt offset to guider circle mapping
-            local guiderIndex = ((currentAngle + options.centerAt) % 360) + 1
+    for i = 1, 360 do
+        local index = guiderCycler() -- advance even if unused
+        if (i - 1) % args.spacing == 0 and (i - 1) < args.numOfBullets * args.spacing then
+            -- Active bullet: map to real targets
             remap_string = remap_string .. (i + 500) .. '.' .. nextBullet() .. '.'
-                .. (i + 1000) .. '.' .. guiderCircle.groups[guiderIndex] .. '.'
+                .. (i + 1000) .. '.' .. guiderCircle.groups[index] .. '.'
         else
+            -- Inactive bullet: map to safe empty groups
             remap_string = remap_string .. (i + 500) .. '.' .. enum.EMPTY4 .. '.'
                 .. (i + 1000) .. '.' .. enum.EMPTY4 .. '.'
         end
@@ -194,7 +200,9 @@ function sb.Arc(component, guiderCircle, nextBullet, options)
     remap_string = remap_string .. enum.EMPTY5 .. '.' .. component.callerGroup
 
     local spawnSettings = {}
-    spawnSettings.centeredAt = centeredAtGroup -- if e.g 2.5, between groups 2 & 3
+    if util.isInteger(args.centerAt) then
+        spawnSettings.centeredAt = guiderCircle.pointer + startpos
+    end
     spawnSettings.callerGroup = baseRadialComponent.callerGroup
     spawnSettings.remapString = util.validateRemapString("Arc", remap_string)
     spawnSettings.spawnOrdered = false -- bullets are all shot at once without delay or order

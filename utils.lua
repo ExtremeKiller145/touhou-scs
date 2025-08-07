@@ -16,19 +16,17 @@ end
 
 --- Creates a number cycler that returns sequential numbers in a range.
 ---@param min number The minimum value (inclusive)
----@param max number The maximum value (inclusive) 
+---@param max number The maximum value (inclusive)
 ---@return function A function that returns the next number in sequence, cycling back to min after max
 function util.createNumberCycler(min, max)
-    if type(min) ~= "number" or type(max) ~= "number" then
-        error("createNumberCycler: min and max must be numbers")
+    if not util.isInteger(min) or not util.isInteger(max) then
+        error("createNumberCycler: min and max must be integers")
     end
 
     if min > max then
         error("createNumberCycler: min cannot be greater than max")
     end
 
-    min = math.floor(min)
-    max = math.floor(max)
     local current = min - 1
     return function()
         current = current + 1
@@ -39,8 +37,8 @@ function util.createNumberCycler(min, max)
     end
 end
 
---- Includes type checking w/ 'tonumber' function
-function util.isInteger(num) return tonumber(num,10) ~= nil end
+--- Includes type checking w/ 'math.floor' function
+function util.isInteger(num) return math.floor(num) == num end
 
 --- Semantic wrapper for group tables or individual values for 'self-documenting code'
 function util.group(val) return val end
@@ -83,8 +81,8 @@ end
 ---@param x number X value of vector2
 ---@param y number Y value of vector2
 ---@return table Vector2
-function util.vector2(x, y) 
-    if not (type(x) == "number" and type(y) == "number") then 
+function util.vector2(x, y)
+    if not (type(x) == "number" and type(y) == "number") then
         error("Invalid args for 'vector2': x and y must be numbers")
     end
     return { X = x, Y = y }
@@ -112,12 +110,21 @@ function util.validateEasing(methodName, easing)
     end
 
     -- Required fields
+    -- only easing types 1-6 use ease rate field
+    if easing.type > 6 or easing.type < 1 then easing.rate = 1 end
+
     local required = {"t", "type", "rate"}
-    if easing.type > 6 then easing.rate = 1 end -- only easing types 1-6 use ease rate field
     for _, field in pairs(required) do
         if easing[field] == nil then
             error(methodName .. ": easing missing required field '" .. field .. "'")
         end
+    end
+
+    if not util.isInteger(easing.type) then
+        error(methodName .. ": easing 'type' must be an integer")
+    end
+    if easing.type < 0 or easing.type > 18 then
+        error(methodName .. ": easing 'type' must be between 0 and 18")
     end
 
     -- Must have either 'dist' or 'angle' or 'MoveBy'
@@ -172,15 +179,15 @@ function util.validateRemapString(methodName, remapString)
         if source ~= target then table.insert(cleanParts, source) table.insert(cleanParts, target) end
     end
     local cleanString = table.concat(cleanParts, ".")
-    if cleanString ~= remapString then 
+    if cleanString ~= remapString then
         warn(methodName .. ": WARNING! Remap string " .. remapString ..  " had redundant mappings")
     end
     return cleanString
 end
 
-function util.generateStatistics(AllSpells)
+function util.generateStatistics(AllSpells, AllComponents)
     local spellStats = {}
-    
+
     -- Find shared components (used in multiple spells)
     local componentUsage = {}
     for _, spell in pairs(AllSpells) do
@@ -210,9 +217,17 @@ function util.generateStatistics(AllSpells)
     for component in pairs(sharedComponents) do
         sharedTriggerCount = sharedTriggerCount + #component.triggers
     end
-    if sharedTriggerCount > 0 then spellStats["Shared"] = sharedTriggerCount end
 
-    return spellStats
+    local componentStats = {}
+    for _, component in ipairs(AllComponents) do
+        componentStats[component.componentName] = #component.triggers
+    end
+
+    local stats = {}
+    stats.spellStats = spellStats
+    stats.sharedTriggerCount = sharedTriggerCount
+    stats.componentStats = componentStats
+    return stats
 end
 
 return util

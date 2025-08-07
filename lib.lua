@@ -316,7 +316,6 @@ function Component:Pulse(x, target, hsb, fading)
 end
 
 function lib.SaveAll()
-    local json = require("dkjson")
     local filename = "triggers.json"
     local allTriggers = { triggers = {} }
 
@@ -335,7 +334,7 @@ function lib.SaveAll()
             table.insert(allTriggers.triggers, trigger)
         end
     end
-    
+
     -- Budget analysis and output
     local totalTriggers = #allTriggers.triggers
     local objectBudget = 200000
@@ -343,17 +342,24 @@ function lib.SaveAll()
 
     print(string.format("\n=== BUDGET ANALYSIS ==="))
     print(string.format("Total triggers: %d (%.3f%%)", totalTriggers, usagePercent))
-    print(string.format("Remaining budget: %d triggers\n", objectBudget - totalTriggers))
-
-    for spellName, count in pairs(util.generateStatistics(AllSpells)) do
-        print(string.format("  %s: %d triggers", spellName, count))
+    print(string.format("Remaining budget: %d triggers", objectBudget - totalTriggers))
+    print(' Spells:')
+    local stats = util.generateStatistics(AllSpells, AllComponents)
+    for spellName, count in pairs(stats.spellStats) do
+        print(string.format("   %s: %d triggers", spellName, count))
     end
+    print(' Components:')
+    for componentName, count in pairs(stats.componentStats) do
+        print(string.format("   %s: %d triggers", componentName, count))
+    end
+    print(' Triggers in shared components: ' .. stats.sharedTriggerCount)
 
     -- Save to file
     local file = io.open(filename, "w")
     if not file then error("Failed to open " .. filename .. " for writing!") end
 
-    file:write(json.encode(allTriggers, { indent = "\t" }))
+    local json = require("dkjson")
+    file:write(json.encode(allTriggers))
     file:close()
     print("\nSaved to " .. filename .. " successfully!")
 end
