@@ -90,13 +90,13 @@ end
 --- Nested remaps: outer remap must remap the inner, e.g. if inner is '1.2', other should be '2.3' not '1.3'. 
 --- inner must not have reset_remap on.
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
-function Component:Spawn(x, target, spawnOrdered,  remapID, spawnDelay)
-    util.validateArgs("Spawn", x, target, spawnOrdered, remapID)
+function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
+    util.validateArgs("Spawn", time, target, spawnOrdered, remapID)
     -- Validate group and remap string on JS side
     remapID = util.validateRemapString("Spawn", remapID) -- Cleans up redundant mappings
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
         [ppt.TARGET] = target,
 
         [ppt.REMAP_STRING] = remapID,
@@ -113,11 +113,11 @@ end
 --- WARNING: A deactivated object cannot be reactivated by a different group 
 --- (collision triggers might be different)
 ---@param activateGroup boolean Activate or deactivate group
-function Component:Toggle(x, target, activateGroup)
-    util.validateArgs("Toggle", x, target, activateGroup)
+function Component:Toggle(time, target, activateGroup)
+    util.validateArgs("Toggle", time, target, activateGroup)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Toggle,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.TARGET] = target,
         [ppt.ACTIVATE_GROUP] = activateGroup,
@@ -130,13 +130,13 @@ end
 
 ---@param targetDir number Group to move towards
 ---@param easing table Requires 'dist', 'time', 'type', 'rate' fields
-function Component:MoveTowards(x, target, targetDir, easing)
-    util.validateArgs("MoveTowards", x, target, targetDir, easing)
+function Component:MoveTowards(time, target, targetDir, easing)
+    util.validateArgs("MoveTowards", time, target, targetDir, easing)
     util.validateEasing("MoveTowards", easing)
     util.validateGroups("MoveTowards", target, targetDir)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.TARGET] = target, [ppt.MOVE_TARGET_CENTER] = target,
         [ppt.MOVE_TARGET_DIR] = targetDir,
@@ -154,8 +154,8 @@ end
 
 ---@param vector2 table X and Y change in studs
 ---@param easing table Requires 'time', 'type', 'rate' fields
-function Component:MoveBy(x, target, vector2, easing)
-    util.validateArgs("MoveBy", x, target, vector2, easing)
+function Component:MoveBy(time, target, vector2, easing)
+    util.validateArgs("MoveBy", time, target, vector2, easing)
     util.validateGroups("MoveBy", target)
     easing.MoveBy = true -- passes check for dist/angle
     util.validateEasing("MoveBy", easing)
@@ -163,7 +163,7 @@ function Component:MoveBy(x, target, vector2, easing)
     if easing.dynamic then error("MoveBy does not support dynamic mode") end
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.MOVE_X] = vector2.X, [ppt.MOVE_Y] = vector2.Y,
         [ppt.TARGET] = target,
@@ -180,13 +180,13 @@ end
 --- Moves a group to a group in a certain amount of time
 ---@param location number Group location to move to
 ---@param easing table Requires 'time' fields, defaults 'type', 'rate' and 'dynamic' to 0
-function Component:GotoGroup(x, target, location, easing)
-    util.validateArgs("GotoGroup", x, target, location, easing)
+function Component:GotoGroup(time, target, location, easing)
+    util.validateArgs("GotoGroup", time, target, location, easing)
     util.validateGroups("GotoGroup", target, location)
     if not easing.t then error("GotoGroup: 'easing' missing required field 't'") end
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.TARGET] = target, [ppt.MOVE_TARGET_CENTER] = target,
         [ppt.MOVE_TARGET_MODE] = true, [ppt.MOVE_TARGET_LOCATION] = location,
@@ -205,15 +205,15 @@ end
 --- Rotates a group by a certain angle (+, in degrees)
 ---@param easing table Must contain 'angle' field
 ---@param targets table Must contain 'target' and 'center' fields
-function Component:Rotate(x, targets, easing)
-    util.validateArgs("Rotate", x, targets, easing)
+function Component:Rotate(time, targets, easing)
+    util.validateArgs("Rotate", time, targets, easing)
     if not easing.angle then error("Rotate: 'easing' missing required field 'angle'") end
     if not targets.target then error("Rotate: 'targets' missing required field 'target'") end
     if not targets.center then error("Rotate: 'targets' missing required field 'center'") end
     util.validateGroups("Rotate", targets.target, targets.center)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.TARGET] = targets.target, [ppt.ROTATE_CENTER] = targets.center,
         [ppt.ROTATE_ANGLE] = easing.angle, -- degrees, clockwise is +
@@ -229,12 +229,12 @@ end
 
 ---@param targetDir number Group to point towards
 ---@param easing table not required, defaults to none
-function Component:PointToGroup(x, target, targetDir, easing)
-    util.validateArgs("PointToGroup", x, target, targetDir)
+function Component:PointToGroup(time, target, targetDir, easing)
+    util.validateArgs("PointToGroup", time, target, targetDir)
     util.validateGroups("PointToGroup", target, targetDir)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.TARGET] = target, [ppt.ROTATE_CENTER] = target,
         [ppt.ROTATE_TARGET] = targetDir,
@@ -254,15 +254,15 @@ end
 ---@param easing table not required, defaults to none
 ---@param scaleFactor number to scale down to, e.g. 0.5 is half size
 ---@param duration number time in seconds to scale for, instant resets after
-function Component:Scale(x, target, scaleFactor, duration, easing)
-    util.validateArgs("Scale", x, target, scaleFactor, duration)
+function Component:Scale(time, target, scaleFactor, duration, easing)
+    util.validateArgs("Scale", time, target, scaleFactor, duration)
     util.validateGroups("Scale", target)
     easing = easing or enum.DEFAULT_EASING
     if self.requireSpawnOrder == false then error("Scale: Cannot be used with spawn ordering") end
     Component:assertSpawnOrder(true)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Scale,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.TARGET] = target, [ppt.SCALE_CENTER] = target,
         [ppt.SCALE_X] = scaleFactor, [ppt.SCALE_Y] = scaleFactor,
@@ -274,7 +274,7 @@ function Component:Scale(x, target, scaleFactor, duration, easing)
     })
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Scale,
-        [ppt.X] = x + util.timeToDist(duration), [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time + duration), [ppt.Y] = 0,
 
         [ppt.TARGET] = target, [ppt.SCALE_CENTER] = target,
         [ppt.SCALE_X] = scaleFactor, [ppt.SCALE_Y] = scaleFactor,
@@ -293,13 +293,13 @@ end
 --- Saturation: [x0.0 to x2.0], x1.0 is default
 --- Brightness: [x0.0 to x2.0], x1.0 is default
 ---@param fading table requires 't', 'fadeIn', 'fadeOut' fields
-function Component:Pulse(x, target, hsb, fading)
-    util.validateArgs("Pulse", x, target, hsb, fading)
+function Component:Pulse(time, target, hsb, fading)
+    util.validateArgs("Pulse", time, target, hsb, fading)
     util.validatePulse(hsb, fading)
     util.validateGroups("Pulse", target)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Pulse,
-        [ppt.X] = x, [ppt.Y] = 0,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
         [ppt.TARGET] = target,
         [ppt.PULSE_TARGET_TYPE] = true,
