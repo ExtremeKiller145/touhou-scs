@@ -3,13 +3,15 @@
 local l = require("lib")
 local e = require("enums")
 local u = require("utils")
+local sb = require("spellbuilder")
+-- require("misc")
 
 -- Create a test component with various triggers for testing property data
 local function testTriggerProperties()
     local testComponent = l.Component.new("TriggerTests", u.group(100), 4)
 
     :Toggle(165, 1008, true)
-    :Scale(195, 1010, 0.51, 3.01)
+    :Scale(195, 1010, 0.51, { t = 0 }, true)
     :Spawn(225, 1011, true, "1001.2001.1002.2002", 0.11)
     :Pulse(255, 1012, { h = 54, s = 124, b = 156, exclusive = true }, { t = 1.2, fadeIn = 0.51, fadeOut = 0.53 })
 
@@ -26,12 +28,31 @@ local function testTriggerProperties()
     testSpell2:AddComponent(testComponent)
 end
 
-testTriggerProperties()
-
+-- testTriggerProperties()
+local c1 = sb.GuiderCircle.circle1
 local testRadialComp = l.Component.new("TestRadial", u.unknown_g(), 4)
-local emitter = 3
-testRadialComp:Toggle(0, e.EMPTY1, true)
-testRadialComp:GotoGroup(1, e.EMPTY1, emitter, { t = 0 })
-    :MoveTowards(1, e.EMPTY1, e.EMPTY2, { t = 4.01, type = e.Easing.EASE_IN, rate = 2.01, dist = 500 })
+local emitter = 30
+testRadialComp
+    :assertSpawnOrder(true)
+    :GotoGroup(0, e.EMPTY1, c1.center, { t = 0 })
+    :Toggle(e.TICK, e.EMPTY1, true)
+    :Scale(0, e.EMPTY1, 2, { t = 0 })
+    :Scale(e.TICK, e.EMPTY1, 2, { t = 0.3 }, true)
+    :PointToGroup(e.TICK, e.EMPTY1, e.EMPTY2)
+    :PointToGroup(0.3, e.EMPTY1, e.EMPTY2)
+    :MoveTowards(0.3, e.EMPTY1, e.EMPTY2, { t = 1.8, type = e.Easing.EASE_IN_OUT, rate = 2.01, dist = 60 })
+    :PointToGroup(2.1, e.EMPTY1, e.PLR)
+    :MoveTowards(2.1, e.EMPTY1, e.PLR, { t = 500/100, type = e.Easing.EASE_IN, rate = 2.01, dist = 500 })
 
+-- local radial = sb.Radial(testRadialComp, sb.GuiderCircle.circle1, l.Bullet.Bullet1, 10)
+
+local callerComponent = l.Component.new("CallerComponent", u.group(36), 4)
+callerComponent:assertSpawnOrder(true)
+    :GotoGroup(0, c1.all, emitter, { t = 0 })
+    :GotoGroup(0.2, e.EMPTY1, c1.center, { t = 0 })
+    :MoveBy(0.2, emitter, u.vector2(-150, 30), { t = 1, type = e.Easing.EASE_IN, rate = 1.5 })
+for i = 1, 30 do
+    local radial = sb.Radial(testRadialComp, sb.GuiderCircle.circle1, l.Bullet.Bullet1, 8)
+    callerComponent:Spawn(0.2 + (i-1) * 1, radial.callerGroup, radial.spawnOrdered, radial.remapString)
+end
 l.SaveAll()

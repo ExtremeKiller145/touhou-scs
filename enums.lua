@@ -3,14 +3,18 @@
 local enum = {
     PLR_SPEED = 311.58,
     PLR = 2,
+    TICK = 1/240,
     EDITOR_LAYER = 4,
     SCREEN_CENTER = 30, -- center group of game window
     UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
+    -- Holder object for empty groups is directly placed on the player, layer 0
     EMPTY1 = 10, -- Empty group for targeting and remapping 10 -> whatever
     EMPTY2 = 20, -- Empty group for targeting and remapping 20 -> whatever
     EMPTY3 = 21, -- Empty group for targeting and remapping 21 -> whatever
-    EMPTY4 = 22, -- Empty group for targeting and remapping 22 -> whatever
-    EMPTY5 = 23, -- Empty group for targeting and remapping 23 -> whatever
+    EMPTY4 = 23, -- Empty group for targeting and remapping 23 -> whatever
+    EMPTY5 = 24, -- Empty group for targeting and remapping 24 -> whatever
+    EMPTY_BULLET = 10, -- EMPTY1
+    EMPTY_TARGET_GROUP = 20, -- EMPTY2
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
     ROTATE_INFINITE_DURATION = -1,
@@ -78,6 +82,7 @@ local enum = {
         -- Move trigger properties
         MOVE_X = 28,
         MOVE_Y = 29,
+        MOVE_SMALL_STEP = 393, -- Small step boolean. better accuracy than the autofloor(x/3)
         MOVE_TARGET_CENTER = 395, -- target's center for Direction/Goto
         MOVE_TARGET_DIR = 71, -- target for Direction mode
         MOVE_TARGET_LOCATION = 71, -- target for Goto mode

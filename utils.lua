@@ -37,15 +37,25 @@ function util.createNumberCycler(min, max)
     end
 end
 
+--- Creates a bullet cycler for the bullet type. Consult spreadsheet for values.
+---@param min number The minimum group (inclusive)
+---@param max number The maximum group (inclusive)
+---@return function cycler returns the next group in sequence, cycling back to min after max. Also returns optional collision group
+function util.createBulletCycler(min, max)
+    local cycler = util.createNumberCycler(min, max)
+    return function()
+        local bullet = cycler()
+        return bullet, max + bullet -- bullet, collision
+    end
+end
+
 --- Includes type checking w/ 'math.floor' function
 function util.isInteger(num) return math.floor(num) == num end
 
 --- Semantic wrapper for group tables or individual values for 'self-documenting code'
 function util.group(val) return val end
 
--- Unknown group management
 local unknownGroupCycler = util.createNumberCycler(1, 9998) -- Max 9999 unknown groups
-
 --- Creates a unique unknown group string for automatic remapping
 --- @return string Unique unknown group identifier
 function util.unknown_g()
@@ -69,6 +79,9 @@ end
 
 --- Converts time in seconds to distance in studs
 function util.timeToDist(time) return 311.58 * time end
+
+--- Converts distance in studs to time in seconds
+function util.distToTime(dist) return dist / 311.58 end
 
 --- Convert block studs & projectile speed to projectile spacing.
 ---@param speedOfProjectile number in studs/second
@@ -98,6 +111,32 @@ function util.validateVector2(methodName, vector2)
 
     if vector2["X"] == nil or vector2["Y"] == nil then
         error(methodName .. ": vector2 missing required field 'X' or 'Y'")
+    end
+end
+
+-- Extract to utility function
+---@param component Component
+---@param functionName string
+function util.validateRadialComponent(component, functionName)
+    if component.requireSpawnOrder ~= true then
+        error(functionName .. ": component must require spawn order...")
+    end
+    local enum = require("enums")
+    local hasEmpty1, hasEmpty2, hasEmpty5 = false, false, false
+    for _, trigger in pairs(component.triggers) do
+        for _, field in pairs(enum.Properties.TargetFields) do
+            if trigger[field] == enum.EMPTY1 then hasEmpty1 = true end
+            if trigger[field] == enum.EMPTY2 then hasEmpty2 = true end
+            if trigger[field] == enum.EMPTY5 then hasEmpty5 = true end
+        end
+    end
+    
+    if not hasEmpty1 then
+        error(functionName .. ": component must target EMPTY1 (bullet visual)")
+    elseif not hasEmpty2 then
+        error(functionName .. ": component must target EMPTY2 (guidercircle target)")
+    elseif hasEmpty5 then
+        error(functionName .. ": component must not have any triggers targeting EMPTY5")
     end
 end
 
@@ -185,8 +224,16 @@ function util.validateRemapString(methodName, remapString)
     return cleanString
 end
 
-function util.generateStatistics(AllSpells, AllComponents)
+---@param AllSpells table
+---@param AllComponents table  
+---@param allTriggers table The triggers array to analyze
+---@param objectBudget number Maximum object count (default: 200000)
+function util.generateStatistics(AllSpells, AllComponents, allTriggers, objectBudget)
+    objectBudget = objectBudget or 200000
+    local totalTriggers = allTriggers and #allTriggers.triggers or 0
+
     local spellStats = {}
+    local componentStats = {}
 
     -- Find shared components (used in multiple spells)
     local componentUsage = {}
@@ -201,7 +248,7 @@ function util.generateStatistics(AllSpells, AllComponents)
         if usageCount > 1 then sharedComponents[component] = true end
     end
 
-    -- Count triggers by category
+    -- Count triggers by spell (excluding shared components)
     for _, spell in pairs(AllSpells) do
         local spellTriggerCount = 0
         for _, component in pairs(spell.components) do
@@ -218,16 +265,47 @@ function util.generateStatistics(AllSpells, AllComponents)
         sharedTriggerCount = sharedTriggerCount + #component.triggers
     end
 
-    local componentStats = {}
+    -- Component stats
     for _, component in ipairs(AllComponents) do
         componentStats[component.componentName] = #component.triggers
     end
 
-    local stats = {}
-    stats.spellStats = spellStats
-    stats.sharedTriggerCount = sharedTriggerCount
-    stats.componentStats = componentStats
+    -- Budget analysis
+    local usagePercent = totalTriggers > 0 and (totalTriggers / objectBudget) * 100 or 0
+    local remainingBudget = objectBudget - totalTriggers
+
+    local stats = {
+        spellStats = spellStats,
+        componentStats = componentStats,
+        sharedTriggerCount = sharedTriggerCount,
+        budget = {
+            totalTriggers = totalTriggers,
+            objectBudget = objectBudget,
+            usagePercent = usagePercent,
+            remainingBudget = remainingBudget
+        }
+    }
     return stats
+end
+
+---@param stats table Statistics from generateStatistics
+function util.printBudgetAnalysis(stats)
+    print(string.format("\n=== BUDGET ANALYSIS ==="))
+    print(string.format("Total triggers: %d (%.3f%%)", 
+        stats.budget.totalTriggers, stats.budget.usagePercent))
+    print(string.format("Remaining budget: %d triggers", stats.budget.remainingBudget))
+
+    print(' Spells:')
+    for spellName, count in pairs(stats.spellStats) do
+        print(string.format("   %s: %d triggers", spellName, count))
+    end
+
+    print(' Components:')
+    for componentName, count in pairs(stats.componentStats) do
+        print(string.format("   %s: %d triggers", componentName, count))
+    end
+
+    print(' Triggers in shared components: ' .. stats.sharedTriggerCount)
 end
 
 return util

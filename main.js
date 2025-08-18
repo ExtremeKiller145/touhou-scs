@@ -17,7 +17,7 @@ $.exportConfig({
 	// or 'live_editor' to export to WSLiveEditor (must have Geode installed)
 	options: {
 		info: true,
-		level_name: "ttests",
+		level_name: "touhou scs save",
 	}
 }).then(a => {
 	const jsonData = require('fs').readFileSync('triggers.json', 'utf8');

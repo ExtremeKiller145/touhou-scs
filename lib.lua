@@ -11,10 +11,45 @@ local enum = require("enums")
 local util = require("utils")
 local ppt = enum.Properties
 
+
 -- Area for spreading triggers out
 local TriggerArea = {
-    bottom_left = util.vector2(450,300),
-    top_right = util.vector2(900,600)
+    minX = 1350,
+    minY = 1300,
+    maxX = 20000,
+    maxY = 5000
+}
+
+---@class Bullet
+---@field minGroup number
+---@field maxGroup number
+---@field nextBullet fun(): number
+
+lib.Bullet = {
+    ---@type Bullet
+    Bullet1 = {
+        minGroup = 501,
+        maxGroup = 1000,
+        nextBullet = util.createBulletCycler(501, 1000)
+    },
+    ---@type Bullet
+    Bullet2 = {
+        minGroup = 1501,
+        maxGroup = 2200,
+        nextBullet = util.createBulletCycler(1501, 2200)
+    },
+    ---@type Bullet
+    Bullet3 = {
+        minGroup = 2901,
+        maxGroup = 3600,
+        nextBullet = util.createBulletCycler(2901, 3600)
+    },
+    ---@type Bullet
+    Bullet4 = {
+        minGroup = 4101,
+        maxGroup = 4500,
+        nextBullet = util.createBulletCycler(4101, 4500)
+    }
 }
 
 local AllComponents = {}
@@ -48,6 +83,7 @@ function Spell:AddComponent(component)
 end
 
 
+
 ---@class Component
 ---@field callerGroup number | string
 ---@field editorLayer number
@@ -75,10 +111,12 @@ function Component.new(componentName, callerGroup, editorLayer)
     return self
 end
 
+
+
 --- Set the requirement for spawn ordering
 --- @param bool boolean True to require, false to forbid, nil to allow either
 function Component:assertSpawnOrder(bool)
-    if type(bool) ~= "boolean" then error("assertSpawnOrder: bool must be boolean") end
+    if type(bool) ~= "boolean" then error("assertSpawnOrder: argument must be boolean") end
     if self.requireSpawnOrder ~= nil and self.requireSpawnOrder ~= bool then
         error("assertSpawnOrder: Conflicting spawn order requirements, originally set to " .. tostring(self.requireSpawnOrder) .. ", attempted to set to " .. tostring(bool))
     end
@@ -92,7 +130,6 @@ end
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
 function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
     util.validateArgs("Spawn", time, target, spawnOrdered, remapID)
-    -- Validate group and remap string on JS side
     remapID = util.validateRemapString("Spawn", remapID) -- Cleans up redundant mappings
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
@@ -100,7 +137,7 @@ function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
         [ppt.TARGET] = target,
 
         [ppt.REMAP_STRING] = remapID,
-        [ppt.RESET_REMAP] = true,
+        [ppt.RESET_REMAP] = false,
         [ppt.SPAWN_ORDERED] = spawnOrdered,
         [ppt.SPAWN_DELAY] = spawnDelay or 0,
 
@@ -144,6 +181,7 @@ function Component:MoveTowards(time, target, targetDir, easing)
         [ppt.DURATION] = easing.t,
         [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
         [ppt.DYNAMIC] = easing.dynamic or false,
+        [ppt.MOVE_SMALL_STEP] = true,
         [ppt.MOVE_SILENT] = (easing.t == 0),
 
         [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
@@ -170,6 +208,7 @@ function Component:MoveBy(time, target, vector2, easing)
         [ppt.DURATION] = easing.t,
         [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
         [ppt.MOVE_SILENT] = (easing.t == 0),
+        [ppt.MOVE_SMALL_STEP] = true,
 
         [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
@@ -232,6 +271,7 @@ end
 function Component:PointToGroup(time, target, targetDir, easing)
     util.validateArgs("PointToGroup", time, target, targetDir)
     util.validateGroups("PointToGroup", target, targetDir)
+    easing = easing or enum.DEFAULT_EASING
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Rotate,
         [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
@@ -250,16 +290,14 @@ function Component:PointToGroup(time, target, targetDir, easing)
     return self
 end
 
---- Scales a group by a certain amount, resets after some duration
+--- Scales a group by a certain amount.
 ---@param easing table not required, defaults to none
 ---@param scaleFactor number to scale down to, e.g. 0.5 is half size
----@param duration number time in seconds to scale for, instant resets after
-function Component:Scale(time, target, scaleFactor, duration, easing)
-    util.validateArgs("Scale", time, target, scaleFactor, duration)
+---@param divideMode boolean whether to divide by the scaleFactor instead of multiply
+function Component:Scale(time, target, scaleFactor, easing, divideMode)
+    util.validateArgs("Scale", time, target, scaleFactor)
     util.validateGroups("Scale", target)
     easing = easing or enum.DEFAULT_EASING
-    if self.requireSpawnOrder == false then error("Scale: Cannot be used with spawn ordering") end
-    Component:assertSpawnOrder(true)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Scale,
         [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
@@ -268,18 +306,8 @@ function Component:Scale(time, target, scaleFactor, duration, easing)
         [ppt.SCALE_X] = scaleFactor, [ppt.SCALE_Y] = scaleFactor,
         [ppt.DURATION] = easing.t,
         [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
-
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Scale,
-        [ppt.X] = util.timeToDist(time + duration), [ppt.Y] = 0,
-
-        [ppt.TARGET] = target, [ppt.SCALE_CENTER] = target,
-        [ppt.SCALE_X] = scaleFactor, [ppt.SCALE_Y] = scaleFactor,
-        [ppt.SCALE_DIV_BY_X] = true, [ppt.SCALE_DIV_BY_Y] = true,
-        [ppt.DURATION] = 0, -- instant reset scale once offscreen
+        [ppt.SCALE_DIV_BY_X] = divideMode or false,
+        [ppt.SCALE_DIV_BY_Y] = divideMode or false,
 
         [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
         [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
@@ -315,6 +343,62 @@ function Component:Pulse(time, target, hsb, fading)
     return self
 end
 
+local function spreadTriggers(triggers, component)
+    if #triggers < 1 then error("spreadTriggers: No triggers in component " .. component.componentName) end
+    local area = TriggerArea
+
+    if #triggers == 1 then
+        triggers[1][ppt.X] = math.random(area.minX, area.maxX)
+        triggers[1][ppt.Y] = math.random(area.minY, area.maxY)
+        return
+    end
+
+    -- Detect pattern type
+    local sameX = true
+    local firstX = triggers[1][ppt.X]
+    for i = 2, #triggers do
+        if triggers[i][ppt.X] ~= firstX then sameX = false; break end
+    end
+
+    if sameX and component.requireSpawnOrder == false then
+        -- Loose squares - random positions
+        for _, trigger in ipairs(triggers) do
+            trigger[ppt.X] = math.random(area.minX, area.maxX)
+        end
+    elseif component.requireSpawnOrder == true then
+        -- Rigid chain - shift whole group (only case that can fail)
+        local minX, maxX = triggers[1][ppt.X], triggers[1][ppt.X]
+        for _, trigger in ipairs(triggers) do
+            minX = math.min(minX, trigger[ppt.X])
+            maxX = math.max(maxX, trigger[ppt.X])
+        end
+
+        local chainWidth = maxX - minX
+        -- Check if rigid chain fits
+        if chainWidth > (area.maxX - area.minX) then
+            error("spreadTriggers: Rigid chain too wide (" .. chainWidth .. ") to fit in trigger area for " .. component.componentName)
+        end
+
+        local shift = math.random(area.minX, math.floor(area.maxX - chainWidth)) - minX
+
+        for _, trigger in ipairs(triggers) do trigger[ppt.X] = trigger[ppt.X] + shift end
+    else
+        -- Elastic chain - stretch as needed (no bounds checking)
+        local startX = area.minX
+        for i, trigger in ipairs(triggers) do
+            if i == 1 then trigger[ppt.X] = startX goto continue end
+            -- Just add random spacing, can extend beyond area.maxX
+            local spacing = math.random(1, 10)
+            trigger[ppt.X] = triggers[i-1][ppt.X] + spacing
+            ::continue::
+        end
+    end
+
+    for _, trigger in ipairs(triggers) do
+        trigger[ppt.Y] = math.random(area.minY, area.maxY)
+    end
+end
+
 function lib.SaveAll()
     local filename = "triggers.json"
     local allTriggers = { triggers = {} }
@@ -322,37 +406,32 @@ function lib.SaveAll()
     -- Add all triggers to output, sorted by X position within each component
     for _, component in pairs(AllComponents) do
         local sortedTriggers = { table.unpack(component.triggers) }
+
+        -- Spread triggers before sorting (sorting is mainly for placement order)
+        spreadTriggers(sortedTriggers, component)
+
         table.sort(sortedTriggers, function(a, b)
             return (a[ppt.X] or 0) < (b[ppt.X] or 0)
         end)
 
         -- Add sorted triggers to output
+        local x = -10000
         for _, trigger in ipairs(sortedTriggers) do
             if trigger[ppt.GROUPS] == 9999 then
-                error("CRITICAL ERROR: RESERVED GROUP 9999 DETECTED")
+                error("CRITICAL ERROR: RESERVED GROUP 9999 DETECTED WITHIN " .. component.componentName)
             end
+            -- according to info given by bombie (untested but better be safe)
+            if trigger[ppt.X] - x < 1 and trigger[ppt.X] - x ~= 0 then
+                error("CRITICAL ERROR: X POSITION IS WITHIN 1 UNIT OF PREVIOUS TRIGGER, ORDER NOT PRESERVED. DETECTED WITHIN " .. component.componentName)
+            end
+            x = trigger[ppt.X]
             table.insert(allTriggers.triggers, trigger)
         end
     end
 
     -- Budget analysis and output
-    local totalTriggers = #allTriggers.triggers
-    local objectBudget = 200000
-    local usagePercent = (totalTriggers / objectBudget) * 100
-
-    print(string.format("\n=== BUDGET ANALYSIS ==="))
-    print(string.format("Total triggers: %d (%.3f%%)", totalTriggers, usagePercent))
-    print(string.format("Remaining budget: %d triggers", objectBudget - totalTriggers))
-    print(' Spells:')
-    local stats = util.generateStatistics(AllSpells, AllComponents)
-    for spellName, count in pairs(stats.spellStats) do
-        print(string.format("   %s: %d triggers", spellName, count))
-    end
-    print(' Components:')
-    for componentName, count in pairs(stats.componentStats) do
-        print(string.format("   %s: %d triggers", componentName, count))
-    end
-    print(' Triggers in shared components: ' .. stats.sharedTriggerCount)
+    local stats = util.generateStatistics(AllSpells, AllComponents, allTriggers)
+    util.printBudgetAnalysis(stats)
 
     -- Save to file
     local file = io.open(filename, "w")
