@@ -15,6 +15,7 @@ local enum = {
     EMPTY5 = 24, -- Empty group for targeting and remapping 24 -> whatever
     EMPTY_BULLET = 10, -- EMPTY1
     EMPTY_TARGET_GROUP = 20, -- EMPTY2
+    EMPTY_MULTITARGET = 25, -- exclusively for multitarget functionality
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
     ROTATE_INFINITE_DURATION = -1,

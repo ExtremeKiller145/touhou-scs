@@ -130,7 +130,7 @@ end
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
 function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
     util.validateArgs("Spawn", time, target, spawnOrdered, remapID)
-    remapID = util.validateRemapString("Spawn", remapID) -- Cleans up redundant mappings
+    remapID = util.validateRemapString("Spawn", remapID)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Spawn,
         [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
@@ -363,7 +363,7 @@ local function spreadTriggers(triggers, component)
     if sameX and component.requireSpawnOrder == false then
         -- Loose squares - random positions
         for _, trigger in ipairs(triggers) do
-            trigger[ppt.X] = math.random(area.minX, area.maxX)
+            trigger[ppt.X] = math.random(area.minX, area.maxX/2)*2
         end
     elseif component.requireSpawnOrder == true then
         -- Rigid chain - shift whole group (only case that can fail)
@@ -397,6 +397,62 @@ local function spreadTriggers(triggers, component)
     for _, trigger in ipairs(triggers) do
         trigger[ppt.Y] = math.random(area.minY, area.maxY)
     end
+end
+
+
+---@class MultitargetRegistry
+---@field _binaryBases table<number, Component> Private storage for binary base components (powers of 2)
+local MultitargetRegistry = {}
+MultitargetRegistry.__index = MultitargetRegistry
+lib.MultitargetRegistry = MultitargetRegistry
+
+-- Private storage for binary base components (powers of 2)
+MultitargetRegistry._binaryBases = {}
+
+--- Get the binary components needed to represent numBullets
+--- Creates and caches power-of-2 components as needed
+---@param numTargets number The number of bullets needed (1-127)
+---@return table components; Array of Component objects that sum to numTargets
+function MultitargetRegistry:getBinaryComponents(numTargets)
+    -- Input validation
+    if not util.isInteger(numTargets) then
+        error("getBinaryComponents: numTargets must be an integer")
+    elseif numTargets <= 0 or numTargets > 127 then
+        error("getBinaryComponents: numTargets must be between 1 and 127")
+    end
+
+    local components = {}
+    local remaining = numTargets
+    local powers = {64, 32, 16, 8, 4, 2, 1} -- Check largest powers first
+
+    for _, power in ipairs(powers) do
+        if remaining >= power then
+            -- Get or create the component for this power
+            if not self._binaryBases[power] then self:_createBinaryBase(power) end
+
+            table.insert(components, self._binaryBases[power])
+            remaining = remaining - power
+        end
+    end
+
+    return components
+end
+
+--- Creates a binary base component for a specific power of 2 and stores it
+---@param power number Must be a power of 2 (1, 2, 4, 8, 16, 32, 64)
+function MultitargetRegistry:_createBinaryBase(power)
+    local component = Component.new("BinaryBase_" .. power, util.unknown_g(), 4)
+    component:assertSpawnOrder(false) -- All binary bases shoot simultaneously
+
+    -- To add support for more parameters, add a new empty group and follow the pattern
+    for i = 1, power*4, 4 do
+        local remap_string = enum.EMPTY1 .. '.' .. (i + 6000) .. '.'
+                          .. enum.EMPTY2 .. '.' .. (i + 6001) .. '.'
+                          .. enum.EMPTY3 .. '.' .. (i + 6002) .. '.'
+                          .. enum.EMPTY4 .. '.' .. (i + 6003)
+        component:Spawn(0, enum.EMPTY_MULTITARGET, true, remap_string)
+    end
+    self._binaryBases[power] = component
 end
 
 function lib.SaveAll()

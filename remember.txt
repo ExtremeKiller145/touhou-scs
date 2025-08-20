@@ -8,7 +8,10 @@ TODO:
 
 Luau Migration
 Multi-target system (using the baseRadialComponent)
+
 Better Trigger spread (not needed for a while)
+It will fix any possible 'missing bullet' bugs that come from systems like multitrigger (despite being non-spawn-ordered and non-ordered, if they randomly bunch up it sometimes seems to skip one)
+
 Misc.lua systems (collision triggers especially)
 
 Within lib.lua:

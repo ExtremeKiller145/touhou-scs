@@ -2,6 +2,30 @@
 
 local util = {}
 
+
+---@param remapString string The remap string to parse
+---@return table pairs ; where  'i' is paired with pairs[i]
+function util.translateRemapString(remapString)
+    local pairs = {}
+    if type(remapString) ~= "string" then
+        error("translateRemapString: remapString must be a string")
+    end
+
+    local parts = {}
+    for part in remapString:gmatch("[^.]+") do table.insert(parts, part) end
+
+    if #parts == 0 then
+        error("translateRemapString: remapString must contain at least one valid pair")
+    elseif #parts % 2 ~= 0 then
+        error("translateRemapString: remapString must contain an even number of parts:\n" .. remapString)
+    end
+
+    -- pairs[source] = target
+    for i = 1, #parts, 2 do pairs[parts[i]] = parts[i + 1] end
+
+    return pairs
+end
+
 --- To nil-check function arguments
 ---@param methodName string The name of the method for error messages.
 ---@param ... any The arguments to check.
@@ -204,23 +228,42 @@ end
 --- @param remapString string, Dot-separated remap string
 --- @return string Cleaned remap string with redundant mappings removed
 function util.validateRemapString(methodName, remapString)
+    util.validateArgs(methodName, remapString)
     if type(remapString) ~= "string" then error("Invalid remap string: not a string") end
 
-    local parts = {}
-    for part in remapString:gmatch("[^.]+") do table.insert(parts, part) end
-    if #parts % 2 ~= 0 then error("Invalid remap string: must have even number of parts") end
+    local remapPairs = util.translateRemapString(remapString)
 
-    local cleanParts = {}
-    for i = 1, #parts, 2 do
-        local source = parts[i]
-        local target = parts[i + 1]
-        -- Only include non-redundant mappings
-        if source ~= target then table.insert(cleanParts, source) table.insert(cleanParts, target) end
+    -- Re-register pairs to catch duplicate sources
+    local sourceCheck = {}
+    local targetCheck = {}
+
+    for source, target in pairs(remapPairs) do
+        -- Check for duplicate source
+        if sourceCheck[source] then
+            error(methodName .. ": Duplicate source '" .. source .. "' in remap string - cannot remap one group to multiple targets")
+        end
+        sourceCheck[source] = true
+
+        -- Check for duplicate target  
+        if targetCheck[target] then
+            error(methodName .. ": Duplicate target '" .. target .. "' in remap string - cannot remap multiple groups to same target")
+        end
+        targetCheck[target] = true
     end
-    local cleanString = table.concat(cleanParts, ".")
+
+    -- Rebuild clean remap string (removing redundant mappings like 10 => 10)
+    local cleanPairs = {}
+    for source, target in pairs(remapPairs) do
+        if source ~= target then
+            table.insert(cleanPairs, source .. "." .. target)
+        end
+    end
+
+    local cleanString = table.concat(cleanPairs, ".")
     if cleanString ~= remapString then
-        warn(methodName .. ": WARNING! Remap string " .. remapString ..  " had redundant mappings")
+        warn(methodName .. ": WARNING! Remap string " .. remapString .. " had redundant mappings")
     end
+
     return cleanString
 end
 

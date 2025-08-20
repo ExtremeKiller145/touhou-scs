@@ -4,7 +4,7 @@ local l = require("lib")
 local e = require("enums")
 local u = require("utils")
 local sb = require("spellbuilder")
--- require("misc")
+require("misc")
 
 -- Create a test component with various triggers for testing property data
 local function testTriggerProperties()
@@ -34,13 +34,13 @@ local testRadialComp = l.Component.new("TestRadial", u.unknown_g(), 4)
 local emitter = 30
 testRadialComp
     :assertSpawnOrder(true)
-    :GotoGroup(0, e.EMPTY1, c1.center, { t = 0 })
+    :GotoGroup(0, e.EMPTY1, emitter, { t = 0 })
     :Toggle(e.TICK, e.EMPTY1, true)
     :Scale(0, e.EMPTY1, 2, { t = 0 })
-    :Scale(e.TICK, e.EMPTY1, 2, { t = 0.3 }, true)
+    :Scale(e.TICK*2, e.EMPTY1, 2, { t = 0.3 }, true)
     :PointToGroup(e.TICK, e.EMPTY1, e.EMPTY2)
     :PointToGroup(0.3, e.EMPTY1, e.EMPTY2)
-    :MoveTowards(0.3, e.EMPTY1, e.EMPTY2, { t = 1.8, type = e.Easing.EASE_IN_OUT, rate = 2.01, dist = 60 })
+    :MoveTowards(0.3, e.EMPTY1, e.EMPTY2, { t = 1.8, type = e.Easing.EASE_IN_OUT, rate = 2.01, dist = 70 })
     :PointToGroup(2.1, e.EMPTY1, e.PLR)
     :MoveTowards(2.1, e.EMPTY1, e.PLR, { t = 500/100, type = e.Easing.EASE_IN, rate = 2.01, dist = 500 })
 
@@ -49,10 +49,13 @@ testRadialComp
 local callerComponent = l.Component.new("CallerComponent", u.group(36), 4)
 callerComponent:assertSpawnOrder(true)
     :GotoGroup(0, c1.all, emitter, { t = 0 })
-    :GotoGroup(0.2, e.EMPTY1, c1.center, { t = 0 })
-    :MoveBy(0.2, emitter, u.vector2(-150, 30), { t = 1, type = e.Easing.EASE_IN, rate = 1.5 })
+    :GotoGroup(0.1, e.EMPTY1, c1.center, { t = 0 })
+    :MoveBy(0.2, emitter, u.vector2(-150, 30), { t = 10, type = e.Easing.EASE_IN, rate = 1.5 })
+    :MoveBy(0.2, c1.all, u.vector2(-150, 30), { t = 10, type = e.Easing.EASE_IN, rate = 1.5 })
+
 for i = 1, 30 do
-    local radial = sb.Radial(testRadialComp, sb.GuiderCircle.circle1, l.Bullet.Bullet1, 8)
-    callerComponent:Spawn(0.2 + (i-1) * 1, radial.callerGroup, radial.spawnOrdered, radial.remapString)
+    sb.Radial(i, callerComponent, testRadialComp, c1, l.Bullet.Bullet1, 10)
+    sb.Radial(i + 1/2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2, 12)
 end
+
 l.SaveAll()

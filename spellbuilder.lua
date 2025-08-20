@@ -34,26 +34,16 @@ local function populateGuiderCircle(circle)
 end
 populateGuiderCircle(sb.GuiderCircle.circle1)
 
--- Base radial component (to be created once and reused)
--- This will contain 360 spawn triggers, remapping empty1 => 501- UNASSIGNED , empty2 => 1001-UNASSIGNED
-local baseRadialComponent = lib.Component.new("BaseRadialComponent", util.unknown_g(), 4)
-baseRadialComponent:assertSpawnOrder(false)
-for i = 1, 360 do
-    local remap_string = enum.EMPTY1 .. '.' .. (i + 500) .. '.'
-                      .. enum.EMPTY2 .. '.' .. (i + 1000)
-    baseRadialComponent:Spawn(0, enum.EMPTY5, true, remap_string)
-end
-
 --- Creates a radial pattern spawn setting, to shoot all at once in a circular pattern
 ---@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
 --- EMPTY1 must represent 'bullet'
 --- 
 --- EMPTY2 must represent 'targetGroup'
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
+---@param callerComponent Component ; the component that will call the radial pattern
 ---@param spacing number, angle distance between bullets in degrees, must be a factor of 360
 ---@param bulletType Bullet ; the bullet type to use for spawning
----@return SpawnSettings ; includes 'callerGroup', 'remapString', 'spawnOrdered'
-function sb.Radial(component, guiderCircle, bulletType, spacing)
+function sb.Radial(time, callerComponent, component, guiderCircle, bulletType, spacing)
     util.validateArgs("Radial", component, guiderCircle, bulletType, spacing)
     util.validateRadialComponent(component, "Radial")
 
@@ -66,30 +56,39 @@ function sb.Radial(component, guiderCircle, bulletType, spacing)
     end
     --#endregion
 
-    local empties = util.createNumberCycler(6000,7000)
-    local remap_string = ""
-    for i = 1, 360 do
-        if (i - 1) % spacing == 0 then
-            -- Active bullet: map to real targets
-            remap_string = remap_string .. (i + 500) .. '.' .. bulletType.nextBullet() .. '.'
-                .. (i + 1000) .. '.' .. guiderCircle.groups[i] .. '.'
-        else
-            -- Inactive bullet: map to safe empty groups
-            remap_string = remap_string .. (i + 500) .. '.' .. empties() .. '.'
-                .. (i + 1000) .. '.' .. empties() .. '.'
+    local numOfBullets = 360 / spacing
+    local offset = 0 -- doesnt do anything right now, but if offset param is useful later, it exists i guess
+
+    ---@type Component
+    local comps = lib.MultitargetRegistry:getBinaryComponents(numOfBullets)
+
+    local remapStringProperty = enum.Properties.REMAP_STRING
+    local bulletPosition = offset
+    for _, comp in ipairs(comps) do
+        local empties = util.createNumberCycler(6001,6064)
+        local remap_string = ""
+        for _, spawnTrigger in ipairs(comp.triggers) do
+            local remapPairs = util.translateRemapString(spawnTrigger[remapStringProperty])
+            for source, target in pairs(remapPairs) do
+                remap_string = remap_string .. target .. '.'
+
+                local sourceNum = tonumber(source) -- Convert string to number
+                if sourceNum == enum.EMPTY1 then
+                    remap_string = remap_string .. bulletType.nextBullet()
+                elseif sourceNum == enum.EMPTY2 then
+                    remap_string = remap_string .. guiderCircle.groups[bulletPosition + 1]
+                else
+                    remap_string = remap_string .. empties()
+                end
+
+                remap_string = remap_string .. '.'
+            end
+            bulletPosition = bulletPosition + spacing -- Move to next bullet position
         end
+        -- Final mapping: EMPTY_MULTITARGET -> baseRadialComponent caller group
+        remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
+        callerComponent:Spawn(time, comp.callerGroup, false, remap_string)
     end
-
-    -- Final mapping: EMPTY5 -> baseRadialComponent caller group
-    remap_string = remap_string .. enum.EMPTY5 .. '.' .. component.callerGroup
-
-    ---@type SpawnSettings
-    local spawnSettings = {
-        callerGroup = baseRadialComponent.callerGroup,
-        remapString = util.validateRemapString("Radial", remap_string),
-        spawnOrdered = false -- bullets are shot at once, 0 delay or order
-    }
-    return spawnSettings
 end
 
 
