@@ -215,26 +215,31 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
 end
 
 local radialWaveCount = 0
+---@param callerComponent Component ; the component that will call the wave pattern
 ---@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
 --- EMPTY1 must represent 'bullet'
 --- 
 --- EMPTY2 must represent 'targetGroup'
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
----@param args table, requires 'spacing' angle, 'bulletsPerWave', 'waves', 'interval'
 ---@param bulletType Bullet ; the bullet type to use for spawning
----@return Component ; calls the pattern
-function sb.RadialWave(component, guiderCircle, bulletType, args)
-    util.validateArgs("RadialWave", component, guiderCircle, bulletType, args.spacing, args.bulletsPerWave, args.waves, args.interval)
+---@param args table, requires either 'spacing' OR 'numOfBullets', 'waves', 'interval', optional 'centerAt'
+function sb.RadialWave(time, callerComponent, component, guiderCircle, bulletType, args)
+    util.validateArgs("RadialWave", component, guiderCircle, bulletType, args)
     util.validateRadialComponent(component, "RadialWave")
+
+    -- Validate wave-specific parameters
+    if not args.waves or not util.isInteger(args.waves) or args.waves < 1 then
+        error("RadialWave: waves must be a positive integer")
+    end
+    if not args.interval or args.interval <= 0 then
+        error("RadialWave: interval must be a positive number")
+    end
+
     radialWaveCount = radialWaveCount + 1
-    local waveComponent = lib.Component.new("WaveComponent" .. radialWaveCount, util.unknown_g(), 4)
 
     for i = 1, args.waves do
-        local spawnSettings = sb.Radial(component, guiderCircle, bulletType, args.spacing)
-        waveComponent:Spawn(i * args.interval, spawnSettings.callerGroup, false, spawnSettings.remapString)
+        sb.Radial(time + (i - 1) * args.interval, callerComponent, component, guiderCircle, bulletType, args)
     end
-    waveComponent:assertSpawnOrder(true)
-    return waveComponent
 end
 
 return sb
