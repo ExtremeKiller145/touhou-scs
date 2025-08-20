@@ -41,7 +41,7 @@ testRadialComp
     :PointToGroup(e.TICK, e.EMPTY1, e.EMPTY2)
     :PointToGroup(0.3, e.EMPTY1, e.EMPTY2)
     :MoveTowards(0.3, e.EMPTY1, e.EMPTY2, { t = 1.8, type = e.Easing.EASE_IN_OUT, rate = 2.01, dist = 70 })
-    :PointToGroup(2.1, e.EMPTY1, e.PLR)
+    :PointToGroup(2.1, e.EMPTY1, e.PLR, { t = 0.2 })
     :MoveTowards(2.1, e.EMPTY1, e.PLR, { t = 500/100, type = e.Easing.EASE_IN, rate = 2.01, dist = 500 })
 
 -- local radial = sb.Radial(testRadialComp, sb.GuiderCircle.circle1, l.Bullet.Bullet1, 10)
@@ -53,9 +53,12 @@ callerComponent:assertSpawnOrder(true)
     :MoveBy(0.2, emitter, u.vector2(-150, 30), { t = 10, type = e.Easing.EASE_IN, rate = 1.5 })
     :MoveBy(0.2, c1.all, u.vector2(-150, 30), { t = 10, type = e.Easing.EASE_IN, rate = 1.5 })
 
-for i = 1, 30 do
-    sb.Radial(i, callerComponent, testRadialComp, c1, l.Bullet.Bullet1, 10)
-    sb.Radial(i + 1/2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2, 12)
+for j = 1, 30 do
+    local i = j * 1
+    sb.Arc(i, callerComponent, testRadialComp, c1, l.Bullet.Bullet1,
+        { numOfBullets = 10, spacing = 20, centerAt = i*30 })
+    -- sb.Arc(i + 1/2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2,
+    --     { numOfBullets = 12, spacing = 10, centerAt = 120 })
 end
 
 l.SaveAll()

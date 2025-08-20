@@ -41,29 +41,50 @@ populateGuiderCircle(sb.GuiderCircle.circle1)
 --- EMPTY2 must represent 'targetGroup'
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param callerComponent Component ; the component that will call the radial pattern
----@param spacing number, angle distance between bullets in degrees, must be a factor of 360
 ---@param bulletType Bullet ; the bullet type to use for spawning
-function sb.Radial(time, callerComponent, component, guiderCircle, bulletType, spacing)
-    util.validateArgs("Radial", component, guiderCircle, bulletType, spacing)
+---@param args table, requires either 'spacing' OR 'numOfBullets', optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
+function sb.Radial(time, callerComponent, component, guiderCircle, bulletType, args)
+    util.validateArgs("Radial", component, guiderCircle, bulletType, args)
     util.validateRadialComponent(component, "Radial")
 
-    --#region Spacing Validation
-    if spacing < 1 or spacing > 360 or not util.isInteger(spacing) then
-        error("Radial: spacing must be an integer between 1 and 360")
+    args.centerAt = args.centerAt or 0 -- 0 represents pointer
+
+    --#region Parameter and Argument Validation
+    if args.spacing and args.numOfBullets then
+        -- Both provided: validate they match
+        if args.numOfBullets ~= 360 / args.spacing then
+            error("Radial: spacing and numOfBullets don't match (numOfBullets should be " .. (360 / args.spacing) .. ") or just use one or the other")
+        end
+    elseif args.spacing then
+        args.numOfBullets = 360 / args.spacing
+    elseif args.numOfBullets then
+        args.spacing = 360 / args.numOfBullets
+    else
+        error("Radial: must provide either 'spacing' or 'numOfBullets'")
     end
-    if 360 % spacing ~= 0 then
+
+    if not util.isInteger(args.spacing) then
+        error("Radial: spacing is not an integer (numOfBullets " .. args.numOfBullets .. " doesn't divide 360 evenly)")
+    elseif not util.isInteger(args.numOfBullets) then
+        error("Radial: numOfBullets is not an integer (spacing " .. args.spacing .. " doesn't divide 360 evenly)")
+    elseif args.spacing < 1 or args.spacing > 360 then
+        error("Radial: spacing must be an integer between 1 and 360")
+    elseif 360 % args.spacing ~= 0 then
         error("Radial: spacing must be a factor of 360 for perfect circles")
+    elseif 360 % args.numOfBullets ~= 0 then
+        error("Radial: numOfBullets must divide 360 evenly (got " .. args.numOfBullets .. ")")
     end
     --#endregion
 
-    local numOfBullets = 360 / spacing
-    local offset = 0 -- doesnt do anything right now, but if offset param is useful later, it exists i guess
+    -- Handle centerAt (offset)
+    args.centerAt = args.centerAt % 360
+    if args.centerAt < 0 then args.centerAt = 360 + args.centerAt end
+    local bulletPosition = args.centerAt
 
     ---@type Component
-    local comps = lib.MultitargetRegistry:getBinaryComponents(numOfBullets)
+    local comps = lib.MultitargetRegistry:getBinaryComponents(args.numOfBullets)
 
     local remapStringProperty = enum.Properties.REMAP_STRING
-    local bulletPosition = offset
     for _, comp in ipairs(comps) do
         local empties = util.createNumberCycler(6001,6064)
         local remap_string = ""
@@ -83,7 +104,8 @@ function sb.Radial(time, callerComponent, component, guiderCircle, bulletType, s
 
                 remap_string = remap_string .. '.'
             end
-            bulletPosition = bulletPosition + spacing -- Move to next bullet position
+            bulletPosition = bulletPosition + args.spacing
+            if bulletPosition >= 360 then bulletPosition = bulletPosition - 360 end
         end
         -- Final mapping: EMPTY_MULTITARGET -> baseRadialComponent caller group
         remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
@@ -98,10 +120,10 @@ end
 --- 
 --- EMPTY2 must represent 'targetGroup'
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
+---@param callerComponent Component ; the component that will call the arc pattern
 ---@param bulletType Bullet ; the bullet type to use for spawning
 ---@param args table, requires 'numOfBullets', 'spacing' angle, optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
----@return SpawnSettings ; includes 'callerGroup', 'remapString', 'spawnOrdered'
-function sb.Arc(component, guiderCircle, bulletType, args)
+function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args)
     util.validateArgs("Arc", component, guiderCircle, bulletType, args.spacing, args.numOfBullets)
     util.validateRadialComponent(component, "Arc")
 
@@ -147,40 +169,49 @@ function sb.Arc(component, guiderCircle, bulletType, args)
     end
     --#endregion
 
-    local remap_string = ""
+    -- Calculate arc positioning
     local arclength = (args.numOfBullets - 1) * args.spacing
     local startpos = args.centerAt - (arclength/2)
     if not util.isInteger(startpos) then
         error("Arc: Startpos validation is faulty! review conditions.")
     end
-    local guiderCycler = util.createNumberCycler(1, 360)
+    -- Normalize startpos to 0-359 range
+    startpos = startpos % 360
     if startpos < 0 then startpos = 360 + startpos end
-    for _ = 1, startpos do guiderCycler() end -- offset num cycler
 
-    for i = 1, 360 do
-        local index = guiderCycler() -- advance even if unused
-        if (i - 1) % args.spacing == 0 and (i - 1) < args.numOfBullets * args.spacing then
-            -- Active bullet: map to real targets
-            remap_string = remap_string .. (i + 500) .. '.' .. bulletType.nextBullet() .. '.'
-                .. (i + 1000) .. '.' .. guiderCircle.groups[index] .. '.'
-        else
-            -- Inactive bullet: map to safe empty groups
-            remap_string = remap_string .. (i + 500) .. '.' .. enum.EMPTY4 .. '.'
-                .. (i + 1000) .. '.' .. enum.EMPTY4 .. '.'
+    -- Get binary components for the number of bullets we need
+    ---@type Component
+    local comps = lib.MultitargetRegistry:getBinaryComponents(args.numOfBullets)
+
+    local remapStringProperty = enum.Properties.REMAP_STRING
+    local bulletPosition = startpos
+    for _, comp in ipairs(comps) do
+        local empties = util.createNumberCycler(6001, 6064)
+        local remap_string = ""
+        for _, spawnTrigger in ipairs(comp.triggers) do
+            local remapPairs = util.translateRemapString(spawnTrigger[remapStringProperty])
+            for source, target in pairs(remapPairs) do
+                remap_string = remap_string .. target .. '.'
+
+                local sourceNum = tonumber(source) -- Convert string to number
+                if sourceNum == enum.EMPTY1 then
+                    remap_string = remap_string .. bulletType.nextBullet()
+                elseif sourceNum == enum.EMPTY2 then
+                    -- Calculate the actual position in the guider circle for this bullet
+                    remap_string = remap_string .. guiderCircle.groups[bulletPosition + 1]
+                else
+                    remap_string = remap_string .. empties()
+                end
+
+                remap_string = remap_string .. '.'
+            end
+            bulletPosition = bulletPosition + args.spacing
+            if bulletPosition >= 360 then bulletPosition = bulletPosition - 360 end
         end
+        -- Final mapping: EMPTY_MULTITARGET -> component caller group
+        remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
+        callerComponent:Spawn(time, comp.callerGroup, false, remap_string)
     end
-
-    -- Final mapping: EMPTY5 -> baseRadialComponent caller group
-    remap_string = remap_string .. enum.EMPTY5 .. '.' .. component.callerGroup
-
-    local spawnSettings = {}
-    if util.isInteger(args.centerAt) then
-        spawnSettings.centeredAt = guiderCircle.pointer + startpos
-    end
-    spawnSettings.callerGroup = baseRadialComponent.callerGroup
-    spawnSettings.remapString = util.validateRemapString("Arc", remap_string)
-    spawnSettings.spawnOrdered = false -- bullets are all shot at once without delay or order
-    return spawnSettings
 end
 
 local radialWaveCount = 0
