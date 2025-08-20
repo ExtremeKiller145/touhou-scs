@@ -19,7 +19,7 @@ local enum = {
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
     ROTATE_INFINITE_DURATION = -1,
-    -- NORTH_GROUP = 
+    NORTH_GROUP = 26,
 
     DEFAULT_EASING = {
         t = 0,
@@ -45,11 +45,17 @@ local enum = {
         GROUPS = 57, -- Requires JS-side translation, must be wrapped in array
         EDITOR_LAYER_2 = 61,
         SPAWN_TRIGGERED = 62,
-        ACTIVATE_GROUP = 56, -- For Toggle triggers
         FOLLOW_GROUP = 71, -- For Follow triggers
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
         DYNAMIC = 397,
+
+        -- Toggle trigger properties
+        ACTIVATE_GROUP = 56,
+
+        -- Collision trigger properties
+        BLOCK_A = 80,
+        BLOCK_B = 95,
 
         -- Pulse trigger properties
         PULSE_FADE_IN = 45,

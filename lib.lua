@@ -17,7 +17,7 @@ local TriggerArea = {
     minX = 1350,
     minY = 1300,
     maxX = 20000,
-    maxY = 5000
+    maxY = 8000
 }
 
 ---@class Bullet

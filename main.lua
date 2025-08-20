@@ -5,7 +5,7 @@ local e = require("enums")
 local u = require("utils")
 local sb = require("spellbuilder")
 require("misc")
-
+l.SaveAll()
 -- Create a test component with various triggers for testing property data
 local function testTriggerProperties()
     local testComponent = l.Component.new("TriggerTests", u.group(100), 4)
@@ -53,12 +53,16 @@ callerComponent:assertSpawnOrder(true)
     :MoveBy(0.2, emitter, u.vector2(-150, 30), { t = 10, type = e.Easing.EASE_IN, rate = 1.5 })
     :MoveBy(0.2, c1.all, u.vector2(-150, 30), { t = 10, type = e.Easing.EASE_IN, rate = 1.5 })
 
-for j = 1, 30 do
-    local i = j * 1
+for i = 1, 30 do
     sb.Arc(i, callerComponent, testRadialComp, c1, l.Bullet.Bullet1,
         { numOfBullets = 10, spacing = 20, centerAt = i*30 })
-    -- sb.Arc(i + 1/2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2,
-    --     { numOfBullets = 12, spacing = 10, centerAt = 120 })
+    sb.Arc(i + 1/2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2,
+        { numOfBullets = 12, spacing = 10, centerAt = 120 })
+
+    -- sb.Radial(i, callerComponent, testRadialComp, c1, l.Bullet.Bullet1,
+    --     { numOfBullets = 10, centerAt = i*30 })
+    -- sb.Radial(i + 1/2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2,
+    --     { numOfBullets = 12, centerAt = 120 })
 end
 
-l.SaveAll()
+-- l.SaveAll()
