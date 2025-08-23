@@ -36,9 +36,9 @@ populateGuiderCircle(sb.GuiderCircle.circle1)
 
 --- Creates a radial pattern spawn setting, to shoot all at once in a circular pattern
 ---@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
---- EMPTY1 must represent 'bullet'
+--- EMPTY_BULLET must represent 'bullet'
 --- 
---- EMPTY2 must represent 'targetGroup'
+--- EMPTY_TARGET_GROUP must represent 'targetGroup'
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param callerComponent Component ; the component that will call the radial pattern
 ---@param bulletType Bullet ; the bullet type to use for spawning
@@ -84,9 +84,9 @@ end
 
 --- Creates an arc pattern spawn setting, to shoot bullets in a partial circular pattern
 ---@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
---- EMPTY1 must represent 'bullet'
+--- EMPTY_BULLET must represent 'bullet'
 --- 
---- EMPTY2 must represent 'targetGroup'
+--- EMPTY_TARGET_GROUP must represent 'targetGroup'
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param callerComponent Component ; the component that will call the arc pattern
 ---@param bulletType Bullet ; the bullet type to use for spawning
@@ -172,9 +172,9 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
                 remap_string = remap_string .. target .. '.'
 
                 local sourceNum = tonumber(source) -- Convert string to number
-                if sourceNum == enum.EMPTY1 then
+                if sourceNum == enum.EMPTY_BULLET then
                     remap_string = remap_string .. bulletType.nextBullet()
-                elseif sourceNum == enum.EMPTY2 then
+                elseif sourceNum == enum.EMPTY_TARGET_GROUP then
                     remap_string = remap_string .. guiderCircle.groups[bulletPosition + 1]
                 else
                     remap_string = remap_string .. empties()
@@ -195,9 +195,9 @@ end
 local radialWaveCount = 0
 ---@param callerComponent Component ; the component that will call the wave pattern
 ---@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
---- EMPTY1 must represent 'bullet'
+--- EMPTY_BULLET must represent 'bullet'
 --- 
---- EMPTY2 must represent 'targetGroup'
+--- EMPTY_TARGET_GROUP must represent 'targetGroup'
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param bulletType Bullet ; the bullet type to use for spawning
 ---@param args table, requires either 'spacing' OR 'numOfBullets', 'waves', 'interval', optional 'centerAt'

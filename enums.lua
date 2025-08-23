@@ -7,19 +7,25 @@ local enum = {
     EDITOR_LAYER = 4,
     SCREEN_CENTER = 30, -- center group of game window
     UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
-    -- Holder object for empty groups is directly placed on the player, layer 0
-    EMPTY1 = 10, -- Empty group for targeting and remapping 10 -> whatever
-    EMPTY2 = 20, -- Empty group for targeting and remapping 20 -> whatever
-    EMPTY3 = 21, -- Empty group for targeting and remapping 21 -> whatever
-    EMPTY4 = 23, -- Empty group for targeting and remapping 23 -> whatever
-    EMPTY5 = 24, -- Empty group for targeting and remapping 24 -> whatever
-    EMPTY_BULLET = 10, -- EMPTY1
-    EMPTY_TARGET_GROUP = 20, -- EMPTY2
-    EMPTY_MULTITARGET = 25, -- exclusively for multitarget functionality
+    -- Holder object for empty groups is directly placed on the physical player, layer 0
+    EMPTY1 = 21, -- Empty group for targeting and remapping 21 -> whatever
+    EMPTY2 = 23, -- Empty group for targeting and remapping 23 -> whatever
+    EMPTY3 = 24, -- Empty group for targeting and remapping 24 -> whatever
+    EMPTY_BULLET = 10, -- EMPTY1 for multitarget functionality only
+    EMPTY_TARGET_GROUP = 20, -- EMPTY2 for multitarget functionality only
+    EMPTY_MULTITARGET = 9989, -- exclusively for multitarget functionality
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
     ROTATE_INFINITE_DURATION = -1,
     NORTH_GROUP = 26,
+
+    -- RESTRICTED GROUPS - DO NOT USE THESE GROUP IDs
+    -- These groups are known to cause conflicts/corruption
+    RESTRICTED_GROUPS = {
+        1, 2, 3, 4, 5, 6, 7, 8, 9,
+        11, 12, 13, 14, 15, 16, 17, 18, 19,
+        22, 25, 26, 9989
+    },
 
     DEFAULT_EASING = {
         t = 0,

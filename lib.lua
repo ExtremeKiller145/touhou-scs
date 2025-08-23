@@ -16,8 +16,8 @@ local ppt = enum.Properties
 local TriggerArea = {
     minX = 1350,
     minY = 1300,
-    maxX = 10000,
-    maxY = 2000
+    maxX = 30000,
+    maxY = 10000
 }
 
 ---@class Bullet
@@ -449,10 +449,10 @@ local function initializeBinaryComponents()
 
         -- To add support for more parameters, add a new empty group and follow the pattern
         for i = 1, power*4, 4 do
-            local remap_string = enum.EMPTY1 .. '.' .. (i + 6000) .. '.'
-                              .. enum.EMPTY2 .. '.' .. (i + 6001) .. '.'
-                              .. enum.EMPTY3 .. '.' .. (i + 6002) .. '.'
-                              .. enum.EMPTY4 .. '.' .. (i + 6003)
+            local remap_string = enum.EMPTY_BULLET .. '.' .. (i + 6000) .. '.'
+                              .. enum.EMPTY_TARGET_GROUP .. '.' .. (i + 6001) .. '.'
+                              .. enum.EMPTY_BULLET .. '.' .. (i + 6002) .. '.'
+                              .. enum.EMPTY2 .. '.' .. (i + 6003)
             component:Spawn(0, enum.EMPTY_MULTITARGET, true, remap_string)
         end
         MultitargetRegistry._binaryBases[power] = component

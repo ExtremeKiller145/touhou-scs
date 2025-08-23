@@ -89,15 +89,25 @@ function util.unknown_g()
 end
 
 function util.validateGroups(methodName, ...)
+    local enum = require("enums")
     local args = {...}
+
+    -- Lookup table for faster checking
+    local restrictedLookup = {}
+    for _, groupId in pairs(enum.RESTRICTED_GROUPS) do
+        restrictedLookup[groupId] = true
+    end
+
     for _, arg in pairs(args) do
-        if type(arg) == "number" and arg >= 0 and arg <= 9999 then goto continue
+        if type(arg) == "number" and arg >= 0 and arg <= 9999 then
+            if restrictedLookup[arg] then
+                error(methodName .. ": Group " .. arg .. " is restricted due to known conflicts. Use groups 9900+ for safety.")
+            end
         elseif type(arg) == "string" and arg:match("^unknown_g%d+$") then
             error(methodName .. ": Unknown groups are only allowed in Spawn triggers")
         else
             error(methodName .. ": Invalid group type: " .. type(arg))
         end
-        ::continue::
     end
 end
 
@@ -146,20 +156,20 @@ function util.validateRadialComponent(component, functionName)
         error(functionName .. ": component must require spawn order...")
     end
     local enum = require("enums")
-    local hasEmpty1, hasEmpty2, hasEmpty5 = false, false, false
+    local hasBullet, hasTargetGroup, hasMultiTarget = false, false, false
     for _, trigger in pairs(component.triggers) do
         for _, field in pairs(enum.Properties.TargetFields) do
-            if trigger[field] == enum.EMPTY1 then hasEmpty1 = true end
-            if trigger[field] == enum.EMPTY2 then hasEmpty2 = true end
-            if trigger[field] == enum.EMPTY5 then hasEmpty5 = true end
+            if trigger[field] == enum.EMPTY_BULLET then hasBullet = true end
+            if trigger[field] == enum.EMPTY_TARGET_GROUP then hasTargetGroup = true end
+            if trigger[field] == enum.EMPTY_MULTITARGET then hasMultiTarget = true end
         end
     end
-    
-    if not hasEmpty1 then
-        error(functionName .. ": component must target EMPTY1 (bullet visual)")
-    elseif not hasEmpty2 then
-        error(functionName .. ": component must target EMPTY2 (guidercircle target)")
-    elseif hasEmpty5 then
+
+    if not hasBullet then
+        error(functionName .. ": component must target EMPTY_BULLET (bullet visual)")
+    elseif not hasTargetGroup then
+        error(functionName .. ": component must target EMPTY_TARGET_GROUP (guidercircle target)")
+    elseif hasMultiTarget then
         error(functionName .. ": component must not have any triggers targeting EMPTY5")
     end
 end
