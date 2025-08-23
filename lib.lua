@@ -408,9 +408,10 @@ lib.MultitargetRegistry = MultitargetRegistry
 
 -- Private storage for binary base components (powers of 2)
 MultitargetRegistry._binaryBases = {}
+MultitargetRegistry._initialized = false
 
 --- Get the binary components needed to represent numBullets
---- Creates and caches power-of-2 components as needed
+--- All components are pre-created at startup for reliability
 ---@param numTargets number The number of bullets needed (1-127)
 ---@return table components; Array of Component objects that sum to numTargets
 function MultitargetRegistry:getBinaryComponents(numTargets)
@@ -427,9 +428,7 @@ function MultitargetRegistry:getBinaryComponents(numTargets)
 
     for _, power in ipairs(powers) do
         if remaining >= power then
-            -- Get or create the component for this power
-            if not self._binaryBases[power] then self:_createBinaryBase(power) end
-
+            -- All components are pre-created, so just get from cache
             table.insert(components, self._binaryBases[power])
             remaining = remaining - power
         end
@@ -438,22 +437,30 @@ function MultitargetRegistry:getBinaryComponents(numTargets)
     return components
 end
 
---- Creates a binary base component for a specific power of 2 and stores it
----@param power number Must be a power of 2 (1, 2, 4, 8, 16, 32, 64)
-function MultitargetRegistry:_createBinaryBase(power)
-    local component = Component.new("BinaryBase_" .. power, util.unknown_g(), 4)
-    component:assertSpawnOrder(false) -- All binary bases shoot simultaneously
+--- Initialize all binary base components at startup (called once globally)
+local function initializeBinaryComponents()
+    if MultitargetRegistry._initialized then return end
 
-    -- To add support for more parameters, add a new empty group and follow the pattern
-    for i = 1, power*4, 4 do
-        local remap_string = enum.EMPTY1 .. '.' .. (i + 6000) .. '.'
-                          .. enum.EMPTY2 .. '.' .. (i + 6001) .. '.'
-                          .. enum.EMPTY3 .. '.' .. (i + 6002) .. '.'
-                          .. enum.EMPTY4 .. '.' .. (i + 6003)
-        component:Spawn(0, enum.EMPTY_MULTITARGET, true, remap_string)
+    local powers = {1, 2, 4, 8, 16, 32, 64} -- All powers of 2 up to 64
+
+    for _, power in ipairs(powers) do
+        local component = Component.new("BinaryBase_" .. power, util.unknown_g(), 4)
+        component:assertSpawnOrder(false) -- All binary bases shoot simultaneously
+
+        -- To add support for more parameters, add a new empty group and follow the pattern
+        for i = 1, power*4, 4 do
+            local remap_string = enum.EMPTY1 .. '.' .. (i + 6000) .. '.'
+                              .. enum.EMPTY2 .. '.' .. (i + 6001) .. '.'
+                              .. enum.EMPTY3 .. '.' .. (i + 6002) .. '.'
+                              .. enum.EMPTY4 .. '.' .. (i + 6003)
+            component:Spawn(0, enum.EMPTY_MULTITARGET, true, remap_string)
+        end
+        MultitargetRegistry._binaryBases[power] = component
     end
-    self._binaryBases[power] = component
+    MultitargetRegistry._initialized = true
+    print("MultitargetRegistry: Initialized all binary components (1-127 bullets supported)")
 end
+initializeBinaryComponents()
 
 function lib.SaveAll()
     local filename = "triggers.json"
