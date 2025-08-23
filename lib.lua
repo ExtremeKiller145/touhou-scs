@@ -16,8 +16,8 @@ local ppt = enum.Properties
 local TriggerArea = {
     minX = 1350,
     minY = 1300,
-    maxX = 20000,
-    maxY = 8000
+    maxX = 10000,
+    maxY = 2000
 }
 
 ---@class Bullet

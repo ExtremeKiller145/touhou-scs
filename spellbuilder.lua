@@ -188,6 +188,7 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
         -- Final mapping: EMPTY_MULTITARGET -> component caller group
         remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
         callerComponent:Spawn(time, comp.callerGroup, false, remap_string)
+        print("remap string: \n" .. remap_string)
     end
 end
 
