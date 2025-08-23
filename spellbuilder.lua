@@ -76,41 +76,9 @@ function sb.Radial(time, callerComponent, component, guiderCircle, bulletType, a
     end
     --#endregion
 
-    -- Handle centerAt (offset)
-    args.centerAt = args.centerAt % 360
-    if args.centerAt < 0 then args.centerAt = 360 + args.centerAt end
-    local bulletPosition = args.centerAt
-
-    ---@type Component
-    local comps = lib.MultitargetRegistry:getBinaryComponents(args.numOfBullets)
-
-    local remapStringProperty = enum.Properties.REMAP_STRING
-    for _, comp in ipairs(comps) do
-        local empties = util.createNumberCycler(6001,6064)
-        local remap_string = ""
-        for _, spawnTrigger in ipairs(comp.triggers) do
-            local remapPairs = util.translateRemapString(spawnTrigger[remapStringProperty])
-            for source, target in pairs(remapPairs) do
-                remap_string = remap_string .. target .. '.'
-
-                local sourceNum = tonumber(source) -- Convert string to number
-                if sourceNum == enum.EMPTY1 then
-                    remap_string = remap_string .. bulletType.nextBullet()
-                elseif sourceNum == enum.EMPTY2 then
-                    remap_string = remap_string .. guiderCircle.groups[bulletPosition + 1]
-                else
-                    remap_string = remap_string .. empties()
-                end
-
-                remap_string = remap_string .. '.'
-            end
-            bulletPosition = bulletPosition + args.spacing
-            if bulletPosition >= 360 then bulletPosition = bulletPosition - 360 end
-        end
-        -- Final mapping: EMPTY_MULTITARGET -> baseRadialComponent caller group
-        remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
-        callerComponent:Spawn(time, comp.callerGroup, false, remap_string)
-    end
+    -- Use Arc implementation with radial bypass
+    args.radialBypass = true
+    return sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args)
 end
 
 
@@ -132,19 +100,20 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
     --#region Arc-specific Validation
     -- arc logic checks
     local centerAtisInt = util.isInteger(args.centerAt)
-    -- case 1: numOfBullets is odd, centerAt must be integer
-    if args.numOfBullets % 2 ~= 0 and not centerAtisInt then
-        error("Arc: odd bullets requires integer centerAt")
+    if not args.radialBypass then
+        -- case 1: numOfBullets is odd, centerAt must be integer
+        if args.numOfBullets % 2 ~= 0 and not centerAtisInt then
+            error("Arc: odd bullets requires integer centerAt")
+        end
+        -- case 2
+        if args.numOfBullets % 2 == 0 and args.spacing % 2 ~= 0 and centerAtisInt then
+            error("Arc: even bullets with odd spacing requires .5 centerAt")
+        end
+        -- case 3
+        if args.numOfBullets % 2 == 0 and args.spacing % 2 == 0 and not centerAtisInt then
+            error("Arc: even bullets with even spacing requires integer centerAt")
+        end
     end
-    -- case 2
-    if args.numOfBullets % 2 == 0 and args.spacing % 2 ~= 0 and centerAtisInt then
-        error("Arc: even bullets with odd spacing requires .5 centerAt")
-    end
-    -- case 3
-    if args.numOfBullets % 2 == 0 and args.spacing % 2 == 0 and not centerAtisInt then
-        error("Arc: even bullets with even spacing requires integer centerAt")
-    end
-
     -- Data restriction checks
     if not centerAtisInt and not util.isInteger(args.centerAt*2) then
         error("Arc: centerAt must be an integer or integer.5")
@@ -164,17 +133,26 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
     if args.numOfBullets * args.spacing > 360 then
         error("Arc: numOfBullets " .. args.numOfBullets .. " times spacing " .. args.spacing .. " exceeds 360 degrees")
     end
-    if args.numOfBullets * args.spacing == 360 then
+    if args.numOfBullets * args.spacing == 360 and not args.radialBypass then
         error("Arc: numOfBullets " .. args.numOfBullets .. " times spacing " .. args.spacing .. " is 360 degrees, making a circle.\n FIX: Use Radial instead.")
     end
     --#endregion
 
     -- Calculate arc positioning
     local arclength = (args.numOfBullets - 1) * args.spacing
-    local startpos = args.centerAt - (arclength/2)
-    if not util.isInteger(startpos) then
-        error("Arc: Startpos validation is faulty! review conditions.")
+    local startpos
+
+    if args.radialBypass then
+        -- For radials: start directly at centerAt and place bullets sequentially
+        startpos = args.centerAt
+    else
+        -- For arcs: center the arc around centerAt
+        startpos = args.centerAt - (arclength/2)
+        if not util.isInteger(startpos) then
+            error("Arc: Startpos validation is faulty! review conditions.")
+        end
     end
+
     -- Normalize startpos to 0-359 range
     startpos = startpos % 360
     if startpos < 0 then startpos = 360 + startpos end
@@ -197,7 +175,6 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
                 if sourceNum == enum.EMPTY1 then
                     remap_string = remap_string .. bulletType.nextBullet()
                 elseif sourceNum == enum.EMPTY2 then
-                    -- Calculate the actual position in the guider circle for this bullet
                     remap_string = remap_string .. guiderCircle.groups[bulletPosition + 1]
                 else
                     remap_string = remap_string .. empties()
