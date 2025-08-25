@@ -6,24 +6,16 @@ all spells are modular and should be able to run in a vacuum
 
 TODO:
 
-Luau Migration
-Multi-target system (using the baseRadialComponent)
 
 Better Trigger spread (not needed for a while)
-It will fix any possible 'missing bullet' bugs that come from systems like multitrigger (despite being non-spawn-ordered and non-ordered, if they randomly bunch up it sometimes seems to skip one)
 
-Misc.lua systems (collision triggers especially)
 
 Within lib.lua:
-Add remaining trigger like stop trigger, alpha trigger, etc.
-Add spread function to manipulate each spell's x and y positions to prevent clustering lag
 
 Auto Scale Trigger Reset Validation (optional, complicated but possible): 
 make a system that goes through all triggers, creates an execution tree (i.e tracks spawn trigger chains) and looks to see if a scale trigger's reset would ever get run AFTER the bullet is triggered again elsewhere.
 
-
-Test activation/deactivation conditions for toggle/collision triggers
-Test arc and radialwave. Radial tested
+Test RadialWave
 
 Health system
 3 Character movement profiles --> has been set, not finalized
@@ -54,7 +46,7 @@ Visual effects: 5k - 10k
 Total projected: 52.5k - 113k objects 
 Remaining budget: 137k - 197k objects 
 Analysis: 
- 
+
 Best case: Only 21% object usage - tons of headroom 
 Worst case: 45% object usage - still very comfortable 
 Background savings: Freed up 13k-20k objects for gameplay polish

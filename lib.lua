@@ -501,7 +501,7 @@ local function initializeBinaryComponents()
         for i = 1, power*4, 4 do
             local remap_string = enum.EMPTY_BULLET .. '.' .. (i + 6000) .. '.'
                               .. enum.EMPTY_TARGET_GROUP .. '.' .. (i + 6001) .. '.'
-                              .. enum.EMPTY_BULLET .. '.' .. (i + 6002) .. '.'
+                              .. enum.EMPTY1 .. '.' .. (i + 6002) .. '.'
                               .. enum.EMPTY2 .. '.' .. (i + 6003)
             component:Spawn(0, enum.EMPTY_MULTITARGET, true, remap_string)
         end

@@ -63,6 +63,6 @@ callerComponent:assertSpawnOrder(true)
     sb.Arc(2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2,
         { numOfBullets = 10, spacing = 14, centerAt = 0 })
 
-misc.addPlayerCollision()
-misc.addDisableAllBullets()
+-- misc.addPlayerCollision()
+-- misc.addDisableAllBullets()
 l.SaveAll()
