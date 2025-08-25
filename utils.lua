@@ -101,10 +101,10 @@ function util.validateGroups(methodName, ...)
     for _, arg in pairs(args) do
         if type(arg) == "number" and arg >= 0 and arg <= 9999 then
             if restrictedLookup[arg] then
-                error(methodName .. ": Group " .. arg .. " is restricted due to known conflicts. Use groups 9900+ for safety.")
+                error(methodName .. ": Group " .. arg .. " is restricted due to known conflicts.")
             end
         elseif type(arg) == "string" and arg:match("^unknown_g%d+$") then
-            error(methodName .. ": Unknown groups are only allowed in Spawn triggers")
+            -- Allow unknown groups as targets
         else
             error(methodName .. ": Invalid group type: " .. type(arg))
         end
@@ -222,8 +222,14 @@ function util.validatePulse(hsb, fading)
         error("Pulse: 'fading' must be a table")
     end
 
-    if not hsb["h"] or not hsb["s"] or not hsb["b"] or not hsb["exclusive"] then
+    if not hsb["h"] or not hsb["s"] or not hsb["b"] or hsb["exclusive"] == nil then
         error("Pulse: 'hsb' missing required field 'h', 's', 'b', or 'exclusive'")
+    end
+
+    if hsb["h"] < 0 or hsb["s"] < 0 or hsb["b"] < 0 then
+        error("Pulse: 'hsb' fields 'h', 's', and 'b' must be non-negative")
+    elseif hsb["h"] > 255 or hsb["s"] > 255 or hsb["b"] > 255 then
+        error("Pulse: 'hsb' fields 'h', 's', and 'b' must be less than or equal to 255")
     end
 
     if not fading["t"] or not fading['fadeIn'] then

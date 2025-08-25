@@ -51,10 +51,19 @@ local enum = {
         GROUPS = 57, -- Requires JS-side translation, must be wrapped in array
         EDITOR_LAYER_2 = 61,
         SPAWN_TRIGGERED = 62,
-        FOLLOW_GROUP = 71, -- For Follow triggers
         EASING_RATE = 85,
         MULTI_TRIGGERED = 87,
         DYNAMIC = 397,
+
+        -- Alpha trigger properties
+        OPACITY = 35,
+
+        -- Follow trigger properties
+        FOLLOW_GROUP = 71,
+
+        -- Stop trigger properties
+        STOP_OPTION = 580, -- 0,1,2 => stop, pause, resume
+        STOP_USE_CONTROL_ID = 535, -- boolean
 
         -- Toggle trigger properties
         ACTIVATE_GROUP = 56,
@@ -113,6 +122,13 @@ local enum = {
         Move = 901,
         Rotate = 1346,
         Collision = 1815,
+        Stop = 1616,
+        Count = 1611,
+        Follow = 1347,
+        Alpha = 1007,
+        InstantCount = 1811,
+        Random = 1912,
+        AdvancedRandom = 2068,
     },
 
     Easing = {

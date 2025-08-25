@@ -4,97 +4,120 @@ local enum = require("enums")
 
 local ppt = enum.Properties
 
+local m = {}
 --#region DisableAllBullets function
--- local disableAllBullets = lib.Component.new("DisableAllBullets", util.group(32), 4)
--- disableAllBullets:assertSpawnOrder(false)
--- for i = 501, 1000 do
---     disableAllBullets:Toggle(0, i, false)
--- end
--- for i = 1501, 2200 do
---     disableAllBullets:Toggle(0, i, false)
--- end
--- for i = 2901, 3600 do
---     disableAllBullets:Toggle(0, i, false)
--- end
--- for i = 4301, 4700 do
---     disableAllBullets:Toggle(0, i, false)
--- end
+local addedDisableAllBullets = false
+function m.addDisableAllBullets()
+    if addedDisableAllBullets then 
+        warn('WARNING! Misc: addDisableAllBullets called twice!')
+        return
+    end
+
+    local disableAllBullets = lib.Component.new("DisableAllBullets", util.group(32), 4)
+    disableAllBullets:assertSpawnOrder(false)
+    for i = 501, 1000 do
+        disableAllBullets:Toggle(0, i, false)
+    end
+    for i = 1501, 2200 do
+        disableAllBullets:Toggle(0, i, false)
+    end
+    for i = 2901, 3600 do
+        disableAllBullets:Toggle(0, i, false)
+    end
+    for i = 4301, 4700 do
+        disableAllBullets:Toggle(0, i, false)
+    end
+    addedDisableAllBullets = true
+end
 --#endregion
 
 -- --#region Player Collision triggers
-local mainDespawn = lib.Component.new("DespawnFunction", util.unknown_g(), 4)
-mainDespawn:assertSpawnOrder(true)
+local addedPlayerCollision = false
 
-local collisionFunction = lib.Component.new("PlayerCollisionFunction", util.group(37),4)
-collisionFunction:assertSpawnOrder(false)
-local function addCollisionTriggers(min, max)
-    for i = min, max do
-        -- activate despawn function
-        table.insert(collisionFunction.triggers, {
-            [ppt.OBJ_ID] = enum.ObjectID.Spawn,
-            [ppt.TARGET] = mainDespawn.callerGroup,
-            [ppt.REMAP_STRING] = enum.EMPTY1 .. '.' .. i,
-            [ppt.SPAWN_ORDERED] = true,
-            [ppt.GROUPS] = i + max - min + 1,
-
-            [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
-            [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-        })
-        -- despawn for boundary collision
-        table.insert(collisionFunction.triggers, {
-            [ppt.OBJ_ID] = enum.ObjectID.Collision,
-            [ppt.TARGET] = i + max - min + 1,
-            [ppt.BLOCK_A] = i,
-            [ppt.BLOCK_B] = 1, -- boundary hitbox
-            [ppt.ACTIVATE_GROUP] = true,
-            [ppt.GROUPS] = 19,
-
-            [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
-            [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-        })
-        -- despawn for playerhit
-        table.insert(collisionFunction.triggers, {
-            [ppt.OBJ_ID] = enum.ObjectID.Collision,
-            [ppt.TARGET] = i + max - min + 1,
-            [ppt.BLOCK_A] = i,
-            [ppt.BLOCK_B] = enum.PLR,
-            [ppt.ACTIVATE_GROUP] = true,
-            [ppt.GROUPS] = 18,
-
-            [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
-            [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-        })
-        -- player hit register, no despawn
-        table.insert(collisionFunction.triggers, {
-            [ppt.OBJ_ID] = enum.ObjectID.Collision,
-            [ppt.TARGET] = 35, -- player hit function
-            [ppt.BLOCK_A] = i,
-            [ppt.BLOCK_B] = enum.PLR,
-            [ppt.ACTIVATE_GROUP] = true,
-            [ppt.GROUPS] = 18,
-            [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
-            [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-        })
-        -- no despawn, simple graze func activation
-        table.insert(collisionFunction.triggers, {
-            [ppt.OBJ_ID] = enum.ObjectID.Collision,
-            [ppt.TARGET] = 34, -- targets graze function
-            [ppt.BLOCK_A] = i,
-            [ppt.BLOCK_B] = 3, -- graze hitbox
-            [ppt.ACTIVATE_GROUP] = true,
-            [ppt.GROUPS] = 17,
-            [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
-            [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-        })
+function m.addPlayerCollision()
+    if addedPlayerCollision then
+        warn('WARNING! Misc: addPlayerCollision called twice!')
+        return
     end
-end
-addCollisionTriggers(501, 1000)
-addCollisionTriggers(1501, 2200)
-addCollisionTriggers(2901, 3600)
-addCollisionTriggers(4701, 5100)
 
-mainDespawn:Scale(0, enum.EMPTY1, 0.5, { t = 0.3 })
-    :Toggle(0.3, enum.EMPTY1, false)
-    :Scale(0.3, enum.EMPTY1, 2, { t = 0 })
+    local mainDespawn = lib.Component.new("DespawnFunction", util.unknown_g(), 4)
+    mainDespawn:assertSpawnOrder(true)
+
+    local collisionFunction = lib.Component.new("PlayerCollisionFunction", util.group(37),4)
+    collisionFunction:assertSpawnOrder(false)
+    local function addCollisionTriggers(min, max)
+        for i = min, max do
+            -- activate despawn function
+            table.insert(collisionFunction.triggers, {
+                [ppt.OBJ_ID] = enum.ObjectID.Spawn,
+                [ppt.TARGET] = mainDespawn.callerGroup,
+                [ppt.REMAP_STRING] = enum.EMPTY1 .. '.' .. i,
+                [ppt.SPAWN_ORDERED] = true,
+                [ppt.GROUPS] = i + max - min + 1,
+
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+            })
+            -- despawn for boundary collision
+            table.insert(collisionFunction.triggers, {
+                [ppt.OBJ_ID] = enum.ObjectID.Collision,
+                [ppt.TARGET] = i + max - min + 1,
+                [ppt.BLOCK_A] = i,
+                [ppt.BLOCK_B] = 1, -- boundary hitbox
+                [ppt.ACTIVATE_GROUP] = true,
+                [ppt.GROUPS] = 19,
+
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+            })
+            -- despawn for playerhit
+            table.insert(collisionFunction.triggers, {
+                [ppt.OBJ_ID] = enum.ObjectID.Collision,
+                [ppt.TARGET] = i + max - min + 1,
+                [ppt.BLOCK_A] = i,
+                [ppt.BLOCK_B] = enum.PLR,
+                [ppt.ACTIVATE_GROUP] = true,
+                [ppt.GROUPS] = 18,
+
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+            })
+            -- player hit register, no despawn
+            table.insert(collisionFunction.triggers, {
+                [ppt.OBJ_ID] = enum.ObjectID.Collision,
+                [ppt.TARGET] = 35, -- player hit function
+                [ppt.BLOCK_A] = i,
+                [ppt.BLOCK_B] = enum.PLR,
+                [ppt.ACTIVATE_GROUP] = true,
+                [ppt.GROUPS] = 18,
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+            })
+            -- no despawn, simple graze func activation
+            table.insert(collisionFunction.triggers, {
+                [ppt.OBJ_ID] = enum.ObjectID.Collision,
+                [ppt.TARGET] = 34, -- targets graze function
+                [ppt.BLOCK_A] = i,
+                [ppt.BLOCK_B] = 3, -- graze hitbox
+                [ppt.ACTIVATE_GROUP] = true,
+                [ppt.GROUPS] = 17,
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+            })
+        end
+    end
+    addCollisionTriggers(501, 1000)
+    addCollisionTriggers(1501, 2200)
+    addCollisionTriggers(2901, 3600)
+    addCollisionTriggers(4701, 5100)
+
+    mainDespawn:Scale(0, enum.EMPTY1, 0.5, { t = 0.3 })
+        :Toggle(0.3, enum.EMPTY1, false)
+        :Scale(0.3, enum.EMPTY1, 2, { t = 0 })
+        :Alpha(0, enum.EMPTY1, { t = 0.3, opacity = 0})
+
+    addedPlayerCollision = true
+end
 
 --#endregion
+return m

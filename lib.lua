@@ -152,6 +152,7 @@ end
 ---@param activateGroup boolean Activate or deactivate group
 function Component:Toggle(time, target, activateGroup)
     util.validateArgs("Toggle", time, target, activateGroup)
+    util.validateGroups("Toggle", target)
     table.insert(self.triggers, {
         [ppt.OBJ_ID] = enum.ObjectID.Toggle,
         [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
@@ -323,6 +324,7 @@ end
 ---@param fading table requires 't', 'fadeIn', 'fadeOut' fields
 function Component:Pulse(time, target, hsb, fading)
     util.validateArgs("Pulse", time, target, hsb, fading)
+    hsb.exclusive = hsb.exclusive or false
     util.validatePulse(hsb, fading)
     util.validateGroups("Pulse", target)
     table.insert(self.triggers, {
@@ -343,60 +345,108 @@ function Component:Pulse(time, target, hsb, fading)
     return self
 end
 
-local function spreadTriggers(triggers, component)
-    if #triggers < 1 then error("spreadTriggers: No triggers in component " .. component.componentName) end
-    local area = TriggerArea
 
-    if #triggers == 1 then
-        triggers[1][ppt.X] = math.random(area.minX, area.maxX)
-        triggers[1][ppt.Y] = math.random(area.minY, area.maxY)
-        return
-    end
+---Follow a target group's movement for a duration
+---@param targetDir number Group to follow
+function Component:Follow(time, target, targetDir, duration)
+    util.validateArgs("Follow", time, target, targetDir, duration)
+    util.validateGroups("Follow", target, targetDir)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Follow,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-    -- Detect pattern type
-    local sameX = true
-    local firstX = triggers[1][ppt.X]
-    for i = 2, #triggers do
-        if triggers[i][ppt.X] ~= firstX then sameX = false; break end
-    end
+        [ppt.TARGET] = target,
+        [ppt.FOLLOW_GROUP] = targetDir,
+        [ppt.DURATION] = duration,
 
-    if sameX and component.requireSpawnOrder == false then
-        -- Loose squares - random positions
-        for _, trigger in ipairs(triggers) do
-            trigger[ppt.X] = math.random(area.minX, area.maxX/2)*2
-        end
-    elseif component.requireSpawnOrder == true then
-        -- Rigid chain - shift whole group (only case that can fail)
-        local minX, maxX = triggers[1][ppt.X], triggers[1][ppt.X]
-        for _, trigger in ipairs(triggers) do
-            minX = math.min(minX, trigger[ppt.X])
-            maxX = math.max(maxX, trigger[ppt.X])
-        end
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
 
-        local chainWidth = maxX - minX
-        -- Check if rigid chain fits
-        if chainWidth > (area.maxX - area.minX) then
-            error("spreadTriggers: Rigid chain too wide (" .. chainWidth .. ") to fit in trigger area for " .. component.componentName)
-        end
+--- Change the opacity of a target group
+---@param args table requires 'opacity' field, optional 't' field
+function Component:Alpha(time, target, args)
+    util.validateArgs("Alpha", time, target, args.opacity)
+    util.validateGroups("Alpha", target)
+    if args.opacity < 0 or args.opacity > 1 then error("Alpha: 'opacity' must be between 0 and 1") end
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Alpha,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        local shift = math.random(area.minX, math.floor(area.maxX - chainWidth)) - minX
+        [ppt.TARGET] = target,
+        [ppt.OPACITY] = args.opacity,
+        [ppt.DURATION] = args.t or 0,
 
-        for _, trigger in ipairs(triggers) do trigger[ppt.X] = trigger[ppt.X] + shift end
-    else
-        -- Elastic chain - stretch as needed (no bounds checking)
-        local startX = area.minX
-        for i, trigger in ipairs(triggers) do
-            if i == 1 then trigger[ppt.X] = startX goto continue end
-            -- Just add random spacing, can extend beyond area.maxX
-            local spacing = math.random(1, 10)
-            trigger[ppt.X] = triggers[i-1][ppt.X] + spacing
-            ::continue::
-        end
-    end
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
 
-    for _, trigger in ipairs(triggers) do
-        trigger[ppt.Y] = math.random(area.minY, area.maxY)
-    end
+
+--- Stop a target group.
+---
+--- Only stops: Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn
+---@param useControlID boolean Control ID checkbox option
+function Component:Stop(time, target, useControlID)
+    util.validateArgs("Stop", time, target)
+    util.validateGroups("Stop", target)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Stop,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
+
+        [ppt.TARGET] = target,
+        [ppt.STOP_OPTION] = 0,
+        [ppt.STOP_USE_CONTROL_ID] = useControlID or false,
+
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
+
+--- Pause a target group.
+---
+--- Only pauses: Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn
+---@param useControlID boolean Control ID checkbox option
+function Component:Pause(time, target, useControlID)
+    util.validateArgs("Pause", time, target)
+    util.validateGroups("Pause", target)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Stop,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
+
+        [ppt.TARGET] = target,
+        [ppt.STOP_OPTION] = 1,
+        [ppt.STOP_USE_CONTROL_ID] = useControlID or false,
+
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
+end
+
+--- Resumes a target group that is paused.
+---
+--- Only resumes: Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn
+---@param useControlID boolean Control ID checkbox option
+function Component:Resume(time, target, useControlID)
+    util.validateArgs("Resume", time, target)
+    util.validateGroups("Resume", target)
+    table.insert(self.triggers, {
+        [ppt.OBJ_ID] = enum.ObjectID.Stop,
+        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
+
+        [ppt.TARGET] = target,
+        [ppt.STOP_OPTION] = 2, -- Resume option
+        [ppt.STOP_USE_CONTROL_ID] = useControlID or false,
+
+        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
+    })
+    return self
 end
 
 
@@ -461,6 +511,62 @@ local function initializeBinaryComponents()
     print("MultitargetRegistry: Initialized all binary components (1-127 bullets supported)")
 end
 initializeBinaryComponents()
+
+local function spreadTriggers(triggers, component)
+    if #triggers < 1 then error("spreadTriggers: No triggers in component " .. component.componentName) end
+    local area = TriggerArea
+
+    if #triggers == 1 then
+        triggers[1][ppt.X] = math.random(area.minX, area.maxX)
+        triggers[1][ppt.Y] = math.random(area.minY, area.maxY)
+        return
+    end
+
+    -- Detect pattern type
+    local sameX = true
+    local firstX = triggers[1][ppt.X]
+    for i = 2, #triggers do
+        if triggers[i][ppt.X] ~= firstX then sameX = false; break end
+    end
+
+    if sameX and component.requireSpawnOrder == false then
+        -- Loose squares - random positions
+        for _, trigger in ipairs(triggers) do
+            trigger[ppt.X] = math.random(area.minX/2, area.maxX/2)*2
+        end
+    elseif component.requireSpawnOrder == true then
+        -- Rigid chain - shift whole group (only case that can fail)
+        local minX, maxX = triggers[1][ppt.X], triggers[1][ppt.X]
+        for _, trigger in ipairs(triggers) do
+            minX = math.min(minX, trigger[ppt.X])
+            maxX = math.max(maxX, trigger[ppt.X])
+        end
+
+        local chainWidth = maxX - minX
+        -- Check if rigid chain fits
+        if chainWidth > (area.maxX - area.minX) then
+            error("spreadTriggers: Rigid chain too wide (" .. chainWidth .. ") to fit in trigger area for " .. component.componentName)
+        end
+
+        local shift = math.random(area.minX, math.floor(area.maxX - chainWidth)) - minX
+
+        for _, trigger in ipairs(triggers) do trigger[ppt.X] = trigger[ppt.X] + shift end
+    else
+        -- Elastic chain - stretch as needed (no bounds checking)
+        local startX = area.minX
+        for i, trigger in ipairs(triggers) do
+            if i == 1 then trigger[ppt.X] = startX goto continue end
+            -- Just add random spacing, can extend beyond area.maxX
+            local spacing = math.random(1, 10)
+            trigger[ppt.X] = triggers[i-1][ppt.X] + spacing
+            ::continue::
+        end
+    end
+
+    for _, trigger in ipairs(triggers) do
+        trigger[ppt.Y] = math.random(area.minY, area.maxY)
+    end
+end
 
 function lib.SaveAll()
     local filename = "triggers.json"
