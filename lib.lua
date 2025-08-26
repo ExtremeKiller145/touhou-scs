@@ -46,9 +46,9 @@ lib.Bullet = {
     },
     ---@type Bullet
     Bullet4 = {
-        minGroup = 4101,
-        maxGroup = 4500,
-        nextBullet = util.createBulletCycler(4101, 4500)
+        minGroup = 4301,
+        maxGroup = 4700,
+        nextBullet = util.createBulletCycler(4301, 4700)
     }
 }
 
@@ -499,11 +499,12 @@ local function initializeBinaryComponents()
 
         -- To add support for more parameters, add a new empty group and follow the pattern
         for i = 1, power*4, 4 do
-            local remap_string = enum.EMPTY_BULLET .. '.' .. (i + 6000) .. '.'
-                              .. enum.EMPTY_TARGET_GROUP .. '.' .. (i + 6001) .. '.'
-                              .. enum.EMPTY1 .. '.' .. (i + 6002) .. '.'
-                              .. enum.EMPTY2 .. '.' .. (i + 6003)
-            component:Spawn(0, enum.EMPTY_MULTITARGET, true, remap_string)
+            local rb = util.remap()
+            rb:pair(enum.EMPTY_BULLET, i + 6000)
+                :pair(enum.EMPTY_TARGET_GROUP, i + 6001)
+                :pair(enum.EMPTY1, i + 6002)
+                :pair(enum.EMPTY2, i + 6003)
+            component:Spawn(0, enum.EMPTY_MULTITARGET, true, rb:toString())
         end
         MultitargetRegistry._binaryBases[power] = component
     end

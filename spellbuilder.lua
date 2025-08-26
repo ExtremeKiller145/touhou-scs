@@ -35,7 +35,7 @@ end
 populateGuiderCircle(sb.GuiderCircle.circle1)
 
 --- Creates a radial pattern spawn setting, to shoot all at once in a circular pattern
----@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
+---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
 --- EMPTY_BULLET must represent 'bullet'
 --- 
 --- EMPTY_TARGET_GROUP must represent 'targetGroup'
@@ -83,7 +83,7 @@ end
 
 
 --- Creates an arc pattern spawn setting, to shoot bullets in a partial circular pattern
----@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
+---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
 --- EMPTY_BULLET must represent 'bullet'
 --- 
 --- EMPTY_TARGET_GROUP must represent 'targetGroup'
@@ -193,7 +193,7 @@ end
 
 local radialWaveCount = 0
 ---@param callerComponent Component ; the component that will call the wave pattern
----@param component Component ; requires assertSpawnOrder(false), represents cycle of a single bullet
+---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
 --- EMPTY_BULLET must represent 'bullet'
 --- 
 --- EMPTY_TARGET_GROUP must represent 'targetGroup'
