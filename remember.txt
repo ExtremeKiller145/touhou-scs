@@ -4,6 +4,28 @@
 Keep stage practice in mind: 
 all spells are modular and should be able to run in a vacuum
 
+# STAGES #
+Premise: Comet shatters as it crashes into gensokyo, some spot a strange structure/shapes on the biggest broken piece as it crashed. 
+(show this on title screen and allude during dialogue)
+Stage 1: Outskirts of human village and shrine
+Midboss: Daiyousei
+Endboss: Cirno
+Stage 2: Forest of Magic entrance -> leading deeper as stage progresses
+Midboss: Mystia
+Endboss: Mystia
+Stage 3: Deep in Forest of Magic near Alice's house
+Midboss: Alice
+Endboss: Alice
+Stage 4: Youkai Trail (trees & foliage, increasing bamboo throughout stage progress)
+Midboss: Kogasa
+Endboss: Aya Shameimaru (reporter who gives the spill to where meteor landed, she was heading there herself)
+Stage 5: Bamboo forest near Eientei
+Midboss: Reisen or tewi
+Endboss: Reisen
+Stage 6: crash site (a bit of fire near the end, approaches alien structure )
+Midboss: none
+Endboss: ??? (formerly called Nameless Entity)
+
 TODO:
 
 
@@ -15,15 +37,21 @@ Within lib.lua:
 Auto Scale Trigger Reset Validation (optional, complicated but possible): 
 make a system that goes through all triggers, creates an execution tree (i.e tracks spawn trigger chains) and looks to see if a scale trigger's reset would ever get run AFTER the bullet is triggered again elsewhere.
 
-Test RadialWave
-
-Health system
+TODO SYSTEMS:
+Health system (enemy & player)
+Enemies
+All UI (health, bombs, score)
+Title screen
+Backgrounds
 3 Character movement profiles --> has been set, not finalized
 Keybind editor
-Bullet types
+Bullet types (only 4 out of 8)
 Lazers
 Main Bullet SFX
 Player Shot types
+Item Pickups
+
+
 
 GROUP/OBJ BUDGET:
 Groups (9999 limit): 
@@ -45,8 +73,3 @@ UI: 3k - 8k
 Visual effects: 5k - 10k 
 Total projected: 52.5k - 113k objects 
 Remaining budget: 137k - 197k objects 
-Analysis: 
-
-Best case: Only 21% object usage - tons of headroom 
-Worst case: 45% object usage - still very comfortable 
-Background savings: Freed up 13k-20k objects for gameplay polish

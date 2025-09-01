@@ -3,6 +3,9 @@ console.log("\nRUNNING main.js:\n");
 
 require('@g-js-api/g.js');
 
+// Record script start time to measure total runtime
+const __startTime = Date.now();
+
 const PROPERTY_REMAP_STRING = '442';
 const PROPERTY_GROUPS = '57';
 const groupPropertyField = (key) => {
@@ -103,3 +106,7 @@ $.exportConfig({
 		$.add(object(trigger));
 	});
 });
+
+const __elapsedMs = Date.now() - __startTime;
+console.log(`main.js completed in ${( __elapsedMs / 1000 ).toFixed(3)}s (${__elapsedMs} ms)`);
+console.log(`Processed ${triggers.length} triggers`);

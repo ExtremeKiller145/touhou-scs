@@ -11,6 +11,7 @@ local enum = require("enums")
 local util = require("utils")
 local ppt = enum.Properties
 
+local startTime = os.clock()
 
 -- Area for spreading triggers out
 local TriggerArea = {
@@ -611,6 +612,7 @@ function lib.SaveAll()
     file:write(json.encode(allTriggers))
     file:close()
     print("\nSaved to " .. filename .. " successfully!")
+    print("Total execution time: " .. (os.clock() - startTime) .. " seconds")
 end
 
 return lib

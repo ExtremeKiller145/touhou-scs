@@ -164,7 +164,7 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
     local remapStringProperty = enum.Properties.REMAP_STRING
     local bulletPosition = startpos
     for _, comp in ipairs(comps) do
-        local empties = util.createNumberCycler(6001, 6064)
+        local empties = util.createNumberCycler(6001, 6128)
         local remap_string = ""
         for _, spawnTrigger in ipairs(comp.triggers) do
             local remapPairs = util.translateRemapString(spawnTrigger[remapStringProperty])
