@@ -46,9 +46,9 @@ lib.Bullet = {
     },
     ---@type Bullet
     Bullet4 = {
-        minGroup = 4101,
-        maxGroup = 4500,
-        nextBullet = util.createBulletCycler(4101, 4500)
+        minGroup = 4301,
+        maxGroup = 4700,
+        nextBullet = util.createBulletCycler(4301, 4700)
     }
 }
 

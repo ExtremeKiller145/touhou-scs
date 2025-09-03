@@ -5,29 +5,7 @@ local e = require("enums")
 local u = require("utils")
 local sb = require("spellbuilder")
 local misc = require("misc")
--- Create a test component with various triggers for testing property data
-local function testTriggerProperties()
-    local testComponent = l.Component.new("TriggerTests", u.group(100), 4)
 
-    :Toggle(165, 1008, true)
-    :Scale(195, 1010, 0.51, { t = 0 }, true)
-    :Spawn(225, 1011, true, "1001.2001.1002.2002", 0.11)
-    :Pulse(255, 1012, { h = 54, s = 124, b = 156, exclusive = true }, { t = 1.2, fadeIn = 0.51, fadeOut = 0.53 })
-
-
-    :MoveTowards(15, 1001, e.PLR, { t = 3.01, type = e.Easing.EASE_IN, rate = 2.01, dist = 500, dynamic = true })
-    :MoveBy(45, 1002, u.vector2(200, -150), { t = 2.51, type = e.Easing.EASE_OUT, rate = 1.81 })
-    :GotoGroup(75, 1003, 1004, { t = 4.05, type = e.Easing.EASE_IN_OUT, rate = 2.54, dist = 999, dynamic = true })
-    :Rotate(105, { target = 1005, center = 1006 }, { angle = 90, t = 1.51, type = e.Easing.ELASTIC_IN, rate = 1.23 })
-    :PointToGroup(135, 1006, 1007, { t = 2.03, type = e.Easing.ELASTIC_OUT, rate = 1.51, dynamic = true })
-
-    local testSpell = l.Spell.new("TestSpell", 400)
-    testSpell:AddComponent(testComponent)
-    local testSpell2 = l.Spell.new("TestSpell2", 401)
-    testSpell2:AddComponent(testComponent)
-end
-
--- testTriggerProperties()
 local c1 = sb.GuiderCircle.circle1
 local testRadialComp = l.Component.new("TestRadial", u.unknown_g(), 4)
 local emitter = 30
@@ -43,14 +21,32 @@ testRadialComp
     :PointToGroup(0.3, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP)
     :MoveTowards(0.3, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP,
         { t = 1.8, type = e.Easing.EASE_IN_OUT, rate = 2.01, dist = 70 })
-    -- :PointToGroup(2.1, e.EMPTY_BULLET, e.PLR, { t = 0.2 })
     :Pulse(2.1, e.EMPTY_BULLET, 
         {h = 54, s = 124, b = 156}, { fadeIn = 0.1, t = 0.1, fadeOut = 0.3 })
     :MoveTowards(2.1, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP,
         { t = 5, type = e.Easing.EASE_IN, rate = 2.01, dist = 500 })
-    -- :MoveTowards(2.1, e.EMPTY_BULLET, e.PLR, { t = 500/100, type = e.Easing.EASE_IN, rate = 2.01, dist = 500 })
 
--- local radial = sb.Radial(testRadialComp, sb.GuiderCircle.circle1, l.Bullet.Bullet1, 10)
+local emitter2 = 110
+local test2 = l.Component.new("TestRadial2", u.unknown_g(), 4)
+test2
+    :assertSpawnOrder(true)
+    :GotoGroup(0, e.EMPTY_BULLET, emitter2, { t = 0 })
+    :Scale(0, e.EMPTY_BULLET, 4, { t = 0 })
+    :Scale(e.TICK*2, e.EMPTY_BULLET, 4, { t = 0.3 }, true)
+    :Toggle(e.TICK, e.EMPTY_BULLET, true)
+    :Alpha(0, e.EMPTY_BULLET, { t = 0, opacity = 0})
+    :Alpha(e.TICK, e.EMPTY_BULLET, { t = 1, opacity = 1.00})
+    :PointToGroup(e.TICK, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP)
+    :PointToGroup(0.3, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP)
+    :MoveTowards(0.3, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP,
+        { t = 1.8, type = e.Easing.EASE_IN_OUT, rate = 2.01, dist = 70 })
+    :Pulse(0, e.EMPTY_BULLET,
+        {h = -64, s = 124, b = 255}, { fadeIn = 0, t = 10, fadeOut = 0 })
+    :Pulse(2.1, e.EMPTY_BULLET,
+        {h = 64, s = 24, b = 156}, { fadeIn = 0.1, t = 0.1, fadeOut = 0.4 })
+    :MoveTowards(2.5, e.EMPTY_BULLET, e.PLR,
+        { t = 6, type = e.Easing.EASE_IN, rate = 2.01, dist = 400 })
+    :PointToGroup(2.4, e.EMPTY_BULLET, e.PLR, { t = 0.3 })
 
 local callerComponent = l.Component.new("CallerComponent", u.group(36), 4)
 callerComponent:assertSpawnOrder(true)
@@ -62,6 +58,16 @@ callerComponent:assertSpawnOrder(true)
         { numOfBullets = 16, spacing = 20, centerAt = 0 })
     sb.Arc(2, callerComponent, testRadialComp, c1, l.Bullet.Bullet2,
         { numOfBullets = 10, spacing = 14, centerAt = 0 })
+
+callerComponent
+    :GotoGroup(0.9, c1.all, emitter2, { t = 0 })
+    :MoveBy(0.8, emitter2, u.vector2(80, -20), { t = 8, type = e.Easing.BOUNCE_IN_OUT, rate = 1 })
+    sb.Radial(1, callerComponent, test2, c1, l.Bullet.Bullet4,
+        { numOfBullets = 18, centerAt = 0 })
+callerComponent
+    :GotoGroup(2.9, c1.all, emitter2, { t = 0 })
+    sb.RadialWave(3, callerComponent, test2, c1, l.Bullet.Bullet3,
+        { numOfBullets = 24, centerAt = 10, waves = 10, interval = 0.3 })
 
 misc.addPlayerCollision()
 misc.addDisableAllBullets()

@@ -22,7 +22,7 @@ local enum = {
     -- RESTRICTED GROUPS - DO NOT USE THESE GROUP IDs
     -- These groups are known to cause conflicts/corruption
     RESTRICTED_GROUPS = {
-        1, 2, 3, 4, 5, 6, 7, 8, 9,
+        1, 3, 4, 5, 6, 7, 8, 9,
         11, 12, 13, 14, 15, 16, 17, 18, 19,
         22, 25, 26, 9989
     },

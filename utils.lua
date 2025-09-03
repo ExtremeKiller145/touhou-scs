@@ -226,12 +226,6 @@ function util.validatePulse(hsb, fading)
         error("Pulse: 'hsb' missing required field 'h', 's', 'b', or 'exclusive'")
     end
 
-    if hsb["h"] < 0 or hsb["s"] < 0 or hsb["b"] < 0 then
-        error("Pulse: 'hsb' fields 'h', 's', and 'b' must be non-negative")
-    elseif hsb["h"] > 255 or hsb["s"] > 255 or hsb["b"] > 255 then
-        error("Pulse: 'hsb' fields 'h', 's', and 'b' must be less than or equal to 255")
-    end
-
     if not fading["t"] or not fading['fadeIn'] then
         error("Pulse: 'fading' missing required field 't' or 'fadeIn'")
     end
