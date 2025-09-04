@@ -1,12 +1,14 @@
 -- Utility functions for Lua scripts
 
+local enum = require("./enums")
+
 local util = {}
 
 
----@param remapString string The remap string to parse
----@return table pairs ; where  'i' is paired with pairs[i]
+---@param remapString ; string The remap string to parse
+---@return table ; where  'i' is paired with partPairs[i]
 function util.translateRemapString(remapString)
-    local pairs = {}
+    local partPairs = {}
     if type(remapString) ~= "string" then
         error("translateRemapString: remapString must be a string")
     end
@@ -17,13 +19,13 @@ function util.translateRemapString(remapString)
     if #parts == 0 then
         error("translateRemapString: remapString must contain at least one valid pair")
     elseif #parts % 2 ~= 0 then
-        error("translateRemapString: remapString must contain an even number of parts:\n" .. remapString)
+        error(`translateRemapString: remapString must contain an even number of parts:\n{remapString}`)
     end
 
     -- pairs[source] = target
-    for i = 1, #parts, 2 do pairs[parts[i]] = parts[i + 1] end
+    for i = 1, #parts, 2 do partPairs[parts[i]] = parts[i + 1] end
 
-    return pairs
+    return partPairs
 end
 
 --- To nil-check function arguments
@@ -84,12 +86,11 @@ local unknownGroupCycler = util.createNumberCycler(1, 9998) -- Max 9999 unknown 
 --- @return string Unique unknown group identifier
 function util.unknown_g()
     local id = unknownGroupCycler()
-    if id > 2000 then print("\nWARNING: High unknown group usage (" .. id .. "/9998)\n") end
-    return "unknown_g" .. id
+    if id > 2000 then print(`\nWARNING: High unknown group usage ({id}/9998)\n`) end
+    return `unknown_g{id}`
 end
 
 function util.validateGroups(methodName, ...)
-    local enum = require("enums")
     local args = {...}
 
     -- Lookup table for faster checking
@@ -101,12 +102,12 @@ function util.validateGroups(methodName, ...)
     for _, arg in pairs(args) do
         if type(arg) == "number" and arg >= 0 and arg <= 9999 then
             if restrictedLookup[arg] then
-                error(methodName .. ": Group " .. arg .. " is restricted due to known conflicts.")
+                error(`{methodName}: Group {arg} is restricted due to known conflicts.`)
             end
         elseif type(arg) == "string" and arg:match("^unknown_g%d+$") then
             -- Allow unknown groups as targets
         else
-            error(methodName .. ": Invalid group type: " .. type(arg))
+            error(`{methodName}: Invalid group type: {type(arg)}`)
         end
     end
 end
@@ -140,11 +141,11 @@ end
 ---@param methodName string Function name for error messages
 function util.validateVector2(methodName, vector2)
     if type(vector2) ~= "table" then
-        error(methodName .. ": vector2 must be a table")
+        error(`{methodName}: vector2 must be a table`)
     end
 
     if vector2["X"] == nil or vector2["Y"] == nil then
-        error(methodName .. ": vector2 missing required field 'X' or 'Y'")
+        error(`{methodName}: vector2 missing required field 'X' or 'Y'`)
     end
 end
 
@@ -153,9 +154,9 @@ end
 ---@param functionName string
 function util.validateRadialComponent(component, functionName)
     if component.requireSpawnOrder ~= true then
-        error(functionName .. ": component must require spawn order...")
+        error(`{functionName}: component must require spawn order...`)
     end
-    local enum = require("enums")
+
     local hasBullet, hasTargetGroup, hasMultiTarget = false, false, false
     for _, trigger in pairs(component.triggers) do
         for _, field in pairs(enum.Properties.TargetFields) do
@@ -166,11 +167,11 @@ function util.validateRadialComponent(component, functionName)
     end
 
     if not hasBullet then
-        error(functionName .. ": component must target EMPTY_BULLET (bullet visual)")
+        error(`{functionName}: component must target EMPTY_BULLET (bullet visual)`)
     elseif not hasTargetGroup then
-        error(functionName .. ": component must target EMPTY_TARGET_GROUP (guidercircle target)")
+        error(`{functionName}: component must target EMPTY_TARGET_GROUP (guidercircle target)`)
     elseif hasMultiTarget then
-        error(functionName .. ": component must not have any triggers targeting EMPTY5")
+        error(`{functionName}: component must not have any triggers targeting EMPTY5`)
     end
 end
 
@@ -179,7 +180,7 @@ end
 ---@param methodName string Function name for error messages
 function util.validateEasing(methodName, easing)
     if type(easing) ~= "table" then
-        error(methodName .. ": easing must be a table")
+        error(`{methodName}: easing must be a table`)
     end
 
     -- Required fields
@@ -189,15 +190,15 @@ function util.validateEasing(methodName, easing)
     local required = {"t", "type", "rate"}
     for _, field in pairs(required) do
         if easing[field] == nil then
-            error(methodName .. ": easing missing required field '" .. field .. "'")
+            error(`{methodName}: easing missing required field '{field}'`)
         end
     end
 
     if not util.isInteger(easing.type) then
-        error(methodName .. ": easing 'type' must be an integer")
+        error(`{methodName}: easing 'type' must be an integer`)
     end
     if easing.type < 0 or easing.type > 18 then
-        error(methodName .. ": easing 'type' must be between 0 and 18")
+        error(`{methodName}: easing 'type' must be between 0 and 18`)
     end
 
     -- Must have either 'dist' or 'angle' or 'MoveBy'
@@ -206,7 +207,7 @@ function util.validateEasing(methodName, easing)
     local hasMoveBy = easing.MoveBy ~= nil
 
     if not hasDist and not hasAngle and not hasMoveBy then
-        error(methodName .. ": easing must have either 'dist' or 'angle' field")
+        error(`{methodName}: easing must have either 'dist' or 'angle' field`)
     end
 end
 
@@ -250,28 +251,31 @@ function util.validateRemapString(methodName, remapString)
     for source, target in pairs(remapPairs) do
         -- Check for duplicate source
         if sourceCheck[source] then
-            error(methodName .. ": Duplicate source '" .. source .. "' in remap string - cannot remap one group to multiple targets")
+            error(`{methodName}: Duplicate source '{source}' in remap string - cannot remap one group to multiple targets`)
         end
         sourceCheck[source] = true
 
         -- Check for duplicate target  
         if targetCheck[target] then
-            error(methodName .. ": Duplicate target '" .. target .. "' in remap string - cannot remap multiple groups to same target")
+            error(`{methodName}: Duplicate target '{target}' in remap string - cannot remap multiple groups to same target`)
         end
         targetCheck[target] = true
     end
 
-    -- Rebuild clean remap string (removing redundant mappings like 10 => 10)
+    -- Count redundant mappings (where source == target)
+    local redundantCount = 0
     local cleanPairs = {}
     for source, target in pairs(remapPairs) do
-        if source ~= target then
-            table.insert(cleanPairs, source .. "." .. target)
+        if source == target then
+            redundantCount = redundantCount + 1
+        else
+            table.insert(cleanPairs, `{source}.{target}`)
         end
     end
 
     local cleanString = table.concat(cleanPairs, ".")
-    if cleanString ~= remapString then
-        warn(methodName .. ": WARNING! Remap string " .. remapString .. " had redundant mappings")
+    if redundantCount > 0 then
+        warn(`{methodName}: WARNING! Remap string {remapString} had {redundantCount} redundant mappings`)
     end
 
     return cleanString
@@ -312,10 +316,10 @@ function util.remap()
             local src = p.source
             local tgt = p.target
             if not tgt and p.targetFn then tgt = tostring(p.targetFn()) end
-            if not tgt then error("remap: unresolved target for source " .. tostring(src)) end
+            if not tgt then error(`remap: unresolved target for source {tostring(src)}`) end
 
-            if seenSources[src] then error("remap: duplicate source '" .. src .. "'") end
-            if seenTargets[tgt] then error("remap: duplicate target '" .. tgt .. "'") end
+            if seenSources[src] then error(`remap: duplicate source '{src}'`) end
+            if seenTargets[tgt] then error(`remap: duplicate target '{tgt}'`) end
 
             seenSources[src] = true
             seenTargets[tgt] = true
@@ -413,7 +417,7 @@ function util.printBudgetAnalysis(stats)
         print(string.format("   %s: %d triggers", componentName, count))
     end
 
-    print(' Triggers in shared components: ' .. stats.sharedTriggerCount)
+    print(` Triggers in shared components: {stats.sharedTriggerCount}`)
 end
 
 return util

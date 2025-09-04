@@ -3,12 +3,11 @@
     I did document it somewhat but I am kinda a trash programmer, gl on modifying it
     rewriting ts cuz the first js version was ass 
 ]]--
-
+--!strict
 local lib = {}
 
-require("luarocks.loader")
-local enum = require("enums")
-local util = require("utils")
+local enum = require("./enums")
+local util = require("./utils")
 local ppt = enum.Properties
 
 local startTime = os.clock()
@@ -26,32 +25,28 @@ local TriggerArea = {
 ---@field maxGroup number
 ---@field nextBullet fun(): number
 
-lib.Bullet = {
-    ---@type Bullet
-    Bullet1 = {
-        minGroup = 501,
-        maxGroup = 1000,
-        nextBullet = util.createBulletCycler(501, 1000)
-    },
-    ---@type Bullet
-    Bullet2 = {
-        minGroup = 1501,
-        maxGroup = 2200,
-        nextBullet = util.createBulletCycler(1501, 2200)
-    },
-    ---@type Bullet
-    Bullet3 = {
-        minGroup = 2901,
-        maxGroup = 3600,
-        nextBullet = util.createBulletCycler(2901, 3600)
-    },
-    ---@type Bullet
-    Bullet4 = {
-        minGroup = 4301,
-        maxGroup = 4700,
-        nextBullet = util.createBulletCycler(4301, 4700)
-    }
+-- Use the BulletType exported from enums.lua
+
+local b1: enum.BulletType = {
+    nextBullet = util.createBulletCycler(501, 1000)
 }
+local b2: enum.BulletType = {
+    nextBullet = util.createBulletCycler(1501, 2200)
+}
+local b3: enum.BulletType = {
+    nextBullet = util.createBulletCycler(2901, 3600)
+}
+local b4: enum.BulletType = {
+    nextBullet = util.createBulletCycler(4301, 4700)
+}
+
+local bulletTypes: {[string]: enum.BulletType} = {
+    Bullet1 = b1,
+    Bullet2 = b2,
+    Bullet3 = b3,
+    Bullet4 = b4
+}
+lib.Bullet = bulletTypes
 
 local AllComponents = {}
 local AllSpells = {}
@@ -119,7 +114,7 @@ end
 function Component:assertSpawnOrder(bool)
     if type(bool) ~= "boolean" then error("assertSpawnOrder: argument must be boolean") end
     if self.requireSpawnOrder ~= nil and self.requireSpawnOrder ~= bool then
-        error("assertSpawnOrder: Conflicting spawn order requirements, originally set to " .. tostring(self.requireSpawnOrder) .. ", attempted to set to " .. tostring(bool))
+        error(`assertSpawnOrder: Conflicting spawn order requirements, originally set to {tostring(self.requireSpawnOrder)}, attempted to set to {tostring(bool)}`)
     end
     self.requireSpawnOrder = bool
     return self
@@ -495,7 +490,7 @@ local function initializeBinaryComponents()
     local powers = {1, 2, 4, 8, 16, 32, 64} -- All powers of 2 up to 64
 
     for _, power in ipairs(powers) do
-        local component = Component.new("BinaryBase_" .. power, util.unknown_g(), 4)
+        local component = Component.new(`BinaryBase_{power}`, util.unknown_g(), 4)
         component:assertSpawnOrder(false) -- All binary bases shoot simultaneously
 
         -- To add support for more parameters, add a new empty group and follow the pattern
@@ -515,7 +510,7 @@ end
 initializeBinaryComponents()
 
 local function spreadTriggers(triggers, component)
-    if #triggers < 1 then error("spreadTriggers: No triggers in component " .. component.componentName) end
+    if #triggers < 1 then error(`spreadTriggers: No triggers in component {component.componentName}`) end
     local area = TriggerArea
 
     if #triggers == 1 then
@@ -547,7 +542,7 @@ local function spreadTriggers(triggers, component)
         local chainWidth = maxX - minX
         -- Check if rigid chain fits
         if chainWidth > (area.maxX - area.minX) then
-            error("spreadTriggers: Rigid chain too wide (" .. chainWidth .. ") to fit in trigger area for " .. component.componentName)
+            error(`spreadTriggers: Rigid chain too wide ({chainWidth}) to fit in trigger area for {component.componentName}`)
         end
 
         local shift = math.random(area.minX, math.floor(area.maxX - chainWidth)) - minX
@@ -557,11 +552,10 @@ local function spreadTriggers(triggers, component)
         -- Elastic chain - stretch as needed (no bounds checking)
         local startX = area.minX
         for i, trigger in ipairs(triggers) do
-            if i == 1 then trigger[ppt.X] = startX goto continue end
+            if i == 1 then trigger[ppt.X] = startX; continue end
             -- Just add random spacing, can extend beyond area.maxX
             local spacing = math.random(1, 10)
             trigger[ppt.X] = triggers[i-1][ppt.X] + spacing
-            ::continue::
         end
     end
 
@@ -589,11 +583,11 @@ function lib.SaveAll()
         local x = -10000
         for _, trigger in ipairs(sortedTriggers) do
             if trigger[ppt.GROUPS] == 9999 then
-                error("CRITICAL ERROR: RESERVED GROUP 9999 DETECTED WITHIN " .. component.componentName)
+                error(`CRITICAL ERROR: RESERVED GROUP 9999 DETECTED WITHIN {component.componentName}`)
             end
             -- according to info given by bombie (untested but better be safe)
             if trigger[ppt.X] - x < 1 and trigger[ppt.X] - x ~= 0 then
-                error("CRITICAL ERROR: X POSITION IS WITHIN 1 UNIT OF PREVIOUS TRIGGER, ORDER NOT PRESERVED. DETECTED WITHIN " .. component.componentName)
+                error(`CRITICAL ERROR: X POSITION IS WITHIN 1 UNIT OF PREVIOUS TRIGGER, ORDER NOT PRESERVED. DETECTED WITHIN {component.componentName}`)
             end
             x = trigger[ppt.X]
             table.insert(allTriggers.triggers, trigger)
@@ -605,14 +599,11 @@ function lib.SaveAll()
     util.printBudgetAnalysis(stats)
 
     -- Save to file
-    local file = io.open(filename, "w")
-    if not file then error("Failed to open " .. filename .. " for writing!") end
-
-    local json = require("dkjson")
-    file:write(json.encode(allTriggers))
-    file:close()
-    print("\nSaved to " .. filename .. " successfully!")
-    print("Total execution time: " .. (os.clock() - startTime) .. " seconds")
+    local fs = require("@lune/fs")
+    local json = require("@package/dkjson")
+    fs.writeFile(filename, json.encode(allTriggers))
+    print(`\nSaved to {filename} successfully!`)
+    print(`Total execution time: {(os.clock() - startTime)} seconds`)
 end
 
 return lib

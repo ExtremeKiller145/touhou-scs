@@ -1,9 +1,9 @@
 
-local l = require("lib")
-local e = require("enums")
-local u = require("utils")
-local sb = require("spellbuilder")
-local misc = require("misc")
+local l = require("./lib")
+local e = require("./enums")
+local u = require("./utils")
+local sb = require("./spellbuilder")
+local misc = require("./misc")
 
 local c1 = sb.GuiderCircle.circle1
 

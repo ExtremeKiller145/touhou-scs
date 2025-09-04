@@ -1,6 +1,6 @@
-local lib = require("lib")
-local enum = require("enums")
-local util = require("utils")
+local lib = require("./lib")
+local enum = require("./enums")
+local util = require("./utils")
 
 local sb = {}
 
@@ -53,7 +53,7 @@ function sb.Radial(time, callerComponent, component, guiderCircle, bulletType, a
     if args.spacing and args.numOfBullets then
         -- Both provided: validate they match
         if args.numOfBullets ~= 360 / args.spacing then
-            error("Radial: spacing and numOfBullets don't match (numOfBullets should be " .. (360 / args.spacing) .. ") or just use one or the other")
+            error(`Radial: spacing and numOfBullets don't match (numOfBullets should be {(360 / args.spacing)}) or just use one or the other`)
         end
     elseif args.spacing then
         args.numOfBullets = 360 / args.spacing
@@ -64,15 +64,15 @@ function sb.Radial(time, callerComponent, component, guiderCircle, bulletType, a
     end
 
     if not util.isInteger(args.spacing) then
-        error("Radial: spacing is not an integer (numOfBullets " .. args.numOfBullets .. " doesn't divide 360 evenly)")
+        error(`Radial: spacing is not an integer (numOfBullets {args.numOfBullets} doesn't divide 360 evenly)`)
     elseif not util.isInteger(args.numOfBullets) then
-        error("Radial: numOfBullets is not an integer (spacing " .. args.spacing .. " doesn't divide 360 evenly)")
+        error(`Radial: numOfBullets is not an integer (spacing {args.spacing} doesn't divide 360 evenly)`)
     elseif args.spacing < 1 or args.spacing > 360 then
         error("Radial: spacing must be an integer between 1 and 360")
     elseif 360 % args.spacing ~= 0 then
         error("Radial: spacing must be a factor of 360 for perfect circles")
     elseif 360 % args.numOfBullets ~= 0 then
-        error("Radial: numOfBullets must divide 360 evenly (got " .. args.numOfBullets .. ")")
+        error(`Radial: numOfBullets must divide 360 evenly (got {args.numOfBullets})`)
     end
     --#endregion
 
@@ -131,10 +131,10 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
         error("Arc: numOfBullets must be between 1 and 360")
     end
     if args.numOfBullets * args.spacing > 360 then
-        error("Arc: numOfBullets " .. args.numOfBullets .. " times spacing " .. args.spacing .. " exceeds 360 degrees")
+        error(`Arc: numOfBullets {args.numOfBullets} times spacing {args.spacing} exceeds 360 degrees`)
     end
     if args.numOfBullets * args.spacing == 360 and not args.radialBypass then
-        error("Arc: numOfBullets " .. args.numOfBullets .. " times spacing " .. args.spacing .. " is 360 degrees, making a circle.\n FIX: Use Radial instead.")
+        error(`Arc: numOfBullets {args.numOfBullets} times spacing {args.spacing} is 360 degrees, making a circle.\n FIX: Use Radial instead.`)
     end
     --#endregion
 
@@ -169,24 +169,24 @@ function sb.Arc(time, callerComponent, component, guiderCircle, bulletType, args
         for _, spawnTrigger in ipairs(comp.triggers) do
             local remapPairs = util.translateRemapString(spawnTrigger[remapStringProperty])
             for source, target in pairs(remapPairs) do
-                remap_string = remap_string .. target .. '.'
+                remap_string = `{remap_string}{target}.`
 
                 local sourceNum = tonumber(source) -- Convert string to number
                 if sourceNum == enum.EMPTY_BULLET then
-                    remap_string = remap_string .. bulletType.nextBullet()
+                    remap_string = `{remap_string}{bulletType.nextBullet()}`
                 elseif sourceNum == enum.EMPTY_TARGET_GROUP then
-                    remap_string = remap_string .. guiderCircle.groups[bulletPosition + 1]
+                    remap_string = `{remap_string}{guiderCircle.groups[bulletPosition + 1]}`
                 else
-                    remap_string = remap_string .. empties()
+                    remap_string = `{remap_string}{empties()}`
                 end
 
-                remap_string = remap_string .. '.'
+                remap_string = `{remap_string}.`
             end
             bulletPosition = bulletPosition + args.spacing
             if bulletPosition >= 360 then bulletPosition = bulletPosition - 360 end
         end
         -- Final mapping: EMPTY_MULTITARGET -> component caller group
-        remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
+        remap_string = `{remap_string}{enum.EMPTY_MULTITARGET}.{component.callerGroup}`
         callerComponent:Spawn(time, comp.callerGroup, false, remap_string)
     end
 end

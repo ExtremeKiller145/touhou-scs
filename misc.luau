@@ -1,6 +1,6 @@
-local lib = require("lib")
-local util = require("utils")
-local enum = require("enums")
+local lib = require("./lib")
+local util = require("./utils")
+local enum = require("./enums")
 
 local ppt = enum.Properties
 
@@ -51,7 +51,7 @@ function m.addPlayerCollision()
             table.insert(collisionFunction.triggers, {
                 [ppt.OBJ_ID] = enum.ObjectID.Spawn,
                 [ppt.TARGET] = mainDespawn.callerGroup,
-                [ppt.REMAP_STRING] = enum.EMPTY1 .. '.' .. i,
+                [ppt.REMAP_STRING] = `{enum.EMPTY1}.{i}`,
                 [ppt.SPAWN_ORDERED] = true,
                 [ppt.GROUPS] = i + max - min + 1,
 

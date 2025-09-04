@@ -1,4 +1,51 @@
--- Contains definitions for all enums
+-- Contains definitions for all enums and types
+
+export type Vector2 = {
+    X: number,
+    Y: number
+}
+
+export type easing = {
+    t: number,
+    type: number?,
+    rate: number?,
+    dist: number?,
+    angle: number?,
+    dynamic: boolean?,
+    vector: Vector2?
+}
+
+-- Core game types
+export type GroupID = number | string -- For regular groups and unknown_g strings
+
+export type TriggerData = {[string]: any} -- Generic trigger structure
+
+export type Component = {
+    componentName: string,
+    callerGroup: GroupID,
+    editorLayer: number,
+    requireSpawnOrder: boolean | nil, -- Explicitly allow nil, true, or false
+    triggers: {TriggerData}
+    -- Methods will be added via metatable, so we don't need to define them in the type
+}
+
+export type GuiderCircle = {
+    all: number, -- center is group parent
+    center: number,
+    pointer: number,
+    groups: {[number]: number} -- groups[1] is pointer
+}
+
+export type BulletType = {
+    nextBullet: () -> number -- Function that returns next bullet group
+}
+
+export type RadialArgs = {
+    spacing: number?,
+    numOfBullets: number?,
+    centerAt: number?,
+    radialBypass: boolean? -- Internal flag for radial vs arc logic
+}
 
 local enum = {
     PLR_SPEED = 311.58,
