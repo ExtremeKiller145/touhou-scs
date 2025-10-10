@@ -13,7 +13,7 @@ const groupPropertyField = (key) => {
 	return groupFields.includes(key);
 };
 
-
+let triggerCount = 0;
 $.exportConfig({
 	type: 'live_editor', 
 	// type can be 'savefile' to export to savefile, 'levelstring' to return levelstring 
@@ -105,8 +105,9 @@ $.exportConfig({
 	triggers.forEach(trigger => {
 		$.add(object(trigger));
 	});
+	triggerCount = triggers.length;
 });
 
 const __elapsedMs = Date.now() - __startTime;
 console.log(`main.js completed in ${( __elapsedMs / 1000 ).toFixed(3)}s (${__elapsedMs} ms)`);
-console.log(`Processed ${triggers.length} triggers`);
+console.log(`Processed ${triggerCount} triggers`);
