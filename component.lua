@@ -58,7 +58,7 @@ function Component:assertSpawnOrder(bool)
 end
 
 ---@param remapID string Remap string, dot-seperated list, e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
---- Nested remaps: outer remap must remap the inner, e.g. if inner is '1.2', other should be '2.3' not '1.3'. 
+--- Nested remaps: outer remap must remap the inner, e.g. if inner is '1.2', other should be '2.3' not '1.3'.
 --- inner must not have reset_remap on.
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
 function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
@@ -80,7 +80,7 @@ function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
     return self
 end
 
---- WARNING: A deactivated object cannot be reactivated by a different group 
+--- WARNING: A deactivated object cannot be reactivated by a different group
 --- (collision triggers might be different)
 ---@param activateGroup boolean Activate or deactivate group
 function Component:Toggle(time, target, activateGroup)
@@ -394,7 +394,202 @@ lib.MultitargetRegistry:initializeBinaryComponents(Component)
 
     PATTERN COMPONENT METHODS:
 
+    Organized into:
+    - Component.pattern.instant - Instantaneous patterns (single tick, single emitter)
+    - Component.pattern.timed - Timed patterns (multiple waves/phases)
+
 ]]
+
+Component.pattern = {}
+Component.pattern.instant = {}
+Component.pattern.timed = {}
+
+--#region Instant Patterns
+
+--- Creates a radial pattern spawn setting, to shoot all at once in a circular pattern
+---@param time number
+---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
+---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
+---@param bulletType Bullet ; the bullet type to use for spawning
+---@param args table, requires either 'spacing' OR 'numOfBullets', optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
+function Component:Radial(time, component, guiderCircle, bulletType, args)
+    util.validateArgs("Radial", component, guiderCircle, bulletType, args)
+    util.validateRadialComponent(component, "Radial")
+
+    args.centerAt = args.centerAt or 0 -- 0 represents pointer
+
+    --#region Parameter and Argument Validation
+    if args.spacing and args.numOfBullets then
+        -- Both provided: validate they match
+        if args.numOfBullets ~= 360 / args.spacing then
+            error("Radial: spacing and numOfBullets don't match (numOfBullets should be " ..
+                (360 / args.spacing) .. ") or just use one or the other")
+        end
+    elseif args.spacing then
+        args.numOfBullets = 360 / args.spacing
+    elseif args.numOfBullets then
+        args.spacing = 360 / args.numOfBullets
+    else
+        error("Radial: must provide either 'spacing' or 'numOfBullets'")
+    end
+
+    if not util.isInteger(args.spacing) then
+        error("Radial: spacing is not an integer (numOfBullets " .. args.numOfBullets .. " doesn't divide 360 evenly)")
+    elseif not util.isInteger(args.numOfBullets) then
+        error("Radial: numOfBullets is not an integer (spacing " .. args.spacing .. " doesn't divide 360 evenly)")
+    elseif args.spacing < 1 or args.spacing > 360 then
+        error("Radial: spacing must be an integer between 1 and 360")
+    elseif 360 % args.spacing ~= 0 then
+        error("Radial: spacing must be a factor of 360 for perfect circles")
+    elseif 360 % args.numOfBullets ~= 0 then
+        error("Radial: numOfBullets must divide 360 evenly (got " .. args.numOfBullets .. ")")
+    end
+    --#endregion
+
+    -- Use Arc implementation with radial bypass
+    args.radialBypass = true
+    return self:Arc(time, component, guiderCircle, bulletType, args)
+end
+
+--- Creates an arc pattern spawn setting, to shoot bullets in a partial circular pattern
+---@param time number
+---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
+---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
+---@param bulletType Bullet ; the bullet type to use for spawning
+---@param args table, requires 'numOfBullets', 'spacing' angle, optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
+function Component:Arc(time, component, guiderCircle, bulletType, args)
+    util.validateArgs("Arc", component, guiderCircle, bulletType, args.spacing, args.numOfBullets)
+    util.validateRadialComponent(component, "Arc")
+
+    args.centerAt = args.centerAt or 0 -- 0 represents pointer
+
+    --#region Arc-specific Validation
+    -- arc logic checks
+    local centerAtisInt = util.isInteger(args.centerAt)
+    if not args.radialBypass then
+        -- case 1: numOfBullets is odd, centerAt must be integer
+        if args.numOfBullets % 2 ~= 0 and not centerAtisInt then
+            error("Arc: odd bullets requires integer centerAt")
+        end
+        -- case 2
+        if args.numOfBullets % 2 == 0 and args.spacing % 2 ~= 0 and centerAtisInt then
+            error("Arc: even bullets with odd spacing requires .5 centerAt")
+        end
+        -- case 3
+        if args.numOfBullets % 2 == 0 and args.spacing % 2 == 0 and not centerAtisInt then
+            error("Arc: even bullets with even spacing requires integer centerAt")
+        end
+    end
+    -- Data restriction checks
+    if not centerAtisInt and not util.isInteger(args.centerAt * 2) then
+        error("Arc: centerAt must be an integer or integer.5")
+    end
+    if not util.isInteger(args.spacing) then
+        error("Arc: spacing must be an integer")
+    end
+    if args.spacing < 1 or args.spacing > 360 then
+        error("Arc: spacing must be between 1 and 360")
+    end
+    if not util.isInteger(args.numOfBullets) then
+        error("Arc: numOfBullets must be an integer")
+    end
+    if args.numOfBullets < 1 or args.numOfBullets > 360 then
+        error("Arc: numOfBullets must be between 1 and 360")
+    end
+    if args.numOfBullets * args.spacing > 360 then
+        error("Arc: numOfBullets " .. args.numOfBullets .. " times spacing " .. args.spacing .. " exceeds 360 degrees")
+    end
+    if args.numOfBullets * args.spacing == 360 and not args.radialBypass then
+        error("Arc: numOfBullets " ..
+            args.numOfBullets ..
+            " times spacing " .. args.spacing .. " is 360 degrees, making a circle.\n FIX: Use Radial instead.")
+    end
+    --#endregion
+
+    -- Calculate arc positioning
+    local arclength = (args.numOfBullets - 1) * args.spacing
+    local startpos
+
+    if args.radialBypass then
+        -- For radials: start directly at centerAt and place bullets sequentially
+        startpos = args.centerAt
+    else
+        -- For arcs: center the arc around centerAt
+        startpos = args.centerAt - (arclength / 2)
+        if not util.isInteger(startpos) then
+            error("Arc: Startpos validation is faulty! review conditions.")
+        end
+    end
+
+    -- Normalize startpos to 0-359 range
+    startpos = startpos % 360
+    if startpos < 0 then startpos = 360 + startpos end
+
+    -- Get binary components for the number of bullets we need
+    local comps = lib.MultitargetRegistry:getBinaryComponents(args.numOfBullets)
+
+    local remapStringProperty = enum.Properties.REMAP_STRING
+    local bulletPosition = startpos
+    for _, comp in ipairs(comps) do
+        local empties = util.createNumberCycler(6001, 6128)
+        local remap_string = ""
+        for _, spawnTrigger in ipairs(comp.triggers) do
+            local remapPairs = util.translateRemapString(spawnTrigger[remapStringProperty])
+            for source, target in pairs(remapPairs) do
+                remap_string = remap_string .. target .. '.'
+
+                local sourceNum = tonumber(source)
+                if sourceNum == enum.EMPTY_BULLET then
+                    remap_string = remap_string .. bulletType.nextBullet()
+                elseif sourceNum == enum.EMPTY_TARGET_GROUP then
+                    remap_string = remap_string .. guiderCircle.groups[bulletPosition + 1]
+                else
+                    remap_string = remap_string .. empties()
+                end
+
+                remap_string = remap_string .. '.'
+            end
+            bulletPosition = bulletPosition + args.spacing
+            if bulletPosition >= 360 then bulletPosition = bulletPosition - 360 end
+        end
+        -- Final mapping: EMPTY_MULTITARGET -> component caller group
+        remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
+        self:Spawn(time, comp.callerGroup, false, remap_string)
+    end
+
+    return self
+end
+
+--#endregion
+
+--#region Timed Patterns
+
+--- Creates a radial wave pattern - repeated radials over time
+---@param time number
+---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
+---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
+---@param bulletType Bullet ; the bullet type to use for spawning
+---@param args table, requires either 'spacing' OR 'numOfBullets', 'waves', 'interval', optional 'centerAt'
+function Component:RadialWave(time, component, guiderCircle, bulletType, args)
+    util.validateArgs("RadialWave", component, guiderCircle, bulletType, args)
+    util.validateRadialComponent(component, "RadialWave")
+
+    -- Validate wave-specific parameters
+    if not args.waves or not util.isInteger(args.waves) or args.waves < 1 then
+        error("RadialWave: waves must be a positive integer")
+    end
+    if not args.interval or args.interval <= 0 then
+        error("RadialWave: interval must be a positive number")
+    end
+
+    for i = 1, args.waves do
+        self:Radial(time + (i - 1) * args.interval, component, guiderCircle, bulletType, args)
+    end
+
+    return self
+end
+
+--#endregion
 
 
 return component_module

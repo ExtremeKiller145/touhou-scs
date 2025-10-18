@@ -52,6 +52,32 @@ lib.Bullet = {
     }
 }
 
+---@class GuiderCircle
+---@field all number Contains entire circle, Center is group parent
+---@field center number The center group of the circle, used for positioning
+---@field pointer number The first group in the circle, reference for aiming
+---@field groups table<number, number> The groups that contain each bullet in the circle
+
+-- GuiderCircle definitions for radial patterns
+lib.GuiderCircles = {
+    ---@type GuiderCircle
+    circle1 = {
+        all = 5061,
+        center = 5061,  -- parent
+        pointer = 4701, -- First group in circle, reference for aiming
+        groups = {}     -- Will be populated with 360 groups starting from pointer
+    }
+    -- Additional circles can be added here for simultaneous patterns
+}
+
+-- Populate GuiderCircle groups
+local function populateGuiderCircle(circle)
+    for i = 1, 360 do
+        circle.groups[i] = circle.pointer + (i - 1)
+    end
+end
+populateGuiderCircle(lib.GuiderCircles.circle1)
+
 local AllSpells = {}
 
 ---@class Spell
@@ -111,7 +137,7 @@ function MultitargetRegistry:getBinaryComponents(numTargets)
 
     local components = {}
     local remaining = numTargets
-    local powers = {64, 32, 16, 8, 4, 2, 1} -- Check largest powers first
+    local powers = { 64, 32, 16, 8, 4, 2, 1 } -- Check largest powers first
 
     for _, power in ipairs(powers) do
         if remaining >= power then
@@ -128,14 +154,14 @@ end
 function MultitargetRegistry:initializeBinaryComponents(componentClass)
     if MultitargetRegistry._initialized then return end
 
-    local powers = {1, 2, 4, 8, 16, 32, 64} -- All powers of 2 up to 64
+    local powers = { 1, 2, 4, 8, 16, 32, 64 } -- All powers of 2 up to 64
 
     for _, power in ipairs(powers) do
         local component = componentClass.new("BinaryBase_" .. power, util.unknown_g(), 4)
         component:assertSpawnOrder(false) -- All binary bases shoot simultaneously
 
         -- To add support for more parameters, add a new empty group and follow the pattern
-        for i = 1, power*4, 4 do
+        for i = 1, power * 4, 4 do
             local rb = util.remap()
             rb:pair(enum.EMPTY_BULLET, i + 6000)
                 :pair(enum.EMPTY_TARGET_GROUP, i + 6001)
@@ -169,7 +195,7 @@ local function spreadTriggers(triggers, component)
     if sameX and component.requireSpawnOrder == false then
         -- Loose squares - random positions
         for _, trigger in ipairs(triggers) do
-            trigger[ppt.X] = math.random(area.minX/2, area.maxX/2)*2
+            trigger[ppt.X] = math.random(area.minX / 2, area.maxX / 2) * 2
         end
     elseif component.requireSpawnOrder == true then
         -- Rigid chain - shift whole group (only case that can fail)
@@ -182,7 +208,8 @@ local function spreadTriggers(triggers, component)
         local chainWidth = maxX - minX
         -- Check if rigid chain fits
         if chainWidth > (area.maxX - area.minX) then
-            error("spreadTriggers: Rigid chain too wide (" .. chainWidth .. ") to fit in trigger area for " .. component.componentName)
+            error("spreadTriggers: Rigid chain too wide (" ..
+                chainWidth .. ") to fit in trigger area for " .. component.componentName)
         end
 
         local shift = math.random(area.minX, math.floor(area.maxX - chainWidth)) - minX
@@ -195,7 +222,7 @@ local function spreadTriggers(triggers, component)
             if i == 1 then trigger[ppt.X] = startX goto continue end
             -- Just add random spacing, can extend beyond area.maxX
             local spacing = math.random(1, 10)
-            trigger[ppt.X] = triggers[i-1][ppt.X] + spacing
+            trigger[ppt.X] = triggers[i - 1][ppt.X] + spacing
             ::continue::
         end
     end
@@ -236,7 +263,7 @@ function lib.SaveAll(allComponents)
     end
 
     -- Budget analysis and output
-    local stats = util.generateStatistics(AllSpells, allComponents, allTriggers)
+    local stats = util.generateStatistics(AllSpells, allComponents, allTriggers, 200000)
     util.printBudgetAnalysis(stats)
 
     -- Save to file

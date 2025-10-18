@@ -8,7 +8,7 @@ local m = {}
 --#region DisableAllBullets function
 local addedDisableAllBullets = false
 function m.addDisableAllBullets()
-    if addedDisableAllBullets then 
+    if addedDisableAllBullets then
         warn('WARNING! Misc: addDisableAllBullets called twice!')
         return
     end
@@ -29,6 +29,7 @@ function m.addDisableAllBullets()
     end
     addedDisableAllBullets = true
 end
+
 --#endregion
 
 -- --#region Player Collision triggers
@@ -43,7 +44,7 @@ function m.addPlayerCollision()
     local mainDespawn = lib.Component.new("DespawnFunction", util.unknown_g(), 4)
     mainDespawn:assertSpawnOrder(true)
 
-    local collisionFunction = lib.Component.new("PlayerCollisionFunction", util.group(37),4)
+    local collisionFunction = lib.Component.new("PlayerCollisionFunction", util.group(37), 4)
     collisionFunction:assertSpawnOrder(false)
     local function addCollisionTriggers(min, max)
         for i = min, max do
@@ -114,7 +115,7 @@ function m.addPlayerCollision()
     mainDespawn:Scale(0, enum.EMPTY1, 0.5, { t = 0.3 })
         :Toggle(0.3, enum.EMPTY1, false)
         :Scale(0.3, enum.EMPTY1, 2, { t = 0 })
-        :Alpha(0, enum.EMPTY1, { t = 0.3, opacity = 0})
+        :Alpha(0, enum.EMPTY1, { t = 0.3, opacity = 0 })
 
     addedPlayerCollision = true
 end
