@@ -1,6 +1,7 @@
 local lib = require("lib")
 local util = require("utils")
 local enum = require("enums")
+local comp = require("component")
 
 local ppt = enum.Properties
 
@@ -13,7 +14,7 @@ function m.addDisableAllBullets()
         return
     end
 
-    local disableAllBullets = lib.Component.new("DisableAllBullets", util.group(32), 4)
+    local disableAllBullets = comp.Component.new("DisableAllBullets", util.group(32), 4)
     disableAllBullets:assertSpawnOrder(false)
     for i = 501, 1000 do
         disableAllBullets:Toggle(0, i, false)
@@ -41,10 +42,10 @@ function m.addPlayerCollision()
         return
     end
 
-    local mainDespawn = lib.Component.new("DespawnFunction", util.unknown_g(), 4)
+    local mainDespawn = comp.Component.new("DespawnFunction", util.unknown_g(), 4)
     mainDespawn:assertSpawnOrder(true)
 
-    local collisionFunction = lib.Component.new("PlayerCollisionFunction", util.group(37), 4)
+    local collisionFunction = comp.Component.new("PlayerCollisionFunction", util.group(37), 4)
     collisionFunction:assertSpawnOrder(false)
     local function addCollisionTriggers(min, max)
         for i = min, max do

@@ -8,7 +8,18 @@ local enum = require("enums")
 local lib = require("lib")
 local ppt = enum.Properties
 
-local component_module = {}
+local m = {}
+
+---@return table<number, any>
+local function createTrigger(comp)
+    return {
+        [ppt.Y] = 0,
+        [ppt.GROUPS] = comp.callerGroup,
+        [ppt.EDITOR_LAYER] = comp.editorLayer,
+        [ppt.SPAWN_TRIGGERED] = true,
+        [ppt.MULTI_TRIGGERED] = true,
+    }
+end
 
 -- Registry for all created components (used by export module)
 local AllComponents = {}
@@ -21,7 +32,9 @@ local AllComponents = {}
 ---@field triggers table
 local Component = {}
 Component.__index = Component
-component_module.Component = Component
+m.Component = Component
+
+
 
 ---Constructor for Component
 ---@param componentName string
@@ -42,9 +55,7 @@ end
 
 --- Get all registered components (for export module)
 ---@return Component[]
-function component_module.GetAllComponents()
-    return AllComponents
-end
+function m.GetAllComponents() return AllComponents end
 
 --- Set the requirement for spawn ordering
 --- @param bool boolean True to require, false to forbid, nil to allow either
@@ -64,19 +75,18 @@ end
 function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
     util.validateArgs("Spawn", time, target, spawnOrdered, remapID)
     remapID = util.validateRemapString("Spawn", remapID)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Spawn,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
-        [ppt.TARGET] = target,
 
-        [ppt.REMAP_STRING] = remapID,
-        [ppt.RESET_REMAP] = false,
-        [ppt.SPAWN_ORDERED] = spawnOrdered,
-        [ppt.SPAWN_DELAY] = spawnDelay or 0,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Spawn
+    trigger[ppt.X] = util.timeToDist(time)
+    trigger[ppt.TARGET] = target
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.REMAP_STRING] = remapID
+    trigger[ppt.RESET_REMAP] = false
+    trigger[ppt.SPAWN_ORDERED] = spawnOrdered
+    trigger[ppt.SPAWN_DELAY] = spawnDelay or 0
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -86,16 +96,15 @@ end
 function Component:Toggle(time, target, activateGroup)
     util.validateArgs("Toggle", time, target, activateGroup)
     util.validateGroups("Toggle", target)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Toggle,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
-        [ppt.ACTIVATE_GROUP] = activateGroup,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Toggle
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.ACTIVATE_GROUP] = activateGroup
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -105,22 +114,27 @@ function Component:MoveTowards(time, target, targetDir, easing)
     util.validateArgs("MoveTowards", time, target, targetDir, easing)
     util.validateEasing("MoveTowards", easing)
     util.validateGroups("MoveTowards", target, targetDir)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target, [ppt.MOVE_TARGET_CENTER] = target,
-        [ppt.MOVE_TARGET_DIR] = targetDir,
-        [ppt.MOVE_DIRECTION_MODE] = true, [ppt.MOVE_DIRECTION_MODE_DISTANCE] = easing.dist,
-        [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
-        [ppt.DYNAMIC] = easing.dynamic or false,
-        [ppt.MOVE_SMALL_STEP] = true,
-        [ppt.MOVE_SILENT] = (easing.t == 0),
+    local trigger = createTrigger(self)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Move
+    trigger[ppt.X] = util.timeToDist(time)
+
+    trigger[ppt.TARGET] = target
+    trigger[ppt.MOVE_TARGET_CENTER] = target
+    trigger[ppt.MOVE_TARGET_DIR] = targetDir
+    trigger[ppt.MOVE_DIRECTION_MODE] = true
+    trigger[ppt.MOVE_DIRECTION_MODE_DISTANCE] = easing.dist
+
+    trigger[ppt.DURATION] = easing.t
+    trigger[ppt.EASING] = easing.type
+    trigger[ppt.EASING_RATE] = easing.rate
+    trigger[ppt.DYNAMIC] = easing.dynamic or false
+
+    trigger[ppt.MOVE_SMALL_STEP] = true
+    trigger[ppt.MOVE_SILENT] = (easing.t == 0)
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -133,20 +147,23 @@ function Component:MoveBy(time, target, vector2, easing)
     util.validateEasing("MoveBy", easing)
     util.validateVector2("MoveBy", vector2)
     if easing.dynamic then error("MoveBy does not support dynamic mode") end
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.MOVE_X] = vector2.X, [ppt.MOVE_Y] = vector2.Y,
-        [ppt.TARGET] = target,
-        [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
-        [ppt.MOVE_SILENT] = (easing.t == 0),
-        [ppt.MOVE_SMALL_STEP] = true,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Move
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.MOVE_X] = vector2.X
+    trigger[ppt.MOVE_Y] = vector2.Y
+    trigger[ppt.TARGET] = target
+
+    trigger[ppt.DURATION] = easing.t
+    trigger[ppt.EASING] = easing.type
+    trigger[ppt.EASING_RATE] = easing.rate
+
+    trigger[ppt.MOVE_SILENT] = (easing.t == 0)
+    trigger[ppt.MOVE_SMALL_STEP] = true
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -157,21 +174,24 @@ function Component:GotoGroup(time, target, location, easing)
     util.validateArgs("GotoGroup", time, target, location, easing)
     util.validateGroups("GotoGroup", target, location)
     if not easing.t then error("GotoGroup: 'easing' missing required field 't'") end
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Move,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target, [ppt.MOVE_TARGET_CENTER] = target,
-        [ppt.MOVE_TARGET_MODE] = true, [ppt.MOVE_TARGET_LOCATION] = location,
-        [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type or 0,
-        [ppt.EASING_RATE] = easing.rate or 0,
-        [ppt.DYNAMIC] = easing.dynamic or false,
-        [ppt.MOVE_SILENT] = (easing.t == 0),
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Move
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.MOVE_TARGET_CENTER] = target
+    trigger[ppt.MOVE_TARGET_MODE] = true
+    trigger[ppt.MOVE_TARGET_LOCATION] = location
+
+    trigger[ppt.DURATION] = easing.t
+    trigger[ppt.EASING] = easing.type or 0
+    trigger[ppt.EASING_RATE] = easing.rate or 0
+    trigger[ppt.DYNAMIC] = easing.dynamic or false
+
+    trigger[ppt.MOVE_SILENT] = (easing.t == 0)
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -184,68 +204,76 @@ function Component:Rotate(time, targets, easing)
     if not targets.target then error("Rotate: 'targets' missing required field 'target'") end
     if not targets.center then error("Rotate: 'targets' missing required field 'center'") end
     util.validateGroups("Rotate", targets.target, targets.center)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Rotate,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = targets.target, [ppt.ROTATE_CENTER] = targets.center,
-        [ppt.ROTATE_ANGLE] = easing.angle, -- degrees, clockwise is +
-        [ppt.DURATION] = easing.t or 0,
-        [ppt.EASING] = easing.type or 0,
-        [ppt.EASING_RATE] = easing.rate or 1,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Rotate
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = targets.target
+    trigger[ppt.ROTATE_CENTER] = targets.center
+    trigger[ppt.ROTATE_ANGLE] = easing.angle -- degrees, clockwise is +
+
+    trigger[ppt.DURATION] = easing.t or 0
+    trigger[ppt.EASING] = easing.type or 0
+    trigger[ppt.EASING_RATE] = easing.rate or 1
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
 ---@param targetDir number Group to point towards
----@param easing table not required, defaults to none
+---@param easing? table Optional easing configuration, defaults to DEFAULT_EASING
 function Component:PointToGroup(time, target, targetDir, easing)
     util.validateArgs("PointToGroup", time, target, targetDir)
     util.validateGroups("PointToGroup", target, targetDir)
     easing = easing or enum.DEFAULT_EASING
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Rotate,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target, [ppt.ROTATE_CENTER] = target,
-        [ppt.ROTATE_TARGET] = targetDir,
-        [ppt.ROTATE_AIM_MODE] = true,
-        [ppt.DYNAMIC] = easing.dynamic or false,
-        [ppt.ROTATE_DYNAMIC_EASING] = easing.rate or 0, -- range from 0 to 100, only if dynamic is true
-        [ppt.DURATION] = easing.t or 0,
-        [ppt.EASING] = easing.type or 0, [ppt.EASING_RATE] = easing.rate or 1,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Rotate
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.ROTATE_CENTER] = target
+    trigger[ppt.ROTATE_TARGET] = targetDir
+    trigger[ppt.ROTATE_AIM_MODE] = true
+
+    trigger[ppt.DYNAMIC] = easing.dynamic or false
+    trigger[ppt.ROTATE_DYNAMIC_EASING] = easing.rate or 0 -- range from 0 to 100, only if dynamic is true
+
+    trigger[ppt.DURATION] = easing.t or 0
+    trigger[ppt.EASING] = easing.type or 0
+    trigger[ppt.EASING_RATE] = easing.rate or 1
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
 --- Scales a group by a certain amount.
----@param easing table not required, defaults to none
 ---@param scaleFactor number to scale down to, e.g. 0.5 is half size
----@param divideMode boolean whether to divide by the scaleFactor instead of multiply
+---@param easing? table not required, defaults to none
+---@param divideMode? boolean whether to divide by the scaleFactor instead of multiply
 function Component:Scale(time, target, scaleFactor, easing, divideMode)
     util.validateArgs("Scale", time, target, scaleFactor)
     util.validateGroups("Scale", target)
     easing = easing or enum.DEFAULT_EASING
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Scale,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target, [ppt.SCALE_CENTER] = target,
-        [ppt.SCALE_X] = scaleFactor, [ppt.SCALE_Y] = scaleFactor,
-        [ppt.DURATION] = easing.t,
-        [ppt.EASING] = easing.type, [ppt.EASING_RATE] = easing.rate,
-        [ppt.SCALE_DIV_BY_X] = divideMode or false,
-        [ppt.SCALE_DIV_BY_Y] = divideMode or false,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Scale
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.SCALE_CENTER] = target
+    trigger[ppt.SCALE_X] = scaleFactor
+    trigger[ppt.SCALE_Y] = scaleFactor
+
+    trigger[ppt.DURATION] = easing.t
+    trigger[ppt.EASING] = easing.type
+    trigger[ppt.EASING_RATE] = easing.rate
+
+    trigger[ppt.SCALE_DIV_BY_X] = divideMode or false
+    trigger[ppt.SCALE_DIV_BY_Y] = divideMode or false
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -260,21 +288,22 @@ function Component:Pulse(time, target, hsb, fading)
     hsb.exclusive = hsb.exclusive or false
     util.validatePulse(hsb, fading)
     util.validateGroups("Pulse", target)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Pulse,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
-        [ppt.PULSE_TARGET_TYPE] = true,
-        [ppt.PULSE_HSV] = true,
-        [ppt.PULSE_HSV_STRING] = string.format("%da%da%da0a0", hsb.h, hsb.s, hsb.b),
-        [ppt.PULSE_EXCLUSIVE] = hsb.exclusive,
-        [ppt.PULSE_HOLD] = fading.t,
-        [ppt.PULSE_FADE_IN] = fading.fadeIn, [ppt.PULSE_FADE_OUT] = fading.fadeOut,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Pulse
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.PULSE_TARGET_TYPE] = true
+    trigger[ppt.PULSE_HSV] = true
+    trigger[ppt.PULSE_HSV_STRING] = string.format("%da%da%da0a0", hsb.h, hsb.s, hsb.b)
+    trigger[ppt.PULSE_EXCLUSIVE] = hsb.exclusive
+
+    trigger[ppt.PULSE_HOLD] = fading.t
+    trigger[ppt.PULSE_FADE_IN] = fading.fadeIn
+    trigger[ppt.PULSE_FADE_OUT] = fading.fadeOut
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -284,17 +313,16 @@ end
 function Component:Follow(time, target, targetDir, duration)
     util.validateArgs("Follow", time, target, targetDir, duration)
     util.validateGroups("Follow", target, targetDir)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Follow,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
-        [ppt.FOLLOW_GROUP] = targetDir,
-        [ppt.DURATION] = duration,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Follow
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.FOLLOW_GROUP] = targetDir
+    trigger[ppt.DURATION] = duration
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -304,17 +332,16 @@ function Component:Alpha(time, target, args)
     util.validateArgs("Alpha", time, target, args.opacity)
     util.validateGroups("Alpha", target)
     if args.opacity < 0 or args.opacity > 1 then error("Alpha: 'opacity' must be between 0 and 1") end
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Alpha,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
-        [ppt.OPACITY] = args.opacity,
-        [ppt.DURATION] = args.t or 0,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Alpha
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.OPACITY] = args.opacity
+    trigger[ppt.DURATION] = args.t or 0
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -326,17 +353,16 @@ end
 function Component:Stop(time, target, useControlID)
     util.validateArgs("Stop", time, target)
     util.validateGroups("Stop", target)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Stop,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
-        [ppt.STOP_OPTION] = 0,
-        [ppt.STOP_USE_CONTROL_ID] = useControlID or false,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Stop
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.STOP_OPTION] = 0
+    trigger[ppt.STOP_USE_CONTROL_ID] = useControlID or false
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -347,17 +373,16 @@ end
 function Component:Pause(time, target, useControlID)
     util.validateArgs("Pause", time, target)
     util.validateGroups("Pause", target)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Stop,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
-        [ppt.STOP_OPTION] = 1,
-        [ppt.STOP_USE_CONTROL_ID] = useControlID or false,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Stop
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.STOP_OPTION] = 1
+    trigger[ppt.STOP_USE_CONTROL_ID] = useControlID or false
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -368,17 +393,16 @@ end
 function Component:Resume(time, target, useControlID)
     util.validateArgs("Resume", time, target)
     util.validateGroups("Resume", target)
-    table.insert(self.triggers, {
-        [ppt.OBJ_ID] = enum.ObjectID.Stop,
-        [ppt.X] = util.timeToDist(time), [ppt.Y] = 0,
 
-        [ppt.TARGET] = target,
-        [ppt.STOP_OPTION] = 2, -- Resume option
-        [ppt.STOP_USE_CONTROL_ID] = useControlID or false,
+    local trigger = createTrigger(self)
+    trigger[ppt.OBJ_ID] = enum.ObjectID.Stop
+    trigger[ppt.X] = util.timeToDist(time)
 
-        [ppt.GROUPS] = self.callerGroup, [ppt.EDITOR_LAYER] = self.editorLayer,
-        [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
-    })
+    trigger[ppt.TARGET] = target
+    trigger[ppt.STOP_OPTION] = 2 -- Resume option
+    trigger[ppt.STOP_USE_CONTROL_ID] = useControlID or false
+
+    table.insert(self.triggers, trigger)
     return self
 end
 
@@ -394,15 +418,11 @@ lib.MultitargetRegistry:initializeBinaryComponents(Component)
 
     PATTERN COMPONENT METHODS:
 
-    Organized into:
-    - Component.pattern.instant - Instantaneous patterns (single tick, single emitter)
-    - Component.pattern.timed - Timed patterns (multiple waves/phases)
+    Organized by naming convention:
+    - Component:instant_* - Instantaneous patterns (single tick, single emitter)
+    - Component:timed_* - Timed patterns (multiple waves/phases)
 
 ]]
-
-Component.pattern = {}
-Component.pattern.instant = {}
-Component.pattern.timed = {}
 
 --#region Instant Patterns
 
@@ -412,7 +432,7 @@ Component.pattern.timed = {}
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param bulletType Bullet ; the bullet type to use for spawning
 ---@param args table, requires either 'spacing' OR 'numOfBullets', optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
-function Component:Radial(time, component, guiderCircle, bulletType, args)
+function Component:instant_Radial(time, component, guiderCircle, bulletType, args)
     util.validateArgs("Radial", component, guiderCircle, bulletType, args)
     util.validateRadialComponent(component, "Radial")
 
@@ -448,7 +468,8 @@ function Component:Radial(time, component, guiderCircle, bulletType, args)
 
     -- Use Arc implementation with radial bypass
     args.radialBypass = true
-    return self:Arc(time, component, guiderCircle, bulletType, args)
+    self:instant_Arc(time, component, guiderCircle, bulletType, args)
+    return self
 end
 
 --- Creates an arc pattern spawn setting, to shoot bullets in a partial circular pattern
@@ -457,7 +478,7 @@ end
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param bulletType Bullet ; the bullet type to use for spawning
 ---@param args table, requires 'numOfBullets', 'spacing' angle, optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
-function Component:Arc(time, component, guiderCircle, bulletType, args)
+function Component:instant_Arc(time, component, guiderCircle, bulletType, args)
     util.validateArgs("Arc", component, guiderCircle, bulletType, args.spacing, args.numOfBullets)
     util.validateRadialComponent(component, "Arc")
 
@@ -570,7 +591,7 @@ end
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param bulletType Bullet ; the bullet type to use for spawning
 ---@param args table, requires either 'spacing' OR 'numOfBullets', 'waves', 'interval', optional 'centerAt'
-function Component:RadialWave(time, component, guiderCircle, bulletType, args)
+function Component:timed_RadialWave(time, component, guiderCircle, bulletType, args)
     util.validateArgs("RadialWave", component, guiderCircle, bulletType, args)
     util.validateRadialComponent(component, "RadialWave")
 
@@ -583,7 +604,7 @@ function Component:RadialWave(time, component, guiderCircle, bulletType, args)
     end
 
     for i = 1, args.waves do
-        self:Radial(time + (i - 1) * args.interval, component, guiderCircle, bulletType, args)
+        self:instant_Radial(time + (i - 1) * args.interval, component, guiderCircle, bulletType, args)
     end
 
     return self
@@ -592,4 +613,4 @@ end
 --#endregion
 
 
-return component_module
+return m
