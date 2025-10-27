@@ -427,7 +427,6 @@ lib.MultitargetRegistry:initializeBinaryComponents(Component)
 --#region Instant Patterns
 
 --- Creates a radial pattern spawn setting, to shoot all at once in a circular pattern
----@param time number
 ---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param bulletType Bullet ; the bullet type to use for spawning
@@ -473,7 +472,6 @@ function Component:instant_Radial(time, component, guiderCircle, bulletType, arg
 end
 
 --- Creates an arc pattern spawn setting, to shoot bullets in a partial circular pattern
----@param time number
 ---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
 ---@param guiderCircle GuiderCircle ; circle to aim at and spawn from
 ---@param bulletType Bullet ; the bullet type to use for spawning

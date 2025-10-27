@@ -1,5 +1,7 @@
 -- Utility functions for Lua scripts
 
+local enum = require("enums")
+
 local util = {}
 
 
@@ -182,11 +184,26 @@ function util.validateEasing(methodName, easing)
         error(methodName .. ": easing must be a table")
     end
 
+    if easing.rate == nil then easing.rate = 1 end
+
+    -- Optional speedProfile field handling
+    if easing.speedProfile then
+        local speed = enum.SpeedProfiles[easing.speedProfile]
+        if not speed then
+            error(methodName .. ": easing has invalid speedProfile '" .. tostring(easing.speedProfile) .. "'")
+        end
+        -- include user-specified dist in calculation (as an optional offset)
+        local speedFactor = speed / enum.OFFSCREEN_DIST
+        if easing.dist then easing.dist = easing.dist + enum.OFFSCREEN_DIST
+        else easing.dist = enum.OFFSCREEN_DIST end
+        easing.t = easing.dist / speedFactor
+    end
+
     -- Required fields
     -- only easing types 1-6 use ease rate field
     if easing.type > 6 or easing.type < 1 then easing.rate = 1 end
 
-    local required = {"t", "type", "rate"}
+    local required = { "t", "type", "rate" }
     for _, field in pairs(required) do
         if easing[field] == nil then
             error(methodName .. ": easing missing required field '" .. field .. "'")

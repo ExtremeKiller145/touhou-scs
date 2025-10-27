@@ -1,12 +1,22 @@
 -- Contains definitions for all enums
 
 local enum = {
+    --- Time to travel OFFSCREEN_DIST for `easing.t` parameters
+    SpeedProfiles = {
+        very_slow = 480 / 32,
+        slow      = 480 / 16,
+        medium    = 480 / 8,
+        fast      = 480 / 4,
+        very_fast = 480 / 2,
+    },
+
     PLR_SPEED = 311.58,
     PLR = 2,
     TICK = 1/240,
     EDITOR_LAYER = 4,
     SCREEN_CENTER = 30, -- center group of game window
     UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
+
     -- Holder object for empty groups is directly placed on the physical player, layer 0
     EMPTY1 = 21, -- Empty group for targeting and remapping 21 -> whatever
     EMPTY2 = 23, -- Empty group for targeting and remapping 23 -> whatever
@@ -14,6 +24,7 @@ local enum = {
     EMPTY_BULLET = 10, -- EMPTY1 for multitarget functionality only
     EMPTY_TARGET_GROUP = 20, -- EMPTY2 for multitarget functionality only
     EMPTY_MULTITARGET = 9989, -- exclusively for multitarget functionality
+
     OFFSCREEN_DIST = 480, -- Minimum distance to get bullet to offscreen
     MIN_ANGLE = 3, -- Minimum angle for GuiderCircles
     ROTATE_INFINITE_DURATION = -1,

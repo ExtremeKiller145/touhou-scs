@@ -150,6 +150,8 @@ function MultitargetRegistry:getBinaryComponents(numTargets)
     return components
 end
 
+
+
 --- Initialize all binary base components at startup (called once globally)
 function MultitargetRegistry:initializeBinaryComponents(componentClass)
     if MultitargetRegistry._initialized then return end
@@ -232,6 +234,9 @@ local function spreadTriggers(triggers, component)
     end
 end
 
+
+
+---@param allComponents Component[]
 function lib.SaveAll(allComponents)
     local filename = "triggers.json"
     local allTriggers = { triggers = {} }
