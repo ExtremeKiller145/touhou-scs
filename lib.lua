@@ -57,14 +57,12 @@ lib.Bullet = {
 ---@field center number The center group of the circle, used for positioning
 ---@field pointer number The first group in the circle, reference for aiming
 ---@field groups table<number, number> The groups that contain each bullet in the circle
-
--- GuiderCircle definitions for radial patterns
 lib.GuiderCircles = {
     ---@type GuiderCircle
     circle1 = {
-        all = 5061,
-        center = 5061,  -- parent
-        pointer = 4701, -- First group in circle, reference for aiming
+        all = 5461,
+        center = 5461,  -- parent
+        pointer = 5101, -- First group in circle, reference for aiming
         groups = {}     -- Will be populated with 360 groups starting from pointer
     }
     -- Additional circles can be added here for simultaneous patterns
@@ -240,6 +238,88 @@ end
 function lib.SaveAll(allComponents)
     local filename = "triggers.json"
     local allTriggers = { triggers = {} }
+    
+    ---@param AllComponents table
+    ---@param objectBudget number Maximum object count (default: 200000)
+    local function generateStatistics(AllComponents, objectBudget)
+        objectBudget = objectBudget or 200000
+        local totalTriggers = allTriggers and #allTriggers.triggers or 0
+    
+        local spellStats = {}
+        local componentStats = {}
+    
+        -- Find shared components (used in multiple spells)
+        local componentUsage = {}
+        for _, spell in pairs(AllSpells) do
+            for _, component in pairs(spell.components) do
+                componentUsage[component] = (componentUsage[component] or 0) + 1
+            end
+        end
+    
+        local sharedComponents = {}
+        for component, usageCount in pairs(componentUsage) do
+            if usageCount > 1 then sharedComponents[component] = true end
+        end
+    
+        -- Count triggers by spell (excluding shared components)
+        for _, spell in pairs(AllSpells) do
+            local spellTriggerCount = 0
+            for _, component in pairs(spell.components) do
+                if not sharedComponents[component] then
+                    spellTriggerCount = spellTriggerCount + #component.triggers
+                end
+            end
+            spellStats[spell.spellName] = spellTriggerCount
+        end
+    
+        -- Count shared triggers
+        local sharedTriggerCount = 0
+        for component in pairs(sharedComponents) do
+            sharedTriggerCount = sharedTriggerCount + #component.triggers
+        end
+    
+        -- Component stats
+        for _, component in ipairs(AllComponents) do
+            componentStats[component.componentName] = #component.triggers
+        end
+    
+        -- Budget analysis
+        local usagePercent = totalTriggers > 0 and (totalTriggers / objectBudget) * 100 or 0
+        local remainingBudget = objectBudget - totalTriggers
+    
+        local stats = {
+            spellStats = spellStats,
+            componentStats = componentStats,
+            sharedTriggerCount = sharedTriggerCount,
+            budget = {
+                totalTriggers = totalTriggers,
+                objectBudget = objectBudget,
+                usagePercent = usagePercent,
+                remainingBudget = remainingBudget
+            }
+        }
+        return stats
+    end
+    
+    ---@param stats table Statistics from generateStatistics
+    local function printBudgetAnalysis(stats)
+        print(string.format("\n=== BUDGET ANALYSIS ==="))
+        print(string.format("Total triggers: %d (%.3f%%)", 
+            stats.budget.totalTriggers, stats.budget.usagePercent))
+        print(string.format("Remaining budget: %d triggers", stats.budget.remainingBudget))
+    
+        print(' Spells:')
+        for spellName, count in pairs(stats.spellStats) do
+            print(string.format("   %s: %d triggers", spellName, count))
+        end
+    
+        print(' Components:')
+        for componentName, count in pairs(stats.componentStats) do
+            print(string.format("   %s: %d triggers", componentName, count))
+        end
+    
+        print(' Triggers in shared components: ' .. stats.sharedTriggerCount)
+    end
 
     -- Add all triggers to output, sorted by X position within each component
     for _, component in pairs(allComponents) do
@@ -268,8 +348,8 @@ function lib.SaveAll(allComponents)
     end
 
     -- Budget analysis and output
-    local stats = util.generateStatistics(AllSpells, allComponents, allTriggers, 200000)
-    util.printBudgetAnalysis(stats)
+    local stats = generateStatistics(allComponents, 200000)
+    printBudgetAnalysis(stats)
 
     -- Save to file
     local file = io.open(filename, "w")

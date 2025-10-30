@@ -433,7 +433,7 @@ lib.MultitargetRegistry:initializeBinaryComponents(Component)
 ---@param args table, requires either 'spacing' OR 'numOfBullets', optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
 function Component:instant_Radial(time, component, guiderCircle, bulletType, args)
     util.validateArgs("Radial", component, guiderCircle, bulletType, args)
-    util.validateRadialComponent(component, "Radial")
+    util.validateRadialComponent("Radial", component)
 
     args.centerAt = args.centerAt or 0 -- 0 represents pointer
 
@@ -478,7 +478,7 @@ end
 ---@param args table, requires 'numOfBullets', 'spacing' angle, optional 'centerAt' angle (clockwise from guidercircle pointer), defaults to 0
 function Component:instant_Arc(time, component, guiderCircle, bulletType, args)
     util.validateArgs("Arc", component, guiderCircle, bulletType, args.spacing, args.numOfBullets)
-    util.validateRadialComponent(component, "Arc")
+    util.validateRadialComponent("instant_Arc", component)
 
     args.centerAt = args.centerAt or 0 -- 0 represents pointer
 
@@ -579,9 +579,89 @@ function Component:instant_Arc(time, component, guiderCircle, bulletType, args)
     return self
 end
 
+--- Creates a line pattern spawn setting, where bullets burst from emitter at different speeds to form a line
+--- 
+---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
+---@param target number ; target group bullets move towards
+---@param bulletType Bullet ; the bullet type to use for spawning
+---@param args table ; requires 'fastestTime', 'slowestTime', 'dist'    optional 'easingType'/'easingRate'
+function Component:instant_Line(time, component, target, bulletType, numOfBullets, args)
+    util.validateArgs("instant_Line", time, component, bulletType, numOfBullets)
+    util.validateArgs("instant_Line", args.fastestTime, args.slowestTime, args.dist)
+    util.validateGroups("instant_Line", target)
+    util.validateRadialComponent("instant_Line", component, false)
+
+    args.easingType = args.easingType or enum.Easing.LINEAR
+    args.easingRate = args.easingRate or 1
+    
+    if not util.isInteger(numOfBullets) then
+        error("instant_Line: numOfBullets must be an integer")
+    elseif numOfBullets < 3 then
+        error("instant_Line: numOfBullets must be at least 3")
+    end
+    
+    if args.fastestTime <= 0 then
+        error("instant_Line: fastestTime must be positive number")
+    elseif args.slowestTime <= 0 then
+        error("instant_Line: slowestTime must be a positive number")
+    elseif args.slowestTime < args.fastestTime then
+        error("instant_Line: slowestTime must be greater than or equal to fastestTime")
+    end
+    
+    if type(args.dist) ~= "number" then error("instant_Line: dist must be a number") end
+    
+    local bulletGroups = {}
+    
+    local comps = lib.MultitargetRegistry:getBinaryComponents(numOfBullets)
+    for _, comp in ipairs(comps) do
+        local empties = util.createNumberCycler(6001, 6128)
+        local remap_string = ""
+        for _, spawnTrigger in ipairs(comp.triggers) do
+            local remapPairs = util.translateRemapString(spawnTrigger[enum.Properties.REMAP_STRING])
+            for source, originalTarget in pairs(remapPairs) do
+                remap_string = remap_string .. originalTarget .. '.'
+                
+                local sourceNum = tonumber(source)
+                if sourceNum == enum.EMPTY_BULLET then
+                    local nextBullet = bulletType.nextBullet()
+                    remap_string = remap_string .. nextBullet
+                    table.insert(bulletGroups, nextBullet)
+                else
+                    remap_string = remap_string .. empties()
+                end
+                
+                remap_string = remap_string .. '.'
+            end
+        end
+        remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
+        self:Spawn(time, comp.callerGroup, false, remap_string)
+    end
+    
+    for i, bullet in pairs(bulletGroups) do
+        -- Calculate travel time for each bullet
+        local travelTime = args.fastestTime + ((args.slowestTime - args.fastestTime) / (numOfBullets - 1)) * (i - 1)
+        local easing = {
+            t = travelTime,
+            type = args.easingType,
+            rate = args.easingRate,
+            dist = args.dist
+        }
+        
+        self:MoveTowards(time, bullet, target, easing)
+    end
+    return self
+end
+
 --#endregion
 
 --#region Timed Patterns
+
+--[[
+    Timed Patterns are built on top of Instant Patterns by calling them multiple times
+    with time offsets to create waves or sequences.
+    
+    These do not contain multiple emitters.
+]]
 
 --- Creates a radial wave pattern - repeated radials over time
 ---@param time number
@@ -591,7 +671,7 @@ end
 ---@param args table, requires either 'spacing' OR 'numOfBullets', 'waves', 'interval', optional 'centerAt'
 function Component:timed_RadialWave(time, component, guiderCircle, bulletType, args)
     util.validateArgs("RadialWave", component, guiderCircle, bulletType, args)
-    util.validateRadialComponent(component, "RadialWave")
+    util.validateRadialComponent("RadialWave", component)
 
     -- Validate wave-specific parameters
     if not args.waves or not util.isInteger(args.waves) or args.waves < 1 then

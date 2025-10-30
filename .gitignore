@@ -1,5 +1,6 @@
 # Zed
 .zed
+.luarc.json
 # Webstorm
 .idea
 # testing file for adding objects in GD

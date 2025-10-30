@@ -91,7 +91,6 @@ function util.unknown_g()
 end
 
 function util.validateGroups(methodName, ...)
-    local enum = require("enums")
     local args = {...}
 
     -- Lookup table for faster checking
@@ -153,11 +152,10 @@ end
 -- Extract to utility function
 ---@param component Component
 ---@param functionName string
-function util.validateRadialComponent(component, functionName)
+function util.validateRadialComponent(functionName, component, needsEmptyTarget)
     if component.requireSpawnOrder ~= true then
         error(functionName .. ": component must require spawn order...")
     end
-    local enum = require("enums")
     local hasBullet, hasTargetGroup, hasMultiTarget = false, false, false
     for _, trigger in pairs(component.triggers) do
         for _, field in pairs(enum.Properties.TargetFields) do
@@ -169,8 +167,10 @@ function util.validateRadialComponent(component, functionName)
 
     if not hasBullet then
         error(functionName .. ": component must target EMPTY_BULLET (bullet visual)")
-    elseif not hasTargetGroup then
+    elseif not hasTargetGroup and needsEmptyTarget then
         error(functionName .. ": component must target EMPTY_TARGET_GROUP (guidercircle target)")
+    elseif needsEmptyTarget == false and hasTargetGroup then
+        error(functionName .. ": component must not target EMPTY_TARGET_GROUP")
     elseif hasMultiTarget then
         error(functionName .. ": component must not have any triggers targeting EMPTY5")
     end
@@ -185,6 +185,7 @@ function util.validateEasing(methodName, easing)
     end
 
     if easing.rate == nil then easing.rate = 1 end
+    if easing.type == nil then easing.type = 0 end
 
     -- Optional speedProfile field handling
     if easing.speedProfile then
@@ -347,90 +348,6 @@ function util.remap()
     end
 
     return builder
-end
-
----@param AllSpells table
----@param AllComponents table  
----@param allTriggers table The triggers array to analyze
----@param objectBudget number Maximum object count (default: 200000)
-function util.generateStatistics(AllSpells, AllComponents, allTriggers, objectBudget)
-    objectBudget = objectBudget or 200000
-    local totalTriggers = allTriggers and #allTriggers.triggers or 0
-
-    local spellStats = {}
-    local componentStats = {}
-
-    -- Find shared components (used in multiple spells)
-    local componentUsage = {}
-    for _, spell in pairs(AllSpells) do
-        for _, component in pairs(spell.components) do
-            componentUsage[component] = (componentUsage[component] or 0) + 1
-        end
-    end
-
-    local sharedComponents = {}
-    for component, usageCount in pairs(componentUsage) do
-        if usageCount > 1 then sharedComponents[component] = true end
-    end
-
-    -- Count triggers by spell (excluding shared components)
-    for _, spell in pairs(AllSpells) do
-        local spellTriggerCount = 0
-        for _, component in pairs(spell.components) do
-            if not sharedComponents[component] then
-                spellTriggerCount = spellTriggerCount + #component.triggers
-            end
-        end
-        spellStats[spell.spellName] = spellTriggerCount
-    end
-
-    -- Count shared triggers
-    local sharedTriggerCount = 0
-    for component in pairs(sharedComponents) do
-        sharedTriggerCount = sharedTriggerCount + #component.triggers
-    end
-
-    -- Component stats
-    for _, component in ipairs(AllComponents) do
-        componentStats[component.componentName] = #component.triggers
-    end
-
-    -- Budget analysis
-    local usagePercent = totalTriggers > 0 and (totalTriggers / objectBudget) * 100 or 0
-    local remainingBudget = objectBudget - totalTriggers
-
-    local stats = {
-        spellStats = spellStats,
-        componentStats = componentStats,
-        sharedTriggerCount = sharedTriggerCount,
-        budget = {
-            totalTriggers = totalTriggers,
-            objectBudget = objectBudget,
-            usagePercent = usagePercent,
-            remainingBudget = remainingBudget
-        }
-    }
-    return stats
-end
-
----@param stats table Statistics from generateStatistics
-function util.printBudgetAnalysis(stats)
-    print(string.format("\n=== BUDGET ANALYSIS ==="))
-    print(string.format("Total triggers: %d (%.3f%%)", 
-        stats.budget.totalTriggers, stats.budget.usagePercent))
-    print(string.format("Remaining budget: %d triggers", stats.budget.remainingBudget))
-
-    print(' Spells:')
-    for spellName, count in pairs(stats.spellStats) do
-        print(string.format("   %s: %d triggers", spellName, count))
-    end
-
-    print(' Components:')
-    for componentName, count in pairs(stats.componentStats) do
-        print(string.format("   %s: %d triggers", componentName, count))
-    end
-
-    print(' Triggers in shared components: ' .. stats.sharedTriggerCount)
 end
 
 return util

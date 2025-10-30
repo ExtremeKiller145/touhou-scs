@@ -106,8 +106,8 @@ $.exportConfig({
 		$.add(object(trigger));
 	});
 	triggerCount = triggers.length;
+	
+	const __elapsedMs = Date.now() - __startTime;
+  console.log(`main.js completed in ${( __elapsedMs / 1000 ).toFixed(3)}s (${__elapsedMs} ms)`);
+  console.log(`Processed ${triggerCount} triggers`);
 });
-
-const __elapsedMs = Date.now() - __startTime;
-console.log(`main.js completed in ${( __elapsedMs / 1000 ).toFixed(3)}s (${__elapsedMs} ms)`);
-console.log(`Processed ${triggerCount} triggers`);

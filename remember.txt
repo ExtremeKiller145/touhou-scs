@@ -38,6 +38,10 @@ Auto Scale Trigger Reset Validation (optional, complicated but possible):
 make a system that goes through all triggers, creates an execution tree (i.e tracks spawn trigger chains) and looks to see if a scale trigger's reset would ever get run AFTER the bullet is triggered again elsewhere.
 
 TODO SYSTEMS:
+# URGENT ! ! !
+Fix guidercircle group assignment in the level. check to ensure no conflicts with other groups. make sure it is synced withe guidercircle definitions in lib.lua
+
+
 Health system (enemy & player)
 Enemies
 All UI (health, bombs, score)
@@ -72,4 +76,4 @@ Backgrounds: 2k - 5k (massively reduced!)
 UI: 3k - 8k 
 Visual effects: 5k - 10k 
 Total projected: 52.5k - 113k objects 
-Remaining budget: 137k - 197k objects 
+Remaining budget: 137k - 197k objects

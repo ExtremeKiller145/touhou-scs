@@ -1,3 +1,5 @@
+-- Miscellaneous functions for Touhou SCS
+-- Things that need to be automated but dont fit into the regular component usage loop
 local lib = require("lib")
 local util = require("utils")
 local enum = require("enums")
@@ -16,18 +18,19 @@ function m.addDisableAllBullets()
 
     local disableAllBullets = comp.Component.new("DisableAllBullets", util.group(32), 4)
     disableAllBullets:assertSpawnOrder(false)
-    for i = 501, 1000 do
-        disableAllBullets:Toggle(0, i, false)
+    
+    local function addDisableTriggers(min, max)
+        for i = min, max do
+            disableAllBullets:Toggle(0, i, true)
+        end
     end
-    for i = 1501, 2200 do
-        disableAllBullets:Toggle(0, i, false)
-    end
-    for i = 2901, 3600 do
-        disableAllBullets:Toggle(0, i, false)
-    end
-    for i = 4301, 4700 do
-        disableAllBullets:Toggle(0, i, false)
-    end
+    
+    local bt = lib.Bullet
+    addDisableTriggers(bt.Bullet1.minGroup, bt.Bullet1.maxGroup)
+    addDisableTriggers(bt.Bullet2.minGroup, bt.Bullet2.maxGroup)
+    addDisableTriggers(bt.Bullet3.minGroup, bt.Bullet3.maxGroup)
+    addDisableTriggers(bt.Bullet4.minGroup, bt.Bullet4.maxGroup)
+
     addedDisableAllBullets = true
 end
 
@@ -108,10 +111,12 @@ function m.addPlayerCollision()
             })
         end
     end
-    addCollisionTriggers(501, 1000)
-    addCollisionTriggers(1501, 2200)
-    addCollisionTriggers(2901, 3600)
-    addCollisionTriggers(4701, 5100)
+
+    local bt = lib.Bullet
+    addCollisionTriggers(bt.Bullet1.minGroup, bt.Bullet1.maxGroup)
+    addCollisionTriggers(bt.Bullet2.minGroup, bt.Bullet2.maxGroup)
+    addCollisionTriggers(bt.Bullet3.minGroup, bt.Bullet3.maxGroup)
+    addCollisionTriggers(bt.Bullet4.minGroup, bt.Bullet4.maxGroup)
 
     mainDespawn:Scale(0, enum.EMPTY1, 0.5, { t = 0.3 })
         :Toggle(0.3, enum.EMPTY1, false)
