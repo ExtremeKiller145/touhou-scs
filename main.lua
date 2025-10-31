@@ -71,6 +71,7 @@ callerComponent
     :timed_RadialWave(3, test2, c1, lib.Bullet.Bullet3,
         { numOfBullets = 24, centerAt = 10, waves = 10, interval = 0.3 })
 
-misc.addPlayerCollision()
-misc.addDisableAllBullets()
+-- Call misc functions again when adding a new bullet type
+-- misc.addPlayerCollision()
+-- misc.addDisableAllBullets()
 lib.SaveAll(comp.GetAllComponents())

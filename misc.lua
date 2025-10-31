@@ -16,7 +16,7 @@ function m.addDisableAllBullets()
         return
     end
 
-    local disableAllBullets = comp.Component.new("DisableAllBullets", util.group(32), 4)
+    local disableAllBullets = comp.Component.new("DisableAllBullets", util.group(32), 6)
     disableAllBullets:assertSpawnOrder(false)
     
     local function addDisableTriggers(min, max)
@@ -45,7 +45,7 @@ function m.addPlayerCollision()
         return
     end
 
-    local mainDespawn = comp.Component.new("DespawnFunction", util.unknown_g(), 4)
+    local mainDespawn = comp.Component.new("DespawnFunction", util.unknown_g(), 6)
     mainDespawn:assertSpawnOrder(true)
 
     local collisionFunction = comp.Component.new("PlayerCollisionFunction", util.group(37), 4)
@@ -60,7 +60,7 @@ function m.addPlayerCollision()
                 [ppt.SPAWN_ORDERED] = true,
                 [ppt.GROUPS] = i + max - min + 1,
 
-                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 7,
                 [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
             })
             -- despawn for boundary collision
@@ -72,7 +72,7 @@ function m.addPlayerCollision()
                 [ppt.ACTIVATE_GROUP] = true,
                 [ppt.GROUPS] = 19,
 
-                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 7,
                 [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
             })
             -- despawn for playerhit
@@ -84,7 +84,7 @@ function m.addPlayerCollision()
                 [ppt.ACTIVATE_GROUP] = true,
                 [ppt.GROUPS] = 18,
 
-                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 7,
                 [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
             })
             -- player hit register, no despawn
@@ -95,7 +95,7 @@ function m.addPlayerCollision()
                 [ppt.BLOCK_B] = enum.PLR,
                 [ppt.ACTIVATE_GROUP] = true,
                 [ppt.GROUPS] = 18,
-                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 7,
                 [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
             })
             -- no despawn, simple graze func activation
@@ -106,7 +106,7 @@ function m.addPlayerCollision()
                 [ppt.BLOCK_B] = 3, -- graze hitbox
                 [ppt.ACTIVATE_GROUP] = true,
                 [ppt.GROUPS] = 17,
-                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 4,
+                [ppt.X] = 0, [ppt.Y] = 0, [ppt.EDITOR_LAYER] = 7,
                 [ppt.SPAWN_TRIGGERED] = true, [ppt.MULTI_TRIGGERED] = true,
             })
         end

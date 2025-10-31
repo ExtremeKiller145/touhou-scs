@@ -16,8 +16,8 @@ local startTime = os.clock()
 local TriggerArea = {
     minX = 1350,
     minY = 1300,
-    maxX = 30000,
-    maxY = 10000
+    maxX = 25000,
+    maxY = 3000
 }
 
 ---@class Bullet
