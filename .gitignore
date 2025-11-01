@@ -1,3 +1,6 @@
+__pycache__/
+debug/__pycache__/
+
 debug/report.html
 
 # Zed
