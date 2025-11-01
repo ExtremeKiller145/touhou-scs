@@ -74,12 +74,9 @@ end
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
 function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
     util.validateArgs("Spawn", time, target, spawnOrdered)
+    util.validateGroups("Spawn", target)
     if type(remapID) == "string" then
         remapID = util.validateRemapString("Spawn", remapID)
-    end
-
-    if type(target) ~= "number" and type(target) ~= "string" then
-        error("Spawn: target must be a number or string, not component/table")
     end
     
     local trigger = createTrigger(self)
