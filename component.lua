@@ -68,20 +68,26 @@ function Component:assertSpawnOrder(bool)
     return self
 end
 
----@param remapID string Remap string, dot-seperated list, e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
+---@param remapID string | nil Remap string, dot-seperated list, e.g. '1.2.3.4' remaps 1 -> 2 and 3 -> 4
 --- Nested remaps: outer remap must remap the inner, e.g. if inner is '1.2', other should be '2.3' not '1.3'.
 --- inner must not have reset_remap on.
 ---@param spawnOrdered boolean Execute from left to right w/ gap time
 function Component:Spawn(time, target, spawnOrdered, remapID, spawnDelay)
-    util.validateArgs("Spawn", time, target, spawnOrdered, remapID)
-    remapID = util.validateRemapString("Spawn", remapID)
+    util.validateArgs("Spawn", time, target, spawnOrdered)
+    if type(remapID) == "string" then
+        remapID = util.validateRemapString("Spawn", remapID)
+    end
 
+    if type(target) ~= "number" and type(target) ~= "string" then
+        error("Spawn: target must be a number or string, not component/table")
+    end
+    
     local trigger = createTrigger(self)
     trigger[ppt.OBJ_ID] = enum.ObjectID.Spawn
     trigger[ppt.X] = util.timeToDist(time)
     trigger[ppt.TARGET] = target
 
-    trigger[ppt.REMAP_STRING] = remapID
+    if remapID then trigger[ppt.REMAP_STRING] = remapID end
     trigger[ppt.RESET_REMAP] = false
     trigger[ppt.SPAWN_ORDERED] = spawnOrdered
     trigger[ppt.SPAWN_DELAY] = spawnDelay or 0
@@ -582,17 +588,18 @@ end
 --- Creates a line pattern spawn setting, where bullets burst from emitter at different speeds to form a line
 --- 
 ---@param component Component ; requires assertSpawnOrder(true), represents cycle of a single bullet
----@param target number ; target group bullets move towards
+---@param targetDir number ; target group bullets move towards
 ---@param bulletType Bullet ; the bullet type to use for spawning
----@param args table ; requires 'fastestTime', 'slowestTime', 'dist'    optional 'easingType'/'easingRate'
-function Component:instant_Line(time, component, target, bulletType, numOfBullets, args)
+---@param args table ; requires 'fastestTime', 'slowestTime', 'dist'    optional 'easingType', 'easingRate', 'moveDelay'
+function Component:instant_Line(time, component, targetDir, bulletType, numOfBullets, args)
     util.validateArgs("instant_Line", time, component, bulletType, numOfBullets)
     util.validateArgs("instant_Line", args.fastestTime, args.slowestTime, args.dist)
-    util.validateGroups("instant_Line", target)
+    util.validateGroups("instant_Line", targetDir)
     util.validateRadialComponent("instant_Line", component, false)
 
     args.easingType = args.easingType or enum.Easing.LINEAR
     args.easingRate = args.easingRate or 1
+    args.moveDelay = args.moveDelay or enum.TICK * 2
     
     if not util.isInteger(numOfBullets) then
         error("instant_Line: numOfBullets must be an integer")
@@ -611,15 +618,15 @@ function Component:instant_Line(time, component, target, bulletType, numOfBullet
     if type(args.dist) ~= "number" then error("instant_Line: dist must be a number") end
     
     local bulletGroups = {}
-    
     local comps = lib.MultitargetRegistry:getBinaryComponents(numOfBullets)
+    
     for _, comp in ipairs(comps) do
         local empties = util.createNumberCycler(6001, 6128)
         local remap_string = ""
         for _, spawnTrigger in ipairs(comp.triggers) do
             local remapPairs = util.translateRemapString(spawnTrigger[enum.Properties.REMAP_STRING])
-            for source, originalTarget in pairs(remapPairs) do
-                remap_string = remap_string .. originalTarget .. '.'
+            for source, target in pairs(remapPairs) do
+                remap_string = remap_string .. target .. '.'
                 
                 local sourceNum = tonumber(source)
                 if sourceNum == enum.EMPTY_BULLET then
@@ -633,6 +640,7 @@ function Component:instant_Line(time, component, target, bulletType, numOfBullet
                 remap_string = remap_string .. '.'
             end
         end
+        -- Final mapping: EMPTY_MULTITARGET -> component caller group
         remap_string = remap_string .. enum.EMPTY_MULTITARGET .. '.' .. component.callerGroup
         self:Spawn(time, comp.callerGroup, false, remap_string)
     end
@@ -647,8 +655,9 @@ function Component:instant_Line(time, component, target, bulletType, numOfBullet
             dist = args.dist
         }
         
-        self:MoveTowards(time, bullet, target, easing)
+        self:MoveTowards(time + args.moveDelay, bullet, targetDir, easing)
     end
+    
     return self
 end
 
