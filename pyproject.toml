@@ -1,0 +1,4 @@
+[tool.basedpyright]
+typeCheckingMode = "strict"
+reportAny = "none"
+reportExplicitAny = "none"

@@ -15,7 +15,6 @@ local enum = {
     TICK = 1/240,
     EDITOR_LAYER = 4,
     SCREEN_CENTER = 30, -- center group of game window
-    UNKNOWN_G = "unknown_g", -- Gets parsed at compile time
 
     -- Holder object for empty groups is directly placed on the physical player, layer 0
     EMPTY1 = 21, -- Empty group for targeting and remapping 21 -> whatever

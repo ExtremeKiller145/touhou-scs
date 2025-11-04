@@ -1,8 +1,8 @@
 """
 Touhou SCS - Enums and Constants Module
 
-Contains all game constants, property IDs, and enumerated values.
-Central location for magic numbers to ensure type safety and IDE autocomplete.
+All game constants, property IDs, and enumerated values.
+Central location for magic numbers with type safety and IDE autocomplete.
 """
 
 from enum import IntEnum
@@ -62,85 +62,86 @@ class Easing(IntEnum):
 # TRIGGER PROPERTIES - Field IDs
 # ============================================================================
 
-class Properties:
+class Properties(IntEnum):
     """Trigger property field IDs for Geometry Dash level data"""
     
     # ========== General Properties ==========
-    OBJ_ID: Final[int] = 1
-    X: Final[int] = 2
-    Y: Final[int] = 3
-    DURATION: Final[int] = 10
-    EDITOR_LAYER: Final[int] = 20
-    EASING: Final[int] = 30
-    TARGET: Final[int] = 51
-    GROUPS: Final[int] = 57  # Requires JS-side translation, must be wrapped in array
-    EDITOR_LAYER_2: Final[int] = 61
-    SPAWN_TRIGGERED: Final[int] = 62
-    EASING_RATE: Final[int] = 85
-    MULTI_TRIGGERED: Final[int] = 87
-    DYNAMIC: Final[int] = 397
+    OBJ_ID = 1
+    X = 2
+    Y = 3
+    DURATION = 10
+    EDITOR_LAYER = 20
+    EASING = 30
+    TARGET = 51
+    GROUPS = 57  # Requires JS-side translation, must be wrapped in array
+    EDITOR_LAYER_2 = 61
+    SPAWN_TRIGGERED = 62
+    EASING_RATE = 85
+    MULTI_TRIGGERED = 87
+    DYNAMIC = 397
     
     # ========== Alpha Trigger ==========
-    OPACITY: Final[int] = 35
+    OPACITY = 35
     
     # ========== Follow Trigger ==========
-    FOLLOW_GROUP: Final[int] = 71
+    FOLLOW_GROUP = 71
     
     # ========== Stop Trigger ==========
-    STOP_OPTION: Final[int] = 580  # 0=stop, 1=pause, 2=resume
-    STOP_USE_CONTROL_ID: Final[int] = 535  # boolean
+    STOP_OPTION = 580  # 0=stop, 1=pause, 2=resume
+    STOP_USE_CONTROL_ID = 535  # boolean
     
     # ========== Toggle Trigger ==========
-    ACTIVATE_GROUP: Final[int] = 56
+    ACTIVATE_GROUP = 56
     
     # ========== Collision Trigger ==========
-    BLOCK_A: Final[int] = 80
-    BLOCK_B: Final[int] = 95
+    BLOCK_A = 80
+    BLOCK_B = 95
     
     # ========== Pulse Trigger ==========
-    PULSE_FADE_IN: Final[int] = 45
-    PULSE_HOLD: Final[int] = 46
-    PULSE_FADE_OUT: Final[int] = 47
-    PULSE_HSV: Final[int] = 48  # HSV mode boolean
-    PULSE_HSV_STRING: Final[int] = 49  # 'a' separated string like 'HaSaBa0a0'
-    PULSE_TARGET_TYPE: Final[int] = 52  # false = color channel, true = group ID
-    PULSE_EXCLUSIVE: Final[int] = 86
+    PULSE_FADE_IN = 45
+    PULSE_HOLD = 46
+    PULSE_FADE_OUT = 47
+    PULSE_HSV = 48  # HSV mode boolean
+    PULSE_HSV_STRING = 49  # 'a' separated string like 'HaSaBa0a0'
+    PULSE_TARGET_TYPE = 52  # false = color channel, true = group ID
+    PULSE_EXCLUSIVE = 86
     
     # ========== Scale Trigger ==========
-    SCALE_X: Final[int] = 150
-    SCALE_Y: Final[int] = 151
-    SCALE_CENTER: Final[int] = 71
-    SCALE_DIV_BY_X: Final[int] = 153
-    SCALE_DIV_BY_Y: Final[int] = 154
+    SCALE_X = 150
+    SCALE_Y = 151
+    SCALE_CENTER = 71
+    SCALE_DIV_BY_X = 153
+    SCALE_DIV_BY_Y = 154
     
     # ========== Rotate Trigger ==========
-    ROTATE_ANGLE: Final[int] = 68  # In degrees, clockwise is +
-    ROTATE_CENTER: Final[int] = 71  # For Rotate triggers, type group
-    ROTATE_TARGET: Final[int] = 401
-    ROTATE_AIM_MODE: Final[int] = 100
-    ROTATE_DYNAMIC_EASING: Final[int] = 403
+    ROTATE_ANGLE = 68  # In degrees, clockwise is +
+    ROTATE_CENTER = 71  # For Rotate triggers, type group
+    ROTATE_TARGET = 401
+    ROTATE_AIM_MODE = 100
+    ROTATE_DYNAMIC_EASING = 403
     
     # ========== Spawn Trigger ==========
-    REMAP_STRING: Final[int] = 442  # Dot separated. e.g. '1.2.3.4' remaps 1->2 and 3->4
-    RESET_REMAP: Final[int] = 581  # Blocks other spawn triggers from remapping
-    SPAWN_ORDERED: Final[int] = 441  # Boolean
-    SPAWN_DELAY: Final[int] = 63
+    REMAP_STRING = 442  # Dot separated. e.g. '1.2.3.4' remaps 1->2 and 3->4
+    RESET_REMAP = 581  # Blocks other spawn triggers from remapping
+    SPAWN_ORDERED = 441  # Boolean
+    SPAWN_DELAY = 63
     
     # ========== Move Trigger ==========
-    MOVE_X: Final[int] = 28
-    MOVE_Y: Final[int] = 29
-    MOVE_SMALL_STEP: Final[int] = 393  # Small step boolean. Better accuracy
-    MOVE_TARGET_CENTER: Final[int] = 395  # Target's center for Direction/Goto
-    MOVE_TARGET_DIR: Final[int] = 71  # Target for Direction mode
-    MOVE_TARGET_LOCATION: Final[int] = 71  # Target for Goto mode
-    MOVE_TARGET_MODE: Final[int] = 100  # 'Goto' mode boolean
-    MOVE_DIRECTION_MODE: Final[int] = 394  # Direction mode boolean
-    MOVE_DIRECTION_MODE_DISTANCE: Final[int] = 396
-    MOVE_SILENT: Final[int] = 544  # Platformer mode 'silent' boolean
-    
-    # ========== Fields That Can Target Groups ==========
-    # Used for trigger validation systems
-    TARGET_FIELDS: Final[tuple[int, ...]] = (51, 71, 401, 395)
+    MOVE_X = 28
+    MOVE_Y = 29
+    MOVE_SMALL_STEP = 393  # Small step boolean. Better accuracy
+    MOVE_TARGET_CENTER = 395  # Target's center for Direction/Goto
+    MOVE_TARGET_DIR = 71  # Target for Direction mode
+    MOVE_TARGET_LOCATION = 71  # Target for Goto mode
+    MOVE_TARGET_MODE = 100  # 'Goto' mode boolean
+    MOVE_DIRECTION_MODE = 394  # Direction mode boolean
+    MOVE_DIRECTION_MODE_DISTANCE = 396
+    MOVE_SILENT = 544  # Platformer mode 'silent' boolean
+
+
+# ========== Fields That Can Target Groups ==========
+# Used for trigger validation systems
+TARGET_FIELDS: Final[tuple[int, ...]] = (51, 71, 401, 395)
 
 
 # ============================================================================
@@ -158,14 +159,15 @@ PLR: Final[int] = 2  # Player group ID
 SCREEN_CENTER: Final[int] = 30  # Center group of game window
 NORTH_GROUP: Final[int] = 26
 
-# Empty Groups for Remapping
+# Empty Groups for Remapping   (e.g. 21 => group)
 # Holder object for empty groups is directly placed on the physical player, layer 0
-EMPTY1: Final[int] = 21  # Empty group for targeting and remapping 21 -> whatever
-EMPTY2: Final[int] = 23  # Empty group for targeting and remapping 23 -> whatever
-EMPTY3: Final[int] = 24  # Empty group for targeting and remapping 24 -> whatever
+EMPTY1: Final[int] = 21  
+EMPTY2: Final[int] = 23  
+EMPTY3: Final[int] = 24  
 EMPTY_BULLET: Final[int] = 10  # EMPTY1 for multitarget functionality only
 EMPTY_TARGET_GROUP: Final[int] = 20  # EMPTY2 for multitarget functionality only
-EMPTY_MULTITARGET: Final[int] = 9989  # Exclusively for multitarget functionality
+
+EMPTY_MULTITARGET: Final[int] = 9989  # Restricted; multitarget exclusive
 
 # Distance
 OFFSCREEN_DIST: Final[int] = 480  # Minimum distance to get bullet offscreen
@@ -178,9 +180,7 @@ EDITOR_LAYER: Final[int] = 4  # Default editor layer
 # Restricted Groups - DO NOT USE THESE GROUP IDs
 # These groups are known to cause conflicts/corruption
 RESTRICTED_GROUPS: Final[tuple[int, ...]] = (
-    1, 3, 4, 5, 6, 7, 8, 9,
-    11, 12, 13, 14, 15, 16, 17, 18, 19,
-    22, 25, 9989, 9999
+    1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 22, 25, 9989, 9999
 )
 
 
@@ -188,27 +188,14 @@ RESTRICTED_GROUPS: Final[tuple[int, ...]] = (
 # SPEED PROFILES
 # ============================================================================
 
-class SpeedProfiles:
-    """
-    Predefined speed profiles for bullet movement.
-    Time to travel OFFSCREEN_DIST for 'easing.t' parameters
-    """
-    VERY_SLOW: Final[float] = 480 / 32  # 15.0 seconds
-    SLOW: Final[float] = 480 / 16       # 7.5 seconds
-    MEDIUM: Final[float] = 480 / 8      # 3.75 seconds
-    FAST: Final[float] = 480 / 4        # 1.875 seconds
-    VERY_FAST: Final[float] = 480 / 2   # 0.9375 seconds
-
-
 # ============================================================================
-# DEFAULT CONFIGURATIONS
+# SPEED PROFILES - Module-level constants
 # ============================================================================
 
-class DefaultEasing:
-    """Default values for easing configurations"""
-    T: Final[float] = 0
-    TYPE: Final[int] = 0
-    RATE: Final[float] = 1
-    DIST: Final[int] = 480
-    ANGLE: Final[int] = 90
-    DYNAMIC: Final[bool] = False
+# Predefined speed profiles for bullet movement.
+# Time to travel OFFSCREEN_DIST (480 studs) at different speeds.
+SPEED_VERY_SLOW: Final[float] = 480 / 32  # 15.0 seconds
+SPEED_SLOW: Final[float] = 480 / 16       # 7.5 seconds
+SPEED_MEDIUM: Final[float] = 480 / 8      # 3.75 seconds
+SPEED_FAST: Final[float] = 480 / 4        # 1.875 seconds
+SPEED_VERY_FAST: Final[float] = 480 / 2   # 0.9375 seconds
