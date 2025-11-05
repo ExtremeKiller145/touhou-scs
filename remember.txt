@@ -113,6 +113,7 @@ instant_Line(time, component, targetDir, bulletType, numOfBullets = _, tFast = _
 Notes:
 
 In my experience the group strings were causing me a lot of headache. I have a new idea: why not use an integer range that normal groups would never use? for example, something like 100001, counting up. Then we pass it everywhere like normal, and the only change would be that when adding it in `main.js` we man 100000 => new_group (via unknown_g()) instead of 'unknown_g3 => new_group'. We would only have to change how its parsed in main.js, but it would otherwise work.
+UPDATE: THIS HAS BEEN IMPLEMENTED
 
 
 1. **CamelCase for methods:** `moveTowards`, `assertSpawnOrder`, `gotoGroup` ✓
@@ -123,6 +124,5 @@ moveBy(0.5, 501, dx=1, dy=2, Easing(t=2.4, rate=2.0))
 4. **3 main files:** `enums.py`, `component.py`, `lib.py` (plus utils/misc) ✓
 5. **Import style:** `import touhou_scs.enums as e` etc. ✓
 6. Error handling philosophy: always raise errors immediately.
-7. Names
 
 ```

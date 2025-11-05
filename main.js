@@ -26,43 +26,47 @@ $.exportConfig({
 	const jsonData = require('fs').readFileSync('triggers.json', 'utf8');
 	const data = JSON.parse(jsonData);
 
-	// Step 1: Scan all triggers for unknown groups
-	const unknownG_dict = {}; // Maps "unknown_g1" -> actual unknown_g() result object
+	// Step 1: Scan all triggers for unknown groups (integers >= 10000)
+	const unknownG_set = new Set(); // Collect all unknown group integers first
 
-	// Helper function to register unknown groups in the registry
-	const registerUnknownGroup = (val) => {
-		if (typeof val === 'string') {
-			// Check for single unknown group
-			if (val.match(/^unknown_g\d+$/)) {
-				if (!unknownG_dict[val]) {
-					unknownG_dict[val] = unknown_g();
-					console.log(`Registered ${val} -> Group ${unknownG_dict[val].value}`);
-				}
-			}
+	// Helper function to collect unknown groups
+	const collectUnknownGroup = (val) => {
+		if (typeof val === 'number' && val >= 10000) {
+			unknownG_set.add(val);
+		} else if (typeof val === 'string') {
 			// Check for unknown groups in strings (like remap strings)
-			const unknownGroups = val.match(/unknown_g\d+/g);
+			const unknownGroups = val.match(/\b\d{5,}\b/g);
 			if (unknownGroups) {
 				unknownGroups.forEach(group => {
-					if (!unknownG_dict[group]) {
-						unknownG_dict[group] = unknown_g();
-						console.log(`Registered ${val} -> Group ${unknownG_dict[val].value}`);
+					const groupNum = parseInt(group, 10);
+					if (groupNum >= 10000) {
+						unknownG_set.add(groupNum);
 					}
 				});
 			}
 		} else if (Array.isArray(val)) {
 			// Process arrays recursively
-			val.forEach(item => registerUnknownGroup(item));
+			val.forEach(item => collectUnknownGroup(item));
 		}
 	};
 
-	// Step 2: Scan every property of every trigger
+	// Step 2: Scan every property of every trigger to collect all unknown groups
 	data.triggers.forEach(trigger => {
 		Object.values(trigger).forEach(value => {
-			registerUnknownGroup(value);
+			collectUnknownGroup(value);
 		});
 	});
 
-	console.log(`Unknown group registry complete: ${Object.keys(unknownG_dict).length} groups registered\n`);
+	// Step 3: Sort and register unknown groups in order (lowest first)
+	const unknownG_dict = {}; // Maps 10000+n -> actual unknown_g() result object
+	const sortedUnknownGroups = Array.from(unknownG_set).sort((a, b) => a - b);
+	
+	sortedUnknownGroups.forEach(groupNum => {
+		unknownG_dict[groupNum] = unknown_g();
+		console.log(`Registered ${groupNum} -> Group ${unknownG_dict[groupNum].value}`);
+	});
+
+	console.log(`Unknown group registry complete: ${sortedUnknownGroups.length} groups registered\n`);
 
 	// Step 3: Transform all triggers using the registry
 	const triggers = data.triggers.map(trigger => {
@@ -73,24 +77,25 @@ $.exportConfig({
 				const groupArray = Array.isArray(groupData) ? groupData : [groupData];
 
 				acc['GROUPS'] = groupArray.map(val => {
-					const isUnknownGroup = (typeof val === 'string' && val.match(/^unknown_g\d+$/));
+					const isUnknownGroup = (typeof val === 'number' && val >= 10000);
 					const registryVal = unknownG_dict[val];
 					return isUnknownGroup && registryVal ? registryVal : group(val);
 				});
 			} else if (groupPropertyField(key)) {
 				// Handle TARGET property - direct unknown group replacement
 				let target = trigger[key];
-				if (typeof target === 'string' && target.match(/^unknown_g\d+$/) && unknownG_dict[target]) {
+				if (typeof target === 'number' && target >= 10000 && unknownG_dict[target]) {
 					target = unknownG_dict[target].value;
 				}
 				acc[key] = target;
 			} else if (key === PROPERTY_REMAP_STRING) {
 				let str = trigger[key];
 				if (typeof str === 'string') {
-					Object.keys(unknownG_dict).forEach(unknownGroup => {
+					Object.keys(unknownG_dict).forEach(unknownGroupKey => {
+						const unknownGroup = parseInt(unknownGroupKey, 10);
 						const actualGroup = unknownG_dict[unknownGroup];
 						if (actualGroup && actualGroup.value !== undefined) {
-							str = str.replace(new RegExp(unknownGroup, 'g'), actualGroup.value);
+							str = str.replace(new RegExp(`\\b${unknownGroup}\\b`, 'g'), actualGroup.value);
 						}
 					});
 				}

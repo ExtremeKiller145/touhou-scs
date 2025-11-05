@@ -9,8 +9,9 @@ import json
 import random
 import time
 from typing import Any
+from warnings import warn
 
-from touhou_scs import enums
+from touhou_scs import enums as enum
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger
 
 
@@ -22,14 +23,9 @@ _start_time = time.time()
 TRIGGER_AREA = {
     "min_x": 1350,
     "min_y": 1300,
-    "max_x": 25000,
-    "max_y": 3000
+    "max_x": 2000,
+    "max_y": 2000
 }
-
-
-# ============================================================================
-# SPELL SYSTEM
-# ============================================================================
 
 class Spell:
     """
@@ -57,7 +53,8 @@ class Spell:
 
 
 # ============================================================================
-# GUIDER CIRCLE
+# IN-LEVEL GROUP ASSIGNMENTS
+# (i.e. real objects like bullets, guidercircle, emitters)
 # ============================================================================
 
 class GuiderCircle:
@@ -77,13 +74,7 @@ class GuiderCircle:
         for i in range(1, 361):
             self.groups[i] = self.pointer + (i - 1)
 
-
-# Pre-configured guider circles
 circle1 = GuiderCircle(all_group=5461, center=5461, pointer=5101)
-
-# ============================================================================
-# BULLET POOL
-# ============================================================================
 
 class BulletPool:
     """
@@ -92,15 +83,15 @@ class BulletPool:
     """
     
     def __init__(self, min_group: int, max_group: int):
-        """Create a bullet pool. """
         self.min_group: int = min_group
         self.max_group: int = max_group
         self._current: int = min_group - 1
     
-    def next_bullet(self) -> tuple[int, int]:
+    def next(self) -> tuple[int, int]:
         """
-        Returns:
-            Tuple of (bullet_group, collision_group)
+        Get the next bullet / collision group in the cycle.
+        
+        Returns: Tuple of (bullet_group, collision_group)
         """
         self._current += 1
         if self._current > self.max_group:
@@ -111,15 +102,18 @@ class BulletPool:
         return bullet, collision
 
 
-# Pre-configured bullet pools
-bullet_pool_1 = BulletPool(501, 1000)
-bullet_pool_2 = BulletPool(1501, 2200)
-bullet_pool_3 = BulletPool(2901, 3600)
-bullet_pool_4 = BulletPool(4301, 4700)
+bullet1 = BulletPool(501, 1000)
+bullet2 = BulletPool(1501, 2200)
+bullet3 = BulletPool(2901, 3600)
+bullet4 = BulletPool(4301, 4700)
 
+
+def get_all_components() -> list[ComponentProtocol]:
+    """Return list of all registered components."""
+    return all_components
 
 # ============================================================================
-# TRIGGER SPREADING
+# EXPORT FUNCTIONS
 # ============================================================================
 
 def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> None:
@@ -132,9 +126,9 @@ def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> N
         component: Component object with requireSpawnOrder attribute
     """
     if len(triggers) < 1:
-        raise ValueError(f"_spread_triggers: No triggers in component {component.componentName}")
+        raise ValueError(f"No triggers in component {component.componentName}")
     
-    ppt = enums.Properties
+    ppt = enum.Properties
     
     # Single trigger - random position
     if len(triggers) == 1:
@@ -158,10 +152,7 @@ def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> N
         
         # Check if chain fits in trigger area
         if chain_width > (TRIGGER_AREA["max_x"] - TRIGGER_AREA["min_x"]):
-            raise ValueError(
-                f"_spread_triggers: Rigid chain too wide ({chain_width}) " +
-                f"to fit in trigger area for {component.componentName}"
-            )
+            raise ValueError(f"Rigid chain too wide ({chain_width}) to fit in trigger area for {component.componentName}")
         
         # Shift entire chain to random position
         shift = float(random.randint(TRIGGER_AREA["min_x"], int(TRIGGER_AREA["max_x"] - chain_width)) - min_x)
@@ -183,10 +174,6 @@ def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> N
         trigger[ppt.Y] = random.randint(TRIGGER_AREA["min_y"], TRIGGER_AREA["max_y"])
 
 
-# ============================================================================
-# STATISTICS
-# ============================================================================
-
 def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
     """
     Generate statistics about trigger usage and budget.
@@ -196,26 +183,24 @@ def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
     spell_stats = {}
     component_stats = {}
     
-    # Find shared components (used in multiple spells)
     component_usage: dict[ComponentProtocol, int] = {}
     for spell in all_spells:
-        for component in spell.components:
-            component_usage[component] = component_usage.get(component, 0) + 1
+        for comp in spell.components:
+            component_usage[comp] = component_usage.get(comp, 0) + 1
     
     shared_components = {comp for comp, count in component_usage.items() if count > 1}
     
-    # Count triggers by spell (excluding shared)
     for spell in all_spells:
         spell_trigger_count = 0
-        for component in spell.components:
-            if component not in shared_components:
-                spell_trigger_count += len(component.triggers)
+        for comp in spell.components:
+            if comp not in shared_components:
+                spell_trigger_count += len(comp.triggers)
         spell_stats[spell.spell_name] = spell_trigger_count
     
     shared_trigger_count = sum(len(comp.triggers) for comp in shared_components)
     
-    for component in all_components:
-        component_stats[component.componentName] = len(component.triggers)
+    for comp in all_components:
+        component_stats[comp.componentName] = len(comp.triggers)
     
     usage_percent = (total_triggers / object_budget) * 100 if total_triggers > 0 else 0
     remaining_budget = object_budget - total_triggers
@@ -257,39 +242,36 @@ def _print_budget_analysis(stats: dict[str, Any]) -> None:
         print(f"\nShared components: {shared_count} triggers")
 
 
-# ============================================================================
-# EXPORT FUNCTION
-# ============================================================================
-
 def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> None:
     """
     Export all component triggers to JSON file for main.js processing.
     Handles spreading, sorting, validation, and statistics.
     """
-    ppt = enums.Properties
     output: dict[str, list[Trigger]] = {"triggers": []}
     
-    for component in all_components:
-        if len(component.triggers) == 0:
+    ppt = enum.Properties # shorthand
+    
+    for comp in all_components:
+        if len(comp.triggers) == 0:
+            warn(f"Component {comp.componentName} has no triggers", stacklevel=2)
             continue
         
-        sorted_triggers: list[Trigger] = component.triggers.copy()
-        _spread_triggers(sorted_triggers, component)
+        sorted_triggers: list[Trigger] = comp.triggers.copy()
+        _spread_triggers(sorted_triggers, comp)
         sorted_triggers.sort(key=lambda t: float(t[ppt.X]))
         
         prev_x = -10000
         for trigger in sorted_triggers:
             if trigger[ppt.GROUPS] == 9999:
                 raise RuntimeError(
-                    f"CRITICAL ERROR: Reserved group 9999 detected in {component.componentName}"
+                    f"CRITICAL ERROR: Reserved group 9999 detected in {comp.componentName}"
                 )
-            
-            # Check X spacing to ensure spawn order is preserved
+
             curr_x: float = float(trigger[ppt.X])  
             if 0 < curr_x - prev_x < 1:
                 raise RuntimeError(
                     "CRITICAL ERROR: X position within 1 unit of previous trigger " +
-                    f"in {component.componentName} - spawn order not preserved"
+                    f"in {comp.componentName} - spawn order not preserved"
                 )
             
             prev_x = curr_x
@@ -298,8 +280,8 @@ def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> No
     stats = _generate_statistics(object_budget)
     _print_budget_analysis(stats)
     
-    with open(filename, "w") as f:
-        json.dump(output, f, indent=2)
+    with open(filename, "w") as file:
+        json.dump(output, file)
     
     elapsed = time.time() - _start_time
     print(f"\nSaved to {filename} successfully!")

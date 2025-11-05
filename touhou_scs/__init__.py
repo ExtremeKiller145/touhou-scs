@@ -13,20 +13,20 @@ from touhou_scs.lib import (
     Spell,
     GuiderCircle,
     BulletPool,
-    save_all,
+    get_all_components,
     circle1,
-    bullet_pool_1,
-    bullet_pool_2,
-    bullet_pool_3,
-    bullet_pool_4,
+    bullet1,
+    bullet2,
+    bullet3,
+    bullet4,
+    save_all,
 )
-from touhou_scs import enums
+from touhou_scs.component import Component
+from touhou_scs import enums, utils
 from touhou_scs.types import (
     Trigger,
     ComponentProtocol,
     SpellProtocol,
-    GuiderCircleData,
-    BulletPoolData,
     GroupID,
     Time,
     Distance,
@@ -35,29 +35,30 @@ from touhou_scs.types import (
 
 __all__ = [
     # Core classes
+    "Component",
     "Spell",
     "GuiderCircle",
     "BulletPool",
     
-    # Export function
+    # Core functions
     "save_all",
+    "get_all_components",
     
     # Pre-configured instances
     "circle1",
-    "bullet_pool_1",
-    "bullet_pool_2",
-    "bullet_pool_3",
-    "bullet_pool_4",
+    "bullet1",
+    "bullet2",
+    "bullet3",
+    "bullet4",
     
-    # Enums module
+    # Modules
     "enums",
+    "utils",
     
     # Type definitions (for type hints in user code)
     "Trigger",
     "ComponentProtocol",
     "SpellProtocol",
-    "GuiderCircleData",
-    "BulletPoolData",
     "GroupID",
     "Time",
     "Distance",
