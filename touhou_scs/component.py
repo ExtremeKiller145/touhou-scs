@@ -7,6 +7,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 """
 
 from __future__ import annotations
+from typing import Any
 # from typing import TYPE_CHECKING
 
 from touhou_scs import enums as enum, lib, utils as util
@@ -75,6 +76,17 @@ class Component:
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,
         }
+        
+    def _validate_params(self, *, 
+        t:Any = None, center:Any = None, target:Any = None):
+        """Value check common trigger parameters"""
+
+        if t is not None and t < 0:
+            raise ValueError("Duration 't' must be non-negative")
+        if center is not None and _RESTRICTED_LOOKUP.get(center):
+            raise ValueError(f"Center group '{center}' is restricted.")
+        if target is not None and _RESTRICTED_LOOKUP.get(target):
+            raise ValueError(f"Target group '{target}' is restricted.")
     
     def assert_spawn_order(self, required: bool):
         """Set component spawn order requirement."""
@@ -86,17 +98,15 @@ class Component:
     # ========================================================================
     
     def Spawn(self, time: float,
-        target: int | Component,
-        spawnOrdered: bool, *,
-        remap: str | None = None,
-        delay: float = 0 ):
+        target: int | Component, spawnOrdered: bool, *,
+        remap: str | None = None, delay: float = 0 ):
         """
         Spawn another component or group's triggers
         
         Optional: remap string, spawnDelay
         """
-        
         target = target.callerGroup if isinstance(target, Component) else target
+        self._validate_params(target=target)
         
         trigger = self._create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
         trigger[ppt.SPAWN_ORDERED] = spawnOrdered
@@ -117,6 +127,7 @@ class Component:
         (collision triggers might be different)
         """
         target = target.callerGroup if isinstance(target, Component) else target
+        self._validate_params(target=target)
         
         trigger = self._create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
@@ -132,6 +143,7 @@ class Component:
         
         Optional: type, rate, dynamic, center of target
         """
+        self._validate_params(t=t, target=targetDir)
         
         trigger = self._create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -158,6 +170,7 @@ class Component:
         
         Optional: fadeIn, t, fadeOut
         """
+        self._validate_params(t=t, target=target)
         
         trigger = self._create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), target)
 
@@ -181,6 +194,7 @@ class Component:
         
         Optional: t, type, rate
         """
+        self._validate_params(t=t, target=target)
         
         trigger = self._create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -202,6 +216,7 @@ class Component:
         
         Optional: t, type, rate
         """
+        self._validate_params(t=t, target=target)
         
         trigger = self._create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -223,8 +238,10 @@ class Component:
         """
         Rotate target by angle (degrees, clockwise is positive)
         
-        Optional: center, t, type, rate
+        Optional: center (defaults to target), t, type, rate
         """
+        self._validate_params(t=t, target=target, center=center)
+        
         if center is None: center = target
         elif _RESTRICTED_LOOKUP.get(center):
             raise ValueError(f"Center group '{center}' is restricted.")
@@ -248,6 +265,7 @@ class Component:
         
         Optional: t, type, rate
         """
+        self._validate_params(t=t, target=target)
         
         trigger = self._create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
@@ -271,6 +289,7 @@ class Component:
         
         Optional: divide, t, type, rate
         """
+        self._validate_params(t=t, target=target)
         
         trigger = self._create_trigger(enum.ObjectID.SCALE, util.time_to_dist(time), target)
         
@@ -292,6 +311,7 @@ class Component:
         
         Optional: t (duration)
         """
+        self._validate_params(t=t, target=target)
         
         trigger = self._create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
         
@@ -307,6 +327,7 @@ class Component:
         
         Optional: t (duration)
         """
+        self._validate_params(t=t, target=target)
         if opacity < 0 or opacity > 100:
             raise ValueError("Opacity must be between 0 and 100")
         
@@ -318,19 +339,24 @@ class Component:
         self.triggers.append(trigger)
         return self
     
+    def _stop_trigger_common(self, time: float, target: int, option: int, useControlID: bool):
+        """Common logic for Stop, Pause, Resume triggers (internal use, made bc DRY principle)"""
+        self._validate_params(target=target)
+        
+        trigger = self._create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
+        
+        trigger[ppt.STOP_OPTION] = option
+        trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
+        
+        self.triggers.append(trigger)
+    
     def Stop(self, time: float, target: int, *, useControlID: bool = False):
         """
         Stop target's active triggers (Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn)
         
         Optional: useControlID
         """
-        
-        trigger = self._create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
-        
-        trigger[ppt.STOP_OPTION] = 0
-        trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
-        
-        self.triggers.append(trigger)
+        self._stop_trigger_common(time, target, 0, useControlID)
         return self
     
     def Pause(self, time: float, target: int, *, useControlID: bool = False):
@@ -339,6 +365,7 @@ class Component:
         
         Optional: useControlID
         """
+        self._validate_params(target=target)
         
         trigger = self._create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
         
@@ -354,6 +381,7 @@ class Component:
         
         Optional: useControlID
         """
+        self._validate_params(target=target)
         
         trigger = self._create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
         
@@ -362,3 +390,65 @@ class Component:
         
         self.triggers.append(trigger)
         return self
+
+class Multitarget:
+    """
+    Make triggers effect multiple targets using precise component remapping.
+    
+    Works by creating components with many spawn triggers, and remap chaining to execute at once.
+    """
+
+    _powers: list[int] = [1, 2, 4, 8, 16, 32, 64]
+    """List of binary powers; each component has 2^n targets"""
+    _initialized: bool = False
+    """Private registration flag"""
+    _binary_bases: dict[int, Component] = {}
+    """Private storage for binary base components (powers of 2)"""
+    
+    @classmethod
+    def get_binary_components(cls, num_targets: int) -> list[Component]:
+        """Get the binary components needed to represent num_of_targets."""
+
+        if not cls._initialized: cls._initialize_binary_bases()
+        
+        if num_targets < 1: raise ValueError("num_of_targets must be at least 1")
+        if not num_targets.is_integer(): raise ValueError("num_of_targets must be an integer")
+        
+        max_targets: int = 2 ** len(cls._powers) - 1
+        if num_targets <= 0 or num_targets > max_targets:
+            raise ValueError(f"num_of_targets must be between 1 and {max_targets}")
+        
+        components: list[Component] = []
+        remaining = num_targets
+        for power in cls._powers[::-1]:
+            if remaining >= power:
+                components.append(cls._binary_bases[power])
+                remaining -= power
+        
+        return components
+    
+    @classmethod
+    def _initialize_binary_bases(cls):
+        """
+        Initialize all binary base components (1, 2, 4, 8, 16, 32, 64).
+        Called automatically on first use of get_binary_components.
+        """
+        if cls._initialized: raise RuntimeError("Multitarget binary bases already initialized")
+        
+        for power in cls._powers:
+            component = Component(f"BinaryBase_{power}", util.unknown_g(), 4)
+            component.assert_spawn_order(False)
+            # To add support for more parameters, add a new empty group and follow the pattern
+            num_emptys = 4
+            for i in range(0, power * num_emptys, num_emptys):
+                rb = util.Remap() \
+                    .pair(enum.EMPTY_BULLET, i + 6001) \
+                    .pair(enum.EMPTY_TARGET_GROUP, i + 6002) \
+                    .pair(enum.EMPTY1, i + 6003) \
+                    .pair(enum.EMPTY2, i + 6004)
+                component.Spawn(0, enum.EMPTY_MULTITARGET, True, remap=rb.build())
+            cls._binary_bases[power] = component
+        
+        cls._initialized = True
+        max_targets: int = 2 ** len(cls._powers) - 1
+        print(f"Multitarget: Initialized {len(cls._powers)} binary components, {max_targets} targets supported)")

@@ -77,3 +77,29 @@ def translate_remap_string(remap_string: str):
         raise ValueError(f"Remap string is empty after cleaning redundant mappings: \n {remap_string}")
 
     return pairs, clean_string
+
+
+class Remap:
+    """
+    Remap string builder class with chainable API
+    
+    Example:
+        rb = Remap().pair(10, 20).pair(30, 40)
+        
+        remap_string = rb.build()  # "10.20.30.40"
+    """
+    
+    def __init__(self):
+        self._pairs: dict[int,int] = {}
+    
+    def pair(self, source: int, target: int):
+        """Add a source -> target remap pair"""
+        self._pairs[source] = target
+        return self
+    
+    def build(self) -> str:
+        """Build to remap string from added pairs"""
+        parts: list[str] = []
+        for source, target in self._pairs.items():
+            parts.append(f"{source}.{target}")
+        return ".".join(parts)

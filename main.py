@@ -1,6 +1,6 @@
 import touhou_scs.enums as e
 
-from touhou_scs.component import Component
+from touhou_scs.component import Component, Multitarget
 from touhou_scs.lib import rgb, save_all
 from touhou_scs.utils import group, unknown_g
 
@@ -40,5 +40,9 @@ callerComp = Component("MainCaller", group(36))
 callerComp.assert_spawn_order(True)
 callerComp.Toggle(0, 110, True)
 callerComp.Spawn(0.1, testComp.callerGroup, True)
+
+# Test Multitarget - clean API, no instantiation needed
+binary_comps = Multitarget.get_binary_components(45)
+print(f"45 targets requires {len(binary_comps)} binary components")
 
 save_all()
