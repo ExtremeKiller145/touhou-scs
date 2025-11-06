@@ -8,12 +8,13 @@ Module-level storage for components and spells for automatic registration.
 import json
 import random
 import time
+import colorsys
 from typing import Any
 from warnings import warn
 
 from touhou_scs import enums as enum
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger
-
+from dataclasses import dataclass
 
 all_spells: list[SpellProtocol] = []
 all_components: list[ComponentProtocol] = []
@@ -111,6 +112,36 @@ bullet4 = BulletPool(4301, 4700)
 def get_all_components() -> list[ComponentProtocol]:
     """Return list of all registered components."""
     return all_components
+
+@dataclass
+class HSB:
+    h: float
+    s: float
+    b: float
+
+def rgb(r: float, g: float, b: float) -> HSB:
+    """
+    Convert RGB into HSB adjustments for converting red into desired color.
+    
+    Returns: HSB object with hue, saturation, brightness offsets.
+    """
+    # Normalize RGB to [0, 1]
+    r, g, b = r / 255, g / 255, b / 255
+    h, s, b = colorsys.rgb_to_hsv(r, g, b)
+
+    base_h, base_s, base_b = 0.0, 1.0, 1.0 # Base red in HSV is (0°, 1, 1)
+
+    hue_offset = (h * 360.0) - (base_h * 360.0) # Compute offsets
+
+    # Wrap hue to -180..180
+    if hue_offset > 180: hue_offset -= 360
+    elif hue_offset < -180: hue_offset += 360
+
+    sat_offset = s - base_s
+    bright_offset = b - base_b
+
+    return HSB(hue_offset, sat_offset, bright_offset)
+
 
 # ============================================================================
 # EXPORT FUNCTIONS
