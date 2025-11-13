@@ -14,7 +14,6 @@ Trigger = dict[int, int | str | bool | float]
 Trigger dictionary with integer property IDs as keys.
 
 Keys are from enums.Properties (e.g., Properties.X, Properties.DURATION)
-Values are limited to int, str, bool, or float for type safety.
 
 Common fields (all triggers):
 - OBJ_ID: ObjectID - Trigger type
@@ -24,8 +23,6 @@ Common fields (all triggers):
 - EDITOR_LAYER: int - Editor layer
 - SPAWN_TRIGGERED: bool - Must be spawn-triggered
 - MULTI_TRIGGERED: bool - Can trigger multiple times
-
-Other fields depend on trigger type - see enums.Properties for full list.
 """
 
 
@@ -40,7 +37,7 @@ class ComponentProtocol(Protocol):
     Any class implementing these attributes/methods can be used as a Component.
     This is Python's way of doing duck typing with type safety.
     """
-    componentName: str
+    name: str
     callerGroup: int
     editorLayer: int
     requireSpawnOrder: bool | None

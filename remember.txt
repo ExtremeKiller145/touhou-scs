@@ -80,6 +80,14 @@ Remaining budget: 137k - 197k objects
 
 
 
+MAKE BULLETS BOUNCE (off walls and such):
+use advanced follow with all 0 on mode 2
+use edit advanced follow to change velocity
+
+PREVENT SPAWN-LIMIT BUGS in Multitarget:
+A spawn trigger can only activate once per tick. 
+To activate a group mutliple times in one tick, use multiple spawn triggers with different groups.
+
 FUTURE PROMPT NOTES FOR AI PYTHON REWRITE:
 ```
 i will show the seperation of what i want to be keyword only arguments or not. ill put 'argName = _' to indicate. if it doesnt have it, its positional (not necessarily optional though). If its starred with '*' then its optional:

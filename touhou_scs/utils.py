@@ -35,7 +35,7 @@ def group(group_id: int) -> int:
 
 def translate_remap_string(remap_string: str):
     """
-    Parse remap string into source -> target dictionary.
+    Parse remap string into source -> target dictionary, w/ remap validation.
     
     Returns (dict[source] = target, clean_remap_string)
     """
@@ -52,18 +52,14 @@ def translate_remap_string(remap_string: str):
         pairs[parts[i]] = parts[i + 1]
 
     source_check: dict[str, bool] = {}
-    target_check: dict[str, bool] = {}
 
+    # Duplicate targets are allowed.
+    # (i.e. must pass Vertical Line Test, but doesnt need to be one-to-one)
     for source, target in pairs.items():
         if source in source_check:
             raise ValueError(f"Duplicate source '{source}' in remap string - cannot remap one group to multiple targets")
         source_check[source] = True
 
-        if target in target_check:
-            raise ValueError(f"Duplicate target '{target}' in remap string - cannot remap multiple groups to same target")
-        target_check[target] = True
-
-    # Rebuild clean remap string (removing redundant mappings like 10 => 10)
     clean_pairs: list[str] = []
     for source, target in pairs.items():
         if source != target:

@@ -13,6 +13,7 @@ from typing import Any
 from warnings import warn
 
 from touhou_scs import enums as enum
+from touhou_scs import utils as util
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger
 from dataclasses import dataclass
 
@@ -147,52 +148,155 @@ def rgb(r: float, g: float, b: float) -> HSB:
 # EXPORT FUNCTIONS
 # ============================================================================
 
+def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
+    """
+    Validate spawn trigger chains to prevent spawn limit bug.
+    
+    Case 1: Remapped spawn -> multiple spawns -> spawn trigger (same tick)
+    Case 2: Multiple unmapped spawns -> spawn trigger (same tick)
+    """
+    ppt = enum.Properties
+    
+    def _group_triggers_by_same_tick(triggers: list[Trigger], comp: ComponentProtocol) -> list[list[Trigger]]:
+        """Group triggers by whether they execute in the same tick."""
+        
+        if comp.requireSpawnOrder is False or comp.requireSpawnOrder is None:
+            return [triggers]
+        
+        x_groups: dict[float, list[Trigger]] = {}
+        for trigger in triggers:
+            x = float(trigger[ppt.X])
+            if x not in x_groups:
+                x_groups[x] = []
+            x_groups[x].append(trigger)
+        return list(x_groups.values())
+    
+    
+    def _check_spawn_limit_violation(
+        same_tick_group: list[Trigger],
+        group_to_triggers: dict[int, list[tuple[ComponentProtocol, Trigger]]],
+        comp_name: str,
+        case_description: str
+    ) -> None:
+        """Check if same-tick spawn group causes spawn limit bug."""
+        
+        if len(same_tick_group) < 2: return
+        
+        target_count: dict[int, int] = {}
+        for trigger in same_tick_group:
+            target = int(trigger[ppt.TARGET])
+            target_count[target] = target_count.get(target, 0) + 1
+        
+        for target, count in target_count.items():
+            if count >= 2:
+                has_spawn = any(
+                    t[ppt.OBJ_ID] == enum.ObjectID.SPAWN
+                    for _, t in group_to_triggers.get(target, [])
+                )
+                
+                if has_spawn:
+                    raise RuntimeError(
+                        f"Spawn limit violation in {comp_name}:\n"
+                        f"{case_description}: {count} spawn triggers target group {target} in same tick.\n"
+                        f"Group {target} contains spawn trigger(s), causing spawn limit bug.\n"
+                        f"Expected {count} executions, but will be limited to 1."
+                    )
+
+    
+    # Build lookup: caller_group -> list of (component, trigger) pairs in that group
+    group_to_triggers: dict[int, list[tuple[ComponentProtocol, Trigger]]] = {}
+    for comp in components:
+        if comp.callerGroup not in group_to_triggers:
+            group_to_triggers[comp.callerGroup] = []
+        for trigger in comp.triggers:
+            group_to_triggers[comp.callerGroup].append((comp, trigger))
+    
+    # Case 2: Multiple unmapped spawns targeting same spawn trigger in same tick
+    for comp in components:
+        unmapped_spawns = [
+            t for t in comp.triggers 
+            if (t[ppt.OBJ_ID] == enum.ObjectID.SPAWN and 
+                not t.get(ppt.REMAP_STRING, "") and
+                (t.get(ppt.SPAWN_DELAY, 0) == 0 or t.get(ppt.SPAWN_DELAY, 0) == 0.0))
+        ]
+        
+        if len(unmapped_spawns) >= 2:
+            same_tick_groups = _group_triggers_by_same_tick(unmapped_spawns, comp)
+            for same_tick_group in same_tick_groups:
+                _check_spawn_limit_violation(
+                    same_tick_group, group_to_triggers, comp.name, "Case 2 (unmapped)"
+                )
+    
+    # Case 1: Remapped spawn activating multiple spawns in same tick
+    for layer1_comp in components:
+        for layer1_trigger in layer1_comp.triggers:
+            if layer1_trigger[ppt.OBJ_ID] != enum.ObjectID.SPAWN: continue
+            
+            spawn_delay = layer1_trigger.get(ppt.SPAWN_DELAY, 0)
+            if isinstance(spawn_delay, (int, float)) and spawn_delay > 0: continue
+            
+            remap_string = str(layer1_trigger.get(ppt.REMAP_STRING, ""))
+            if not remap_string: continue
+            
+            # Collect layer 2 spawn triggers from remapped targets
+            remap_dict, _ = util.translate_remap_string(remap_string)
+            remapped_targets = {int(v) for v in remap_dict.values()}
+            
+            layer2_spawns: list[tuple[ComponentProtocol, Trigger]] = []
+            for remapped_target in remapped_targets:
+                for comp, trigger in group_to_triggers.get(remapped_target, []):
+                    spawn_delay = trigger.get(ppt.SPAWN_DELAY, 0)
+                    if (trigger[ppt.OBJ_ID] == enum.ObjectID.SPAWN and 
+                        (spawn_delay == 0 or spawn_delay == 0.0)):
+                        layer2_spawns.append((comp, trigger))
+            
+            if len(layer2_spawns) < 2: continue
+            
+            # All remapped groups are activated simultaneously, so check all layer 2 spawns together
+            layer2_triggers = [trigger for _, trigger in layer2_spawns]
+            _check_spawn_limit_violation(
+                layer2_triggers, group_to_triggers,
+                layer1_comp.name, "Case 1 (remapped)"
+            )
+
 def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> None:
-    """
-    Spread triggers across TRIGGER_AREA based on spawn order requirement.
-    Modifies trigger X/Y positions in-place.
-    
-    Args:
-        triggers: List of trigger dicts to spread
-        component: Component object with requireSpawnOrder attribute
-    """
     if len(triggers) < 1:
-        raise ValueError(f"No triggers in component {component.componentName}")
+        raise ValueError(f"No triggers in component {component.name}")
     
+    min_x = TRIGGER_AREA["min_x"]
+    max_x = TRIGGER_AREA["max_x"]
+    min_y = TRIGGER_AREA["min_y"]
+    max_y = TRIGGER_AREA["max_y"]
     ppt = enum.Properties
     
     # Single trigger - random position
     if len(triggers) == 1:
-        triggers[0][ppt.X] = random.randint(TRIGGER_AREA["min_x"], TRIGGER_AREA["max_x"])
-        triggers[0][ppt.Y] = random.randint(TRIGGER_AREA["min_y"], TRIGGER_AREA["max_y"])
+        triggers[0][ppt.X] = random.randint(min_x, max_x)
+        triggers[0][ppt.Y] = random.randint(min_y, max_y)
         return
     
     # Check if all triggers have same X (time-based pattern)
     same_x = all(t[ppt.X] == triggers[0][ppt.X] for t in triggers)
     
     if same_x and not component.requireSpawnOrder:
-        # Loose squares - random positions (simultaneous spawn)
         for trigger in triggers:
-            trigger[ppt.X] = random.randint(TRIGGER_AREA["min_x"] // 2, TRIGGER_AREA["max_x"] // 2) * 2
-    
+            trigger[ppt.X] = random.randint(min_x // 2, max_x // 2) * 2
     elif component.requireSpawnOrder:
         # Rigid chain - maintain exact spacing (ordered spawn)
-        min_x = min(float(t[ppt.X]) for t in triggers)
-        max_x = max(float(t[ppt.X]) for t in triggers)
-        chain_width = max_x - min_x
-        
-        # Check if chain fits in trigger area
-        if chain_width > (TRIGGER_AREA["max_x"] - TRIGGER_AREA["min_x"]):
-            raise ValueError(f"Rigid chain too wide ({chain_width}) to fit in trigger area for {component.componentName}")
-        
+        chain_min_x = min(float(t[ppt.X]) for t in triggers)
+        chain_max_x = max(float(t[ppt.X]) for t in triggers)
+        chain_width = chain_max_x - chain_min_x
+
+        if chain_width > (max_x - min_x):
+            raise ValueError(f"Rigid chain too wide ({chain_width}) to fit in trigger area for {component.name}")
+
         # Shift entire chain to random position
-        shift = float(random.randint(TRIGGER_AREA["min_x"], int(TRIGGER_AREA["max_x"] - chain_width)) - min_x)
+        shift = float(random.randint(min_x, int(max_x - chain_width)) - chain_min_x)
         for trigger in triggers:
             trigger[ppt.X] = float(trigger[ppt.X]) + shift
-    
     else:
         # Elastic chain - can stretch beyond area (no spawn order requirement)
-        start_x = TRIGGER_AREA["min_x"]
+        start_x = min_x
         for i, trigger in enumerate(triggers):
             if i == 0:
                 trigger[ppt.X] = start_x
@@ -202,13 +306,10 @@ def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> N
     
     # Set random Y for all triggers
     for trigger in triggers:
-        trigger[ppt.Y] = random.randint(TRIGGER_AREA["min_y"], TRIGGER_AREA["max_y"])
+        trigger[ppt.Y] = random.randint(min_y, max_y)
 
 
 def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
-    """
-    Generate statistics about trigger usage and budget.
-    """
     total_triggers = sum(len(c.triggers) for c in all_components)
     
     spell_stats = {}
@@ -231,7 +332,7 @@ def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
     shared_trigger_count = sum(len(comp.triggers) for comp in shared_components)
     
     for comp in all_components:
-        component_stats[comp.componentName] = len(comp.triggers)
+        component_stats[comp.name] = len(comp.triggers)
     
     usage_percent = (total_triggers / object_budget) * 100 if total_triggers > 0 else 0
     remaining_budget = object_budget - total_triggers
@@ -278,13 +379,15 @@ def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> No
     Export all component triggers to JSON file for main.js processing.
     Handles spreading, sorting, validation, and statistics.
     """
+    _enforce_spawn_limit(all_components)
+    
     output: dict[str, list[Trigger]] = {"triggers": []}
     
     ppt = enum.Properties # shorthand
     
     for comp in all_components:
         if len(comp.triggers) == 0:
-            warn(f"Component {comp.componentName} has no triggers", stacklevel=2)
+            warn(f"Component {comp.name} has no triggers", stacklevel=2)
             continue
         
         sorted_triggers: list[Trigger] = comp.triggers.copy()
@@ -295,14 +398,14 @@ def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> No
         for trigger in sorted_triggers:
             if trigger[ppt.GROUPS] == 9999:
                 raise RuntimeError(
-                    f"CRITICAL ERROR: Reserved group 9999 detected in {comp.componentName}"
+                    f"CRITICAL ERROR: Reserved group 9999 detected in {comp.name}"
                 )
 
             curr_x: float = float(trigger[ppt.X])  
             if 0 < curr_x - prev_x < 1:
                 raise RuntimeError(
                     "CRITICAL ERROR: X position within 1 unit of previous trigger " +
-                    f"in {comp.componentName} - spawn order not preserved"
+                    f"in {comp.name} - spawn order not preserved"
                 )
             
             prev_x = curr_x

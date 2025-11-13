@@ -8,6 +8,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 
 from __future__ import annotations
 from typing import Any
+from warnings import warn
 # from typing import TYPE_CHECKING
 
 from touhou_scs import enums as enum, lib, utils as util
@@ -26,8 +27,8 @@ class Component:
     Auto-registers to lib.all_components. All methods return self for chaining.
     """
     
-    def __init__(self, componentName: str, callerGroup: int, editorLayer: int = 4):
-        self.componentName: str = componentName
+    def __init__(self, name: str, callerGroup: int, editorLayer: int = 4):
+        self.name: str = name
         self.callerGroup: int = callerGroup
         self.editorLayer: int = editorLayer
         self.requireSpawnOrder: bool | None = None
@@ -406,8 +407,12 @@ class Multitarget:
     """Private storage for binary base components (powers of 2)"""
     
     @classmethod
-    def get_binary_components(cls, num_targets: int) -> list[Component]:
+    def get_binary_components(cls, num_targets: int, comp: Component) -> list[Component]:
         """Get the binary components needed to represent num_of_targets."""
+        
+        for trigger in comp.triggers:
+            if trigger[ppt.OBJ_ID] == enum.ObjectID.SPAWN:
+                warn(f"Spawn limit: [{comp.name}] Multitarget components cannot have Spawn triggers", stacklevel=2)
 
         if not cls._initialized: cls._initialize_binary_bases()
         
@@ -418,14 +423,14 @@ class Multitarget:
         if num_targets <= 0 or num_targets > max_targets:
             raise ValueError(f"num_of_targets must be between 1 and {max_targets}")
         
-        components: list[Component] = []
+        comps: list[Component] = []
         remaining = num_targets
         for power in cls._powers[::-1]:
             if remaining >= power:
-                components.append(cls._binary_bases[power])
+                comps.append(cls._binary_bases[power])
                 remaining -= power
         
-        return components
+        return comps
     
     @classmethod
     def _initialize_binary_bases(cls):
@@ -441,11 +446,11 @@ class Multitarget:
             # To add support for more parameters, add a new empty group and follow the pattern
             num_emptys = 4
             for i in range(0, power * num_emptys, num_emptys):
-                rb = util.Remap() \
-                    .pair(enum.EMPTY_BULLET, i + 6001) \
-                    .pair(enum.EMPTY_TARGET_GROUP, i + 6002) \
-                    .pair(enum.EMPTY1, i + 6003) \
-                    .pair(enum.EMPTY2, i + 6004)
+                rb = (util.Remap()
+                    .pair(enum.EMPTY_BULLET, i + 6001)
+                    .pair(enum.EMPTY_TARGET_GROUP, i + 6002)
+                    .pair(enum.EMPTY1, i + 6003)
+                    .pair(enum.EMPTY2, i + 6004))
                 component.Spawn(0, enum.EMPTY_MULTITARGET, True, remap=rb.build())
             cls._binary_bases[power] = component
         
