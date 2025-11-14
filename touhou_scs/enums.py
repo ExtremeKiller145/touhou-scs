@@ -188,7 +188,7 @@ EDITOR_LAYER: Final[int] = 4
 """Default editor layer"""
 
 RESTRICTED_GROUPS: Final[tuple[int, ...]] = (
-    1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 22, 25, 9999
+    1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 19, 22, 25, 9999
 )
 """Reserved groups for various safety reasons - DO NOT USE THESE GROUP IDs"""
 

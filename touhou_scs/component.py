@@ -45,7 +45,7 @@ class Component:
         if self._timed is None: self._timed = TimedPatterns(self)
         return self._timed
     
-    def _create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
+    def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
         """
         Create trigger with component defaults.
         
@@ -101,7 +101,7 @@ class Component:
         target = target.callerGroup if isinstance(target, Component) else target
         self._validate_params(target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
         trigger[ppt.SPAWN_ORDERED] = spawnOrdered
         
         if delay > 0: trigger[ppt.SPAWN_DELAY] = delay
@@ -122,14 +122,14 @@ class Component:
         target = target.callerGroup if isinstance(target, Component) else target
         self._validate_params(target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
         
         self.triggers.append(trigger)
         return self
     
     def MoveTowards(self, time: float, target: int, targetDir: int, *,
-        t: float, dist: float,
+        t: float, dist: int,
         type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """
         Move target a set distance towards another group (direction mode)
@@ -138,7 +138,7 @@ class Component:
         """
         self._validate_params(t=t, target=targetDir)
         
-        trigger = self._create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_DIRECTION_MODE] = True
@@ -165,7 +165,7 @@ class Component:
         """
         self._validate_params(t=t, target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), target)
 
         trigger[ppt.PULSE_HSV] = True
         trigger[ppt.PULSE_TARGET_TYPE] = True
@@ -174,8 +174,7 @@ class Component:
         trigger[ppt.PULSE_FADE_IN] = fadeIn
         trigger[ppt.PULSE_HOLD] = t
         trigger[ppt.PULSE_FADE_OUT] = fadeOut
-
-        if exclusive: trigger[ppt.PULSE_EXCLUSIVE] = False
+        trigger[ppt.PULSE_EXCLUSIVE] = exclusive
         
         self.triggers.append(trigger)
         return self
@@ -190,7 +189,7 @@ class Component:
         """
         self._validate_params(t=t, target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_X] = dx
@@ -212,7 +211,7 @@ class Component:
         """
         self._validate_params(t=t, target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
         trigger[ppt.MOVE_TARGET_CENTER] = target
         trigger[ppt.MOVE_TARGET_LOCATION] = location
@@ -240,7 +239,7 @@ class Component:
         elif _RESTRICTED_LOOKUP.get(center):
             raise ValueError(f"Center group '{center}' is restricted.")
         
-        trigger = self._create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
         trigger[ppt.ROTATE_CENTER] = center
         trigger[ppt.ROTATE_ANGLE] = angle
@@ -261,7 +260,7 @@ class Component:
         """
         self._validate_params(t=t, target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
         trigger[ppt.ROTATE_TARGET] = targetDir
         trigger[ppt.ROTATE_CENTER] = target
@@ -285,7 +284,7 @@ class Component:
         """
         self._validate_params(t=t, target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.SCALE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.SCALE, util.time_to_dist(time), target)
         
         trigger[ppt.SCALE_CENTER] = target
         trigger[ppt.SCALE_X] = factor
@@ -307,7 +306,7 @@ class Component:
         """
         self._validate_params(t=t, target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
         
         trigger[ppt.FOLLOW_GROUP] = targetDir
         trigger[ppt.DURATION] = t
@@ -325,7 +324,7 @@ class Component:
         if opacity < 0 or opacity > 100:
             raise ValueError("Opacity must be between 0 and 100")
         
-        trigger = self._create_trigger(enum.ObjectID.ALPHA, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.ALPHA, util.time_to_dist(time), target)
         
         trigger[ppt.OPACITY] = opacity / 100.0
         trigger[ppt.DURATION] = t
@@ -337,9 +336,9 @@ class Component:
         """Common logic for Stop, Pause, Resume triggers (internal use, made bc DRY principle)"""
         self._validate_params(target=target)
         
-        trigger = self._create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
         
-        trigger[ppt.STOP_OPTION] = option
+        trigger[ppt.STOP_OPTION] = option # 0=Stop, 1=Pause, 2=Resume
         trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
         
         self.triggers.append(trigger)
@@ -359,14 +358,7 @@ class Component:
         
         Optional: useControlID
         """
-        self._validate_params(target=target)
-        
-        trigger = self._create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
-        
-        trigger[ppt.STOP_OPTION] = 1
-        trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
-        
-        self.triggers.append(trigger)
+        self._stop_trigger_common(time, target, 1, useControlID)
         return self
     
     def Resume(self, time: float, target: int, *, useControlID: bool = False):
@@ -375,20 +367,13 @@ class Component:
         
         Optional: useControlID
         """
-        self._validate_params(target=target)
-        
-        trigger = self._create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
-        
-        trigger[ppt.STOP_OPTION] = 2
-        trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
-        
-        self.triggers.append(trigger)
+        self._stop_trigger_common(time, target, 2, useControlID)
         return self
 
 
 # ===========================================================
 # 
-# TRIGGER METHODS
+# MULTITARGET CLASS
 # 
 # ===========================================================
 
@@ -417,7 +402,6 @@ class Multitarget:
         if not cls._initialized: cls._initialize_binary_bases()
         
         if num_targets < 1: raise ValueError("num_of_targets must be at least 1")
-        if not num_targets.is_integer(): raise ValueError("num_of_targets must be an integer")
         
         max_targets: int = 2 ** len(cls._powers) - 1
         if num_targets <= 0 or num_targets > max_targets:
@@ -618,7 +602,7 @@ class InstantPatterns:
     
     def Line(self, time: float, comp: Component, 
         targetDir: int, bullet: lib.BulletPool, *, 
-        numBullets: int, fastestTime: float, slowestTime: float, dist: float,
+        numBullets: int, fastestTime: float, slowestTime: float, dist: int,
         type: int = 0, rate: float = 1.0):
         """Line pattern - bullets at different speeds forming a line"""
         

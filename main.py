@@ -2,6 +2,7 @@ from touhou_scs import enums as e
 from touhou_scs import lib
 from touhou_scs.component import Component
 from touhou_scs.lib import rgb, save_all, HSB
+from touhou_scs.misc import add_disable_all_bullets, add_collisions
 from touhou_scs.utils import group, unknown_g
 
 c1 = lib.circle1
@@ -96,9 +97,7 @@ test_line = (Component("TestLine", unknown_g(), 4)
         numBullets=15, fastestTime=1, slowestTime=4, dist=400)
 )
 
-print("\n=== Pattern Test Complete ===")
-print(f"TestRadial component: {len(testRadialComp.triggers)} triggers")
-print(f"TestRadial2 component: {len(test2.triggers)} triggers")
-print(f"CallerComponent: {len(callerComponent.triggers)} triggers")
 
+add_disable_all_bullets()
+add_collisions()
 save_all()
