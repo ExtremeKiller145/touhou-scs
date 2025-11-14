@@ -68,12 +68,32 @@ callerComponent = Component("CallerComponent", group(36), 4)
         numBullets=10, spacing=14, centerAt=0)
 )
 
+test_line = (Component("TestLine", unknown_g(), 4)
+    .assert_spawn_order(True)
+    .GotoGroup(0, e.EMPTY_BULLET, emitter2)
+    .PointToGroup(0, e.EMPTY_BULLET, e.PLR)
+    .Scale(0, e.EMPTY_BULLET, factor=3, t=0)
+    .Pulse(0, e.EMPTY_BULLET, rgb(200,100,0), t=10)
+    .Alpha(0, e.EMPTY_BULLET, t=0, opacity=0)
+    .Toggle(e.TICK, e.EMPTY_BULLET, True)
+    .Alpha(e.TICK, e.EMPTY_BULLET, t=0.5, opacity=100)
+    .Scale(e.TICK*2, e.EMPTY_BULLET, factor=3, t=0.3, divide=True)
+)
+
 # Create radial pattern with second bullet type
 (callerComponent
     .GotoGroup(0.9, c1.all, emitter2, t=0)
     .MoveBy(0.8, emitter2, dx=80, dy=-20, t=8, type=e.Easing.BOUNCE_IN_OUT, rate=1)
     .instant.Radial(1, test2, c1, lib.bullet4,
         numBullets=18, centerAt=0)
+    .timed.RadialWave(3, test2, c1, lib.bullet3,
+        numBullets=24, waves=10, interval=0.3, centerAt=10)
+    .instant.Line(6, test_line, e.PLR, lib.bullet1,
+        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
+    .instant.Line(7, test_line, e.PLR, lib.bullet1,
+        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
+    .instant.Line(8, test_line, e.PLR, lib.bullet1,
+        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
 )
 
 print("\n=== Pattern Test Complete ===")

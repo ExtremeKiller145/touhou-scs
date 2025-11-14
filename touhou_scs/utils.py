@@ -33,7 +33,7 @@ def group(group_id: int) -> int:
     return group_id
 
 
-def translate_remap_string(remap_string: str):
+def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
     """
     Parse remap string into source -> target dictionary, w/ remap validation.
     
@@ -46,12 +46,14 @@ def translate_remap_string(remap_string: str):
     if len(parts) % 2 != 0:
         raise ValueError(f"Remap string must contain an even number of parts:\n{remap_string}")
 
-    # Build pairs[source] = target
-    pairs: dict[str,str] = {}
+    # Build pairs[source] = target as integers
+    pairs: dict[int, int] = {}
     for i in range(0, len(parts), 2):
-        pairs[parts[i]] = parts[i + 1]
+        source = int(parts[i])
+        target = int(parts[i + 1])
+        pairs[source] = target
 
-    source_check: dict[str, bool] = {}
+    source_check: dict[int, bool] = {}
 
     # Duplicate targets are allowed.
     # (i.e. must pass Vertical Line Test, but doesnt need to be one-to-one)

@@ -385,6 +385,13 @@ class Component:
         self.triggers.append(trigger)
         return self
 
+
+# ===========================================================
+# 
+# TRIGGER METHODS
+# 
+# ===========================================================
+
 class Multitarget:
     """
     Make triggers effect multiple targets using precise component remapping.
@@ -556,18 +563,15 @@ class InstantPatterns:
                 remap_pairs, _ = util.translate_remap_string(remap_string)
                 
                 for source, target in remap_pairs.items():
-                    source_num = int(source)
-                    target_num = int(target)
-                    
-                    if source_num == enum.EMPTY_BULLET:
+                    if source == enum.EMPTY_BULLET:
                         bullet_group, _ = bullet.next()
-                        remap.pair(target_num, bullet_group)
-                    elif source_num == enum.EMPTY_TARGET_GROUP:
+                        remap.pair(target, bullet_group)
+                    elif source == enum.EMPTY_TARGET_GROUP:
                         # Convert 0-359 range to 1-360 for GuiderCircle indexing
                         angle_index = bulletPos if bulletPos > 0 else 360
-                        remap.pair(target_num, gc.groups[angle_index])
+                        remap.pair(target, gc.groups[angle_index])
                     else:
-                        remap.pair(target_num, enum.EMPTY_MULTITARGET) # any empty works
+                        remap.pair(target, enum.EMPTY_MULTITARGET) # any empty works
                 
                 bulletPos += spacing
                 if bulletPos >= 360: bulletPos -= 360
@@ -581,7 +585,11 @@ class InstantPatterns:
     def Radial(self, time: float, comp: Component, 
         gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
         numBullets: int | None = None, spacing: int | None = None, centerAt: float = 0):
-        """Radial pattern - full 360° circle of bullets"""
+        """
+        Radial pattern - full 360° circle of bullets
+        
+        Optional: spacing or numBullets, centerAt
+        """
         
         self._validate_multitarget_component("Instant Radial",comp,
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
@@ -610,7 +618,8 @@ class InstantPatterns:
     
     def Line(self, time: float, comp: Component, 
         targetDir: int, bullet: lib.BulletPool, *, 
-        numBullets: int, fastestTime: float, slowestTime: float, dist: float):
+        numBullets: int, fastestTime: float, slowestTime: float, dist: float,
+        type: int = 0, rate: float = 1.0):
         """Line pattern - bullets at different speeds forming a line"""
         
         self._validate_multitarget_component("Instant Line", comp,
@@ -618,7 +627,43 @@ class InstantPatterns:
             excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET }
         )
         
-        # TODO: Implement line pattern logic
+        if fastestTime <= 0:
+            raise ValueError(f"Line: fastestTime must be a positive number. Received: {fastestTime}")
+        if slowestTime <= 0:
+            raise ValueError(f"Line: slowestTime must be a positive number. Received: {slowestTime}")
+        if slowestTime <= fastestTime:
+            raise ValueError(f"Line: slowestTime {slowestTime} must be greater than fastestTime {fastestTime}")
+        if numBullets < 3:
+            raise ValueError("Line: numBullets must be at least 3")
+        
+        bullet_groups: list[int] = []
+        mt_comps = Multitarget.get_binary_components(numBullets, comp)
+        for mt_comp in mt_comps:
+            remap = util.Remap()
+            for spawn_trigger in mt_comp.triggers:
+                remap_string = spawn_trigger[ppt.REMAP_STRING]
+                if not isinstance(remap_string, str): continue # to appease type checker
+                
+                remap_pairs, _ = util.translate_remap_string(remap_string)
+                for source, target in remap_pairs.items():
+                    if source == enum.EMPTY_BULLET:
+                        bullet_group, _ = bullet.next()
+                        bullet_groups.append(bullet_group)
+                        remap.pair(target, bullet_group)
+                    else:
+                        remap.pair(target, enum.EMPTY_MULTITARGET) # any empty works
+            
+            remap.pair(enum.EMPTY_MULTITARGET, comp.callerGroup)
+            self._component.Spawn(time, mt_comp.callerGroup, False, remap=remap.build())
+        
+        step = (slowestTime - fastestTime) / (numBullets - 1)
+        for i, bullet_group in enumerate(bullet_groups):
+            travel_time = fastestTime + step * i
+            self._component.MoveTowards(
+                time, bullet_group, targetDir, 
+                t=travel_time, dist=dist, type=type, rate=rate 
+            )
+        
         return self._component
     
     # More pattern methods will be added here
@@ -634,13 +679,27 @@ class TimedPatterns:
     def __init__(self, component: Component):
         self._component = component
     
-    def RadialWave(self, time: float, target: int) -> Component:
+    def RadialWave(self, time: float, comp: Component, 
+        gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
+        waves: int, interval: float = 0, numBullets: int | None = None, spacing: int | None = None, centerAt: float = 0):
         """
-        Placeholder for RadialWave pattern implementation.
+        Radial Wave pattern - multiple waves of radial bullets over time
         
-        Full implementation will spawn repeated radials over time.
+        Optional: spacing or numBullets, centerAt
         """
-        # TODO: Implement radial wave pattern logic
+        if waves < 1:
+            raise ValueError("RadialWave: waves must be at least 1")
+        elif waves == 1:
+            raise ValueError("RadialWave: for single wave, use instant.Radial() instead")
+        if interval < 0:
+            raise ValueError("RadialWave: interval must be non-negative")
+        
+        for wave_number in range(waves):
+            self._component.instant.Radial(
+                time + (wave_number * interval),
+                comp, gc, bullet, numBullets=numBullets, spacing=spacing, centerAt=centerAt
+            )
+        
         return self._component
     
     # More pattern methods will be added here

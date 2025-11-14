@@ -25,7 +25,7 @@ _start_time = time.time()
 TRIGGER_AREA = {
     "min_x": 1350,
     "min_y": 1300,
-    "max_x": 3000,
+    "max_x": 5000,
     "max_y": 2000
 }
 
@@ -240,7 +240,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
             
             # Collect layer 2 spawn triggers from remapped targets
             remap_dict, _ = util.translate_remap_string(remap_string)
-            remapped_targets = {int(v) for v in remap_dict.values()}
+            remapped_targets = set(remap_dict.values())
             
             layer2_spawns: list[tuple[ComponentProtocol, Trigger]] = []
             for remapped_target in remapped_targets:
