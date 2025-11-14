@@ -2,6 +2,7 @@
 
 from touhou_scs import enums as enum, lib
 from touhou_scs.component import Component
+from touhou_scs.types import Trigger
 from touhou_scs.utils import unknown_g
 
 
@@ -87,19 +88,34 @@ def add_collisions():
         activateGroup=True
     )
     
+    def spawn(comp: Component, target: int, spawnOrdered: bool, *, remap: str):
+        """Specialized spawn trigger without validation"""
+        trig: Trigger = {}
+        trig[ppt.OBJ_ID] = enum.ObjectID.SPAWN
+        trig[ppt.X] = 0
+        trig[ppt.TARGET]= target
+        trig[ppt.EDITOR_LAYER] = 7
+        trig[ppt.SPAWN_TRIGGERED] = True
+        trig[ppt.MULTI_TRIGGERED] = True
+        trig[ppt.GROUPS] = comp.callerGroup
+        trig[ppt.REMAP_STRING] = remap
+        trig[ppt.SPAWN_ORDERED] = spawnOrdered
+        comp.triggers.append(trig)
+    
+    global_col = Component("Bullet Collision remap wrapper", 17, editorLayer=7) \
+        .assert_spawn_order(False)
+    
     def add_collision_triggers(bullet: lib.BulletPool):
         min, max = bullet.min_group, bullet.max_group
         
         for bullet_hitbox in range(min, max + 1):
-            global_col = Component(f"Collision remap wrapper {bullet_hitbox}", 17, editorLayer=7)
             
-            global_col.assert_spawn_order(False) \
-                .Spawn(0, cols.callerGroup, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+            spawn(global_col, cols.callerGroup, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             
-            Component(f"Player Hit Collision {bullet_hitbox}", bullet_hitbox, editorLayer=7) \
-                .assert_spawn_order(False) \
-                .Spawn(0, PLR_HIT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
-            
+            plr_hit_col = Component(f"Player Hit Collision {bullet_hitbox}", bullet_hitbox, editorLayer=7) \
+                .assert_spawn_order(False)
+            spawn(plr_hit_col, PLR_HIT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+    
     
     add_collision_triggers(lib.bullet1)
     add_collision_triggers(lib.bullet2)
