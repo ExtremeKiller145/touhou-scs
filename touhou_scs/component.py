@@ -9,13 +9,10 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 from __future__ import annotations
 from typing import Any
 from warnings import warn
-# from typing import TYPE_CHECKING
 
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.types import Trigger
 
-# if TYPE_CHECKING:
-#     from touhou_scs.spellbuilder import InstantPatterns, TimedPatterns
 
 _RESTRICTED_LOOKUP = { group_id: True for group_id in enum.RESTRICTED_GROUPS }
 
@@ -33,27 +30,20 @@ class Component:
         self.editorLayer: int = editorLayer
         self.requireSpawnOrder: bool | None = None
         self.triggers: list[Trigger] = []
+        self._instant: InstantPatterns | None = None
+        self._timed: TimedPatterns | None = None
         
         lib.all_components.append(self)
-        
-        # self._instant: InstantPatterns | None = None
-        # self._timed: TimedPatterns | None = None
     
-    # @property
-    # def instant(self) -> InstantPatterns:
-    #     """Access instant pattern methods (lazy-loaded)"""
-    #     if self._instant is None:
-    #         from touhou_scs.spellbuilder import InstantPatterns
-    #         self._instant = InstantPatterns(self)
-    #     return self._instant
-    
-    # @property
-    # def timed(self) -> TimedPatterns:
-    #     """Access timed pattern methods (lazy-loaded)"""
-    #     if self._timed is None:
-    #         from touhou_scs.spellbuilder import TimedPatterns
-    #         self._timed = TimedPatterns(self)
-    #     return self._timed
+    @property
+    def instant(self):
+        if self._instant is None: self._instant = InstantPatterns(self)
+        return self._instant
+
+    @property
+    def timed(self):
+        if self._timed is None: self._timed = TimedPatterns(self)
+        return self._timed
     
     def _create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
         """
@@ -94,9 +84,11 @@ class Component:
         self.requireSpawnOrder = required
         return self
     
-    # ========================================================================
+    # ===========================================================
+    # 
     # TRIGGER METHODS
-    # ========================================================================
+    # 
+    # ===========================================================
     
     def Spawn(self, time: float,
         target: int | Component, spawnOrdered: bool, *,
@@ -177,7 +169,8 @@ class Component:
 
         trigger[ppt.PULSE_HSV] = True
         trigger[ppt.PULSE_TARGET_TYPE] = True
-        trigger[ppt.PULSE_HSV_STRING] = f"{hsb.h}a{hsb.s}a{hsb.b}a0a0"
+        #a0a0 for multiplicative, a1a1 for additive (its the checkbox for 's' and 'v')
+        trigger[ppt.PULSE_HSV_STRING] = f"{hsb.h}a{hsb.s}a{hsb.b}a1a1"  
         trigger[ppt.PULSE_FADE_IN] = fadeIn
         trigger[ppt.PULSE_HOLD] = t
         trigger[ppt.PULSE_FADE_OUT] = fadeOut
@@ -457,3 +450,197 @@ class Multitarget:
         cls._initialized = True
         max_targets: int = 2 ** len(cls._powers) - 1
         print(f"Multitarget: Initialized {len(cls._powers)} binary components, {max_targets} targets supported)")
+
+
+# ===========================================================
+# 
+# PATTERN CLASSES
+# 
+# ===========================================================
+
+class InstantPatterns:
+    """Instant pattern methods - spawn bullets in a single frame."""
+    def __init__(self, component: Component):
+        self._component = component
+    
+    @classmethod
+    def _validate_multitarget_component(cls, fn_name: str, comp: Component,*,
+        requires: set[int] | None = None, excludes: set[int] | None = None):
+        """
+        Validate that component targets (or doesn't target) specific groups.
+        
+        requires: Set of group IDs that must be targeted
+        excludes: Set of group IDs that must NOT be targeted
+        """
+        if comp.requireSpawnOrder is not True:
+            raise ValueError(f"{fn_name}: component must require spawn order")
+
+        requires = requires or set()
+        excludes = excludes or set()
+        
+        found_targets: set[int] = set()
+        for trigger in comp.triggers:
+            for field in enum.TARGET_FIELDS:
+                target = trigger.get(field)
+                if target is not None and isinstance(target, int):
+                    found_targets.add(target)
+        
+        missing = requires - found_targets
+        if missing:
+            missing_names = [f"{g}" for g in missing]
+            raise ValueError(
+                f"{fn_name}: component must target {', '.join(missing_names)}"
+            )
+        
+        forbidden = found_targets & excludes
+        if forbidden:
+            forbidden_names = [f"{g}" for g in forbidden]
+            raise ValueError(
+                f"{fn_name}: component must not target {', '.join(forbidden_names)}"
+            )
+
+    
+    def Arc(self, time: float, comp: Component, 
+        gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
+        numBullets: int, spacing: int, centerAt: float = 0, radialBypass: bool = False):
+        """Arc pattern - partial circle of bullets"""
+        
+        self._validate_multitarget_component("Instant Arc",comp,
+            requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
+            excludes={enum.EMPTY_MULTITARGET}
+        )
+        
+        # Arc logic checks
+        if not radialBypass:
+            if numBullets % 2 != 0 and not centerAt.is_integer():
+                raise ValueError("Arc: odd bullets requires integer centerAt")
+            if numBullets % 2 == 0 and spacing % 2 != 0 and centerAt.is_integer():
+                raise ValueError("Arc: even bullets with odd spacing requires .5 centerAt")
+            if numBullets % 2 == 0 and spacing % 2 == 0 and not centerAt.is_integer():
+                raise ValueError("Arc: even bullets with even spacing requires integer centerAt")
+        # data restriction checks
+        if not centerAt.is_integer() and not (centerAt * 2).is_integer():
+            raise ValueError("Arc: centerAt must be an integer or integer.5")
+        if spacing < 1 or spacing > 360:
+            raise ValueError("Arc: spacing must be between 1 and 360 degrees")
+        if numBullets < 1 or numBullets > 360:
+            raise ValueError("Arc: numBullets must be between 1 and 360")
+        if numBullets * spacing > 360:
+            raise ValueError(f"Arc: numBullets {numBullets} times spacing {spacing} exceeds 360°")
+        if numBullets * spacing == 360 and not radialBypass:
+            warn(f"Arc: numBullets {numBullets} times spacing {spacing} is 360°, making a circle. \nFIX: Use instant.Radial() instead")
+        
+        # Calculate Arc positioning
+        arclength = (numBullets - 1) * spacing
+        
+        startpos = 0
+        if radialBypass: startpos = centerAt
+        else: startpos = centerAt - arclength / 2
+        if not startpos.is_integer():
+            raise ValueError(f"Arc: Internal error! startpos {startpos} not an integer. centerAt={centerAt}, arclength={arclength}")
+        
+        # normalize startpos to [0, 360) range
+        startpos = startpos % 360
+        if startpos < 0: startpos += 360
+        
+        comps = Multitarget.get_binary_components(numBullets, comp)
+        
+        bulletPos = int(startpos)
+        for mt_comp in comps:
+            remap = util.Remap()
+            
+            for spawn_trigger in mt_comp.triggers:
+                remap_string = spawn_trigger[ppt.REMAP_STRING]
+                if not isinstance(remap_string, str): continue # to appease type checker
+                    
+                remap_pairs, _ = util.translate_remap_string(remap_string)
+                
+                for source, target in remap_pairs.items():
+                    source_num = int(source)
+                    target_num = int(target)
+                    
+                    if source_num == enum.EMPTY_BULLET:
+                        bullet_group, _ = bullet.next()
+                        remap.pair(target_num, bullet_group)
+                    elif source_num == enum.EMPTY_TARGET_GROUP:
+                        # Convert 0-359 range to 1-360 for GuiderCircle indexing
+                        angle_index = bulletPos if bulletPos > 0 else 360
+                        remap.pair(target_num, gc.groups[angle_index])
+                    else:
+                        remap.pair(target_num, enum.EMPTY_MULTITARGET) # any empty works
+                
+                bulletPos += spacing
+                if bulletPos >= 360: bulletPos -= 360
+            
+            remap.pair(enum.EMPTY_MULTITARGET, comp.callerGroup) # final remap
+            self._component.Spawn(time, mt_comp.callerGroup, False, remap=remap.build())
+        
+        return self._component
+    
+    
+    def Radial(self, time: float, comp: Component, 
+        gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
+        numBullets: int | None = None, spacing: int | None = None, centerAt: float = 0):
+        """Radial pattern - full 360° circle of bullets"""
+        
+        self._validate_multitarget_component("Instant Radial",comp,
+            requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
+            excludes={enum.EMPTY_MULTITARGET}
+        )
+        
+        if spacing and numBullets:
+            if numBullets != int(360 / spacing):
+                raise ValueError("Radial: spacing and numBullets don't match!\n\n"+
+                f"(numOfBullets should be {int(360 / spacing)}, \n" +
+                f"or spacing should be {int(360 / numBullets)}, \n\n" +
+                "or just use one or the other")
+        elif spacing: numBullets = int(360 / spacing)
+        elif numBullets: spacing = int(360 / numBullets)
+        else: raise ValueError("Radial: must provide either spacing or numBullets")
+
+        if 360 % spacing != 0:
+            raise ValueError(f"Radial: spacing must be a factor of 360 for perfect circles. Received: {spacing}")
+        elif 360 % numBullets != 0:
+            raise ValueError(f"Radial: numBullets must be a factor of 360 for perfect circles. Received: {numBullets}")
+            
+        self.Arc(time, comp, gc, bullet, 
+            numBullets=numBullets, spacing=spacing, centerAt=centerAt, radialBypass=True)
+        
+        return self._component
+    
+    def Line(self, time: float, comp: Component, 
+        targetDir: int, bullet: lib.BulletPool, *, 
+        numBullets: int, fastestTime: float, slowestTime: float, dist: float):
+        """Line pattern - bullets at different speeds forming a line"""
+        
+        self._validate_multitarget_component("Instant Line", comp,
+            requires={ enum.EMPTY_BULLET },
+            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET }
+        )
+        
+        # TODO: Implement line pattern logic
+        return self._component
+    
+    # More pattern methods will be added here
+
+
+class TimedPatterns:
+    """
+    Timed pattern methods - spawn bullets over multiple frames.
+    
+    Built on top of instant patterns by calling them repeatedly with time offsets.
+    """
+    
+    def __init__(self, component: Component):
+        self._component = component
+    
+    def RadialWave(self, time: float, target: int) -> Component:
+        """
+        Placeholder for RadialWave pattern implementation.
+        
+        Full implementation will spawn repeated radials over time.
+        """
+        # TODO: Implement radial wave pattern logic
+        return self._component
+    
+    # More pattern methods will be added here

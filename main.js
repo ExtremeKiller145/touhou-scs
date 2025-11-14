@@ -116,3 +116,15 @@ $.exportConfig({
   console.log(`main.js completed in ${( __elapsedMs / 1000 ).toFixed(3)}s (${__elapsedMs} ms)`);
   console.log(`Processed ${triggerCount} triggers`);
 });
+
+
+// FOR FUTURE REFERENCE: Creating objects w/ groups:
+// this one in particular is for guidercircles
+// $.add(object({
+//   1: 3802,
+//   2: 10 * 30 * Math.cos(i * Math.PI / 180 + Math.PI/2),
+//   3: 10 * 30 * Math.sin(i * Math.PI / 180 + Math.PI/2),
+//   GROUPS: group(5101 + i),
+//   128: 0.25,
+//   129: 0.25,
+// }));

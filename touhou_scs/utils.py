@@ -99,3 +99,16 @@ class Remap:
         for source, target in self._pairs.items():
             parts.append(f"{source}.{target}")
         return ".".join(parts)
+
+
+def create_number_cycler(min_val: int, max_val: int):
+    """Returns a cycler function that returns sequential numbers in a range."""
+    if min_val > max_val: raise ValueError("create_number_cycler: min cannot be greater than max")
+    
+    current = min_val - 1
+    def cycler() -> int:
+        nonlocal current
+        current += 1
+        if current > max_val: current = min_val
+        return current
+    return cycler

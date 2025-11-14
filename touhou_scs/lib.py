@@ -25,7 +25,7 @@ _start_time = time.time()
 TRIGGER_AREA = {
     "min_x": 1350,
     "min_y": 1300,
-    "max_x": 2000,
+    "max_x": 3000,
     "max_y": 2000
 }
 
