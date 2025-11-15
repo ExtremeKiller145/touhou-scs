@@ -60,10 +60,7 @@ class Spell:
 # ============================================================================
 
 class GuiderCircle:
-    """
-    Circle of 360 groups for angle-based aiming.
-    Groups are arranged 1-360 degrees for precise bullet direction.
-    """
+    """Circle of 360 pointer objects for angle-based aiming"""
     
     def __init__(self, all_group: int, center: int, pointer: int):
         """Create a guider circle."""
@@ -77,6 +74,24 @@ class GuiderCircle:
             self.groups[i] = self.pointer + (i - 1)
 
 circle1 = GuiderCircle(all_group=5461, center=5461, pointer=5101)
+
+class GuiderLine:
+    """Odd number of pointer objects aligned in a straight line"""
+    
+    def __init__(self, numPointers: int, groups: list[int]):
+        groups.sort()
+        
+        if len(groups) % 2 == 0:
+            raise ValueError("GuiderLine: Initialized with even number groups!")
+        if len(groups) == len(set(groups)):
+            raise ValueError("GuiderLine: Initialized with duplicate groups!")
+        
+        self.groups = groups
+        self.numPointers = numPointers
+        self.center = groups[int((len(groups) + 1) / 2)]
+        self.end1 = groups[0]
+        self.end2 = groups[-1]
+
 
 class BulletPool:
     """

@@ -3,7 +3,10 @@ Touhou SCS - Utilities Module
 
 Helper functions for component building and validation.
 """
+
 from warnings import warn
+from touhou_scs import enums as enum
+from touhou_scs.types import ComponentProtocol
 
 def time_to_dist(time: float) -> float:
     """
@@ -114,3 +117,39 @@ def create_number_cycler(min_val: int, max_val: int):
         if current > max_val: current = min_val
         return current
     return cycler
+
+
+def enforce_component_targets(fn_name: str, comp: ComponentProtocol,*,
+    requires: set[int] | None = None, excludes: set[int] | None = None):
+    """
+    Validate that component targets (or doesn't target) specific groups.
+    
+    requires: Set of group IDs that must be targeted
+    excludes: Set of group IDs that must NOT be targeted
+    """
+    if comp.requireSpawnOrder is not True:
+        raise ValueError(f"{fn_name}: component must require spawn order")
+
+    requires = requires or set()
+    excludes = excludes or set()
+    
+    found_targets: set[int] = set()
+    for trigger in comp.triggers:
+        for field in enum.TARGET_FIELDS:
+            target = trigger.get(field)
+            if target is not None and isinstance(target, int):
+                found_targets.add(target)
+    
+    missing = requires - found_targets
+    if missing:
+        missing_names = [f"{g}" for g in missing]
+        raise ValueError(
+            f"{fn_name}: component must target {', '.join(missing_names)}"
+        )
+    
+    forbidden = found_targets & excludes
+    if forbidden:
+        forbidden_names = [f"{g}" for g in forbidden]
+        raise ValueError(
+            f"{fn_name}: component must not target {', '.join(forbidden_names)}"
+        )

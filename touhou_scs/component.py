@@ -453,42 +453,6 @@ class InstantPatterns:
     """Instant pattern methods - spawn bullets in a single frame."""
     def __init__(self, component: Component):
         self._component = component
-    
-    @classmethod
-    def _validate_multitarget_component(cls, fn_name: str, comp: Component,*,
-        requires: set[int] | None = None, excludes: set[int] | None = None):
-        """
-        Validate that component targets (or doesn't target) specific groups.
-        
-        requires: Set of group IDs that must be targeted
-        excludes: Set of group IDs that must NOT be targeted
-        """
-        if comp.requireSpawnOrder is not True:
-            raise ValueError(f"{fn_name}: component must require spawn order")
-
-        requires = requires or set()
-        excludes = excludes or set()
-        
-        found_targets: set[int] = set()
-        for trigger in comp.triggers:
-            for field in enum.TARGET_FIELDS:
-                target = trigger.get(field)
-                if target is not None and isinstance(target, int):
-                    found_targets.add(target)
-        
-        missing = requires - found_targets
-        if missing:
-            missing_names = [f"{g}" for g in missing]
-            raise ValueError(
-                f"{fn_name}: component must target {', '.join(missing_names)}"
-            )
-        
-        forbidden = found_targets & excludes
-        if forbidden:
-            forbidden_names = [f"{g}" for g in forbidden]
-            raise ValueError(
-                f"{fn_name}: component must not target {', '.join(forbidden_names)}"
-            )
 
     
     def Arc(self, time: float, comp: Component, 
@@ -496,7 +460,7 @@ class InstantPatterns:
         numBullets: int, spacing: int, centerAt: float = 0, radialBypass: bool = False):
         """Arc pattern - partial circle of bullets"""
         
-        self._validate_multitarget_component("Instant Arc",comp,
+        util.enforce_component_targets("Instant Arc", comp,
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
             excludes={enum.EMPTY_MULTITARGET}
         )
@@ -575,7 +539,7 @@ class InstantPatterns:
         Optional: spacing or numBullets, centerAt
         """
         
-        self._validate_multitarget_component("Instant Radial",comp,
+        util.enforce_component_targets("Instant Radial",comp,
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
             excludes={enum.EMPTY_MULTITARGET}
         )
@@ -604,21 +568,26 @@ class InstantPatterns:
         targetDir: int, bullet: lib.BulletPool, *, 
         numBullets: int, fastestTime: float, slowestTime: float, dist: int,
         type: int = 0, rate: float = 1.0):
-        """Line pattern - bullets at different speeds forming a line"""
+        """
+        Line pattern - builds MoveTowards triggers at different speeds, forming a line.
         
-        self._validate_multitarget_component("Instant Line", comp,
+        Optional: type, rate
+        """
+        
+        util.enforce_component_targets("Instant Line", comp,
             requires={ enum.EMPTY_BULLET },
-            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET }
+            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
+                enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
         )
         
         if fastestTime <= 0:
-            raise ValueError(f"Line: fastestTime must be a positive number. Received: {fastestTime}")
+            raise ValueError(f"Instant.Line: fastestTime must be a positive number. Received: {fastestTime}")
         if slowestTime <= 0:
-            raise ValueError(f"Line: slowestTime must be a positive number. Received: {slowestTime}")
+            raise ValueError(f"Instant.Line: slowestTime must be a positive number. Received: {slowestTime}")
         if slowestTime <= fastestTime:
-            raise ValueError(f"Line: slowestTime {slowestTime} must be greater than fastestTime {fastestTime}")
+            raise ValueError(f"Instant.Line: slowestTime {slowestTime} must be greater than fastestTime {fastestTime}")
         if numBullets < 3:
-            raise ValueError("Line: numBullets must be at least 3")
+            raise ValueError("Instant.Line: numBullets must be at least 3")
         
         bullet_groups: list[int] = []
         mt_comps = Multitarget.get_binary_components(numBullets, comp)
@@ -686,4 +655,33 @@ class TimedPatterns:
         
         return self._component
     
+    def Line(self, time: float, comp: Component, targetDir: int, bullet: lib.BulletPool, *,
+        numBullets: int, spacing: float, t: float, dist: int, type: int = 0, rate: float = 1.0):
+        """
+        Line pattern - bullets in a line over time with equal gaps between them
+        
+        Optional: type, rate
+        """
+        util.enforce_component_targets("Instant Line", comp,
+            requires={ enum.EMPTY_BULLET },
+            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
+                enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
+        )
+        
+        if numBullets < 2:
+            raise ValueError("Timed.Line: numBullets must be at least 2")
+        if spacing < 0:
+            raise ValueError("Timed.Line: spacing must be non-negative")
+        if t < 0:
+            raise ValueError("Timed.Line: t must be non-negative")
+        
+        for i in range(0, numBullets):
+            b, _ = bullet.next()
+            self._component.Spawn(
+                time + (i * spacing), comp.callerGroup, True, remap=f"{enum.EMPTY_BULLET}:{b}")
+            self._component.MoveTowards(
+                time + (i * spacing), b, targetDir, t=t, dist=dist, type=type, rate=rate
+            )
+        return self._component
+        
     # More pattern methods will be added here
