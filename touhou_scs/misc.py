@@ -90,16 +90,17 @@ def add_collisions():
     
     def spawn(comp: Component, target: int, spawnOrdered: bool, *, remap: str):
         """Specialized spawn trigger without validation"""
-        trig: Trigger = {}
-        trig[ppt.OBJ_ID] = enum.ObjectID.SPAWN
-        trig[ppt.X] = 0
-        trig[ppt.TARGET]= target
-        trig[ppt.EDITOR_LAYER] = 7
-        trig[ppt.SPAWN_TRIGGERED] = True
-        trig[ppt.MULTI_TRIGGERED] = True
-        trig[ppt.GROUPS] = comp.callerGroup
-        trig[ppt.REMAP_STRING] = remap
-        trig[ppt.SPAWN_ORDERED] = spawnOrdered
+        trig: Trigger = {
+            ppt.OBJ_ID: enum.ObjectID.SPAWN,
+            ppt.X: 0,
+            ppt.TARGET: target,
+            ppt.EDITOR_LAYER: 7,
+            ppt.SPAWN_TRIGGERED: True,
+            ppt.MULTI_TRIGGERED: True,
+            ppt.GROUPS: [comp.callerGroup],
+            ppt.REMAP_STRING: remap,
+            ppt.SPAWN_ORDERED: spawnOrdered,  
+        }
         comp.triggers.append(trig)
     
     global_col = Component("Bullet Collision remap wrapper", 17, editorLayer=7) \

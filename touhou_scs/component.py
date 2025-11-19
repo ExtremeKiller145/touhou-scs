@@ -46,27 +46,20 @@ class Component:
         return self._timed
     
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
-        """
-        Create trigger with component defaults.
-        
-        Note: 
-            X is not time-based
-            
-            Target does not accept Component objects.
-        """
+        """Create trigger with component defaults & target validation."""
         
         if _RESTRICTED_LOOKUP.get(target):
             raise ValueError(f"Group '{target}' is restricted due to known conflicts.")
         
-        return {
+        return Trigger({
             ppt.OBJ_ID: obj_id,
             ppt.X: x,
             ppt.TARGET: target,
-            ppt.GROUPS: self.callerGroup,
+            ppt.GROUPS: [self.callerGroup],
             ppt.EDITOR_LAYER: self.editorLayer,
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,
-        }
+        })
         
     def _validate_params(self, *, 
         t:Any = None, center:Any = None, target:Any = None):
@@ -505,7 +498,7 @@ class InstantPatterns:
             remap = util.Remap()
             
             for spawn_trigger in mt_comp.triggers:
-                remap_string = spawn_trigger[ppt.REMAP_STRING]
+                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
                 if not isinstance(remap_string, str): continue # to appease type checker
                     
                 remap_pairs, _ = util.translate_remap_string(remap_string)
@@ -594,7 +587,7 @@ class InstantPatterns:
         for mt_comp in mt_comps:
             remap = util.Remap()
             for spawn_trigger in mt_comp.triggers:
-                remap_string = spawn_trigger[ppt.REMAP_STRING]
+                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
                 if not isinstance(remap_string, str): continue # to appease type checker
                 
                 remap_pairs, _ = util.translate_remap_string(remap_string)

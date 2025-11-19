@@ -2,28 +2,78 @@
 Touhou SCS - Type Definitions
 """
 
-from typing import Protocol
+from typing import Required, TypedDict, Protocol
+
 
 
 # ==========================================
 # TRIGGER STRUCTURE
 # ==========================================
 
-Trigger = dict[int, int | str | bool | float]
-"""
-Trigger dictionary with integer property IDs as keys.
 
-Keys are from enums.Properties (e.g., Properties.X, Properties.DURATION)
+# Trigger: TypeAlias = dict[str, int | str | bool | float | list[int]]
 
-Common fields (all triggers):
-- OBJ_ID: ObjectID - Trigger type
-- X: float - X position (time-based)
-- Y: float - Y position (set by spread)
-- GROUPS: int - Caller group
-- EDITOR_LAYER: int - Editor layer
-- SPAWN_TRIGGERED: bool - Must be spawn-triggered
-- MULTI_TRIGGERED: bool - Can trigger multiple times
-"""
+Trigger = TypedDict("Trigger",{
+    
+    "1": Required[int],         # OBJ_ID - Trigger type
+    "2": Required[float],       # X - X position (time-based)
+    "20": Required[int],                  # EDITOR_LAYER
+    "51": Required[int],        # TARGET
+    "57": Required[list[int]],  # GROUPS - Caller group(s)
+    "62": Required[bool],                 # SPAWN_TRIGGERED
+    "87": Required[bool],                 # MULTI_TRIGGERED
+    # General optional fields
+    "3": float,                 # Y - Y position (set by spread)
+    "10": float,                # DURATION
+    "30": int,                  # EASING
+    "61": int,                  # EDITOR_LAYER_2
+    "85": float,                # EASING_RATE
+    "397": bool,                # DYNAMIC
+    # Alpha
+    "35": float,                # OPACITY
+    # Follow
+    "71": int,                  # FOLLOW_GROUP (also used for ROTATE_CENTER, SCALE_CENTER, etc.)
+    # Stop
+    "580": int,                 # STOP_OPTION
+    "535": bool,                # STOP_USE_CONTROL_ID
+    
+    # Toggle
+    "56": bool,                 # ACTIVATE_GROUP
+    # Collision
+    "80": int,                  # BLOCK_A
+    "95": int,                  # BLOCK_B
+    # Pulse
+    "45": float,                # PULSE_FADE_IN
+    "46": float,                # PULSE_HOLD
+    "47": float,                # PULSE_FADE_OUT
+    "48": bool,                 # PULSE_HSV
+    "49": str,                  # PULSE_HSV_STRING
+    "52": bool,                 # PULSE_TARGET_TYPE
+    "86": bool,                 # PULSE_EXCLUSIVE
+    # Scale
+    "150": float,               # SCALE_X
+    "151": float,               # SCALE_Y
+    "153": bool,                # SCALE_DIV_BY_X
+    "154": bool,                # SCALE_DIV_BY_Y
+    # Rotate
+    "68": float,                # ROTATE_ANGLE
+    "401": int,                 # ROTATE_TARGET
+    "100": bool,                # ROTATE_AIM_MODE (also MOVE_TARGET_MODE)
+    "403": bool,                # ROTATE_DYNAMIC_EASING
+    # Spawn
+    "442": str,                 # REMAP_STRING
+    "581": bool,                # RESET_REMAP
+    "441": bool,                # SPAWN_ORDERED
+    "63": float,                # SPAWN_DELAY
+    # Move
+    "28": float,                # MOVE_X
+    "29": float,                # MOVE_Y
+    "393": bool,                # MOVE_SMALL_STEP
+    "395": int,                 # MOVE_TARGET_CENTER
+    "394": bool,                # MOVE_DIRECTION_MODE
+    "396": float,               # MOVE_DIRECTION_MODE_DISTANCE
+    "544": bool,                # MOVE_SILENT
+}, total=False) 
 
 
 # ==========================================

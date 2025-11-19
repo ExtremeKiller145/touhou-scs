@@ -175,8 +175,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     def _group_triggers_by_same_tick(triggers: list[Trigger], comp: ComponentProtocol) -> list[list[Trigger]]:
         """Group triggers by whether they execute in the same tick."""
         
-        if comp.requireSpawnOrder is False or comp.requireSpawnOrder is None:
-            return [triggers]
+        if not comp.requireSpawnOrder: return [triggers]
         
         x_groups: dict[float, list[Trigger]] = {}
         for trigger in triggers:
@@ -248,7 +247,6 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
             if layer1_trigger[ppt.OBJ_ID] != enum.ObjectID.SPAWN: continue
             
             spawn_delay = layer1_trigger.get(ppt.SPAWN_DELAY, 0)
-            if isinstance(spawn_delay, (int, float)) and spawn_delay > 0: continue
             
             remap_string = str(layer1_trigger.get(ppt.REMAP_STRING, ""))
             if not remap_string: continue
@@ -411,7 +409,7 @@ def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> No
         
         prev_x = -10000
         for trigger in sorted_triggers:
-            if trigger[ppt.GROUPS] == 9999:
+            if 9999 in trigger[ppt.GROUPS]:
                 raise RuntimeError(
                     f"CRITICAL ERROR: Reserved group 9999 detected in {comp.name}"
                 )
