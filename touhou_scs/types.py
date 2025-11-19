@@ -42,6 +42,7 @@ Trigger = TypedDict("Trigger",{
     # Collision
     "80": int,                  # BLOCK_A
     "95": int,                  # BLOCK_B
+    "93": bool,                 # TRIGGER_ON_EXIT
     # Pulse
     "45": float,                # PULSE_FADE_IN
     "46": float,                # PULSE_HOLD

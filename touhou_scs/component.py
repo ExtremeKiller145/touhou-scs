@@ -77,6 +77,38 @@ class Component:
         self.requireSpawnOrder = required
         return self
     
+    def _flatten_groups(self, *groups: int | list[int]) -> list[int]:
+        result: list[int] = []
+        for g in groups:
+            if isinstance(g, list): result.extend(g)
+            else: result.append(g)
+        if len(result) != len(set(result)):
+            raise ValueError("Flatten Groups: Duplicate groups found!")
+        return result
+    
+    def group_last_trigger(self, *new_groups: int | list[int]):
+        """Add additional groups to the most recently added trigger."""
+        if not self.triggers:
+            raise RuntimeError(f"Component '{self.name}' has no triggers to modify")
+        
+        additional_groups = self._flatten_groups(*new_groups)
+        if not additional_groups:
+            raise ValueError("group_last_trigger requires at least one group")
+        
+        old_groups = self.triggers[-1][ppt.GROUPS]
+        combined_groups = old_groups + additional_groups
+        
+        if len(combined_groups) != len(set(combined_groups)):
+            raise ValueError(
+                f"Trigger in component '{self.name}' has been assigned duplicate groups! \n"
+                f"Old groups: {old_groups} \n"
+                f"New groups: {additional_groups} \n"
+                f"Combined: {combined_groups}"
+            )
+        
+        self.triggers[-1][ppt.GROUPS] = combined_groups
+        return self
+    
     # ===========================================================
     # 
     # TRIGGER METHODS
@@ -95,12 +127,11 @@ class Component:
         self._validate_params(target=target)
         
         trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
-        trigger[ppt.SPAWN_ORDERED] = spawnOrdered
         
+        if spawnOrdered: trigger[ppt.SPAWN_ORDERED] = True
         if delay > 0: trigger[ppt.SPAWN_DELAY] = delay
-        if remap:
-            _, clean_remap = util.translate_remap_string(remap)
-            trigger[ppt.REMAP_STRING] = clean_remap
+        if remap: # cleans/validates remaps
+            _, trigger[ppt.REMAP_STRING] = util.translate_remap_string(remap)
         
         self.triggers.append(trigger)
         return self
@@ -144,6 +175,7 @@ class Component:
         trigger[ppt.EASING_RATE] = rate
         
         if dynamic: trigger[ppt.DYNAMIC] = True
+        if t == 0: trigger[ppt.MOVE_SILENT] = True
         
         self.triggers.append(trigger)
         return self
@@ -187,10 +219,11 @@ class Component:
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_X] = dx
         trigger[ppt.MOVE_Y] = dy
-        trigger[ppt.MOVE_SILENT] = (t == 0)
         trigger[ppt.MOVE_SMALL_STEP] = True
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
+        
+        if t == 0: trigger[ppt.MOVE_SILENT] = True
         
         self.triggers.append(trigger)
         return self
@@ -209,10 +242,11 @@ class Component:
         trigger[ppt.MOVE_TARGET_CENTER] = target
         trigger[ppt.MOVE_TARGET_LOCATION] = location
         trigger[ppt.MOVE_TARGET_MODE] = True
-        trigger[ppt.MOVE_SILENT] = (t == 0)
         trigger[ppt.DURATION] = t
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
+        
+        if t == 0: trigger[ppt.MOVE_SILENT] = True
         
         self.triggers.append(trigger)
         return self
@@ -451,7 +485,12 @@ class InstantPatterns:
     def Arc(self, time: float, comp: Component, 
         gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
         numBullets: int, spacing: int, centerAt: float = 0, radialBypass: bool = False):
-        """Arc pattern - partial circle of bullets"""
+        """
+        Arc pattern - partial circle of bullets
+        
+        Component must use EMPTY_BULLET and EMPTY_TARGET_GROUP. \n
+        Optional: centerAt
+        """
         
         util.enforce_component_targets("Instant Arc", comp,
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
@@ -529,6 +568,7 @@ class InstantPatterns:
         """
         Radial pattern - full 360° circle of bullets
         
+        Component must use EMPTY_BULLET and EMPTY_TARGET_GROUP.  \n
         Optional: spacing or numBullets, centerAt
         """
         

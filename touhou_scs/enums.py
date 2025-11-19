@@ -97,6 +97,7 @@ class Properties(str):
     # ========== Collision Trigger ==========
     BLOCK_A = "80"
     BLOCK_B = "95"
+    TRIGGER_ON_EXIT = "93"
     
     # ========== Pulse Trigger ==========
     PULSE_FADE_IN = "45"

@@ -12,7 +12,7 @@ PLR_GRAZE_HITBOX = 3
 BOMB_HITBOX = 4
 GRAZE_FUNCTION = 34
 PLR_HIT_FUNCTION = 35
-DESPAWN_FUNCTION = 27
+DESPAWN_FUNCTION = 27 #PLR_HIT calls despawn in level, BOMB_HIT calls directly in code
 
 ppt = enum.Properties
 
@@ -46,42 +46,40 @@ def add_collisions():
     if added_collisions: 
         raise RuntimeError("Collisions have already been added")
     
-    cols = Component("Collisions", 18, editorLayer=7)
+    cols = Component("Base Collisions (un-mapped)", 18, editorLayer=7)
+    cols.assert_spawn_order(False)
     
-    def collision(*, comp: Component, target: int, blockA: int, blockB: int, activateGroup: bool):
-        
-        col = comp.create_trigger(enum.ObjectID.COLLISION, 0, target)
+    def unmapped_collision(*, target: int, blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
+        col = cols.create_trigger(enum.ObjectID.COLLISION, 0, target)
         col[ppt.BLOCK_A] = blockA
         col[ppt.BLOCK_B] = blockB
         col[ppt.ACTIVATE_GROUP] = activateGroup
+        if onExit: col[ppt.TRIGGER_ON_EXIT] = True
         cols.triggers.append(col)
         
-    collision(
-        comp=cols,
+    unmapped_collision(
         target=enum.EMPTY_BULLET,
         blockA=enum.EMPTY_BULLET,
         blockB=BOUNDARY_HITBOX,
-        activateGroup=False
+        activateGroup=False,
+        onExit=True,
     )
     
-    collision(
-        comp=cols,
+    unmapped_collision(
         target=GRAZE_FUNCTION,
         blockA=enum.EMPTY_BULLET,
         blockB=PLR_GRAZE_HITBOX,
         activateGroup=True
     )
     
-    collision(
-        comp=cols,
+    unmapped_collision(
         target=DESPAWN_FUNCTION,
         blockA=enum.EMPTY_BULLET,
         blockB=BOMB_HITBOX,
         activateGroup=True
     )
     
-    collision(
-        comp=cols,
+    unmapped_collision(
         target=enum.EMPTY_BULLET,
         blockA=enum.EMPTY_BULLET,
         blockB=PLR_HURTBOX,
@@ -105,17 +103,19 @@ def add_collisions():
     
     global_col = Component("Bullet Collision remap wrapper", 17, editorLayer=7) \
         .assert_spawn_order(False)
+
+    plr_hit_col = Component("Player Hit Collisions", unknown_g(), editorLayer=7) \
+        .assert_spawn_order(False)
     
     def add_collision_triggers(bullet: lib.BulletPool):
         min, max = bullet.min_group, bullet.max_group
         
         for bullet_hitbox in range(min, max + 1):
-            
             spawn(global_col, cols.callerGroup, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             
-            plr_hit_col = Component(f"Player Hit Collision {bullet_hitbox}", bullet_hitbox, editorLayer=7) \
-                .assert_spawn_order(False)
+            # Give each bullet a spawn trigger that activates its own collisions
             spawn(plr_hit_col, PLR_HIT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+            plr_hit_col.group_last_trigger(bullet_hitbox)
     
     
     add_collision_triggers(lib.bullet1)
@@ -133,7 +133,7 @@ collision1 = (Component("Collision 1", unknown_g(), editorLayer=6)
     .Scale(1, enum.EMPTY_BULLET, t=0, factor=0.25, divide=True)
     .Alpha(1, enum.EMPTY_BULLET, t=0, opacity=100)
     .Pulse(1, enum.EMPTY_BULLET, lib.HSB(100,0,0), t=1)
-    # .Toggle(1, enum.EMPTY_BULLET, False)
+    .Toggle(1, enum.EMPTY_BULLET, False)
 )
 
 # collision2 = (Component("Collision 2", unknown_g(), editorLayer=6)
