@@ -95,7 +95,7 @@ def add_collisions():
             ppt.EDITOR_LAYER: 7,
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,
-            ppt.GROUPS: [comp.callerGroup],
+            ppt.GROUPS: [comp.groups[0]],
             ppt.REMAP_STRING: remap,
             ppt.SPAWN_ORDERED: spawnOrdered,  
         }
@@ -111,7 +111,7 @@ def add_collisions():
         min, max = bullet.min_group, bullet.max_group
         
         for bullet_hitbox in range(min, max + 1):
-            spawn(global_col, cols.callerGroup, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+            spawn(global_col, cols.groups[0], False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             
             # Give each bullet a spawn trigger that activates its own collisions
             spawn(plr_hit_col, PLR_HIT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
@@ -149,6 +149,6 @@ despawn_function = Component("Despawn Function List", DESPAWN_FUNCTION, editorLa
 
 (despawn_function
     .assert_spawn_order(False)
-    .Spawn(0, collision1.callerGroup, True) # toggle this on/off same tick w/ unique group
-    # .Spawn(0, collision2.callerGroup, True)
+    .Spawn(0, collision1.groups[0], True) # toggle this on/off same tick w/ unique group
+    # .Spawn(0, collision2.groups[0], True)
 )

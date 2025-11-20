@@ -26,8 +26,9 @@ class Component:
     
     def __init__(self, name: str, callerGroup: int, editorLayer: int = 4):
         self.name: str = name
-        self.callerGroup: int = callerGroup
+        self.groups: list[int] = [callerGroup]  # groups[0] is always the caller
         self.editorLayer: int = editorLayer
+        
         self.requireSpawnOrder: bool | None = None
         self.triggers: list[Trigger] = []
         self._instant: InstantPatterns | None = None
@@ -55,7 +56,7 @@ class Component:
             ppt.OBJ_ID: obj_id,
             ppt.X: x,
             ppt.TARGET: target,
-            ppt.GROUPS: [self.callerGroup],
+            ppt.GROUPS: self.groups.copy(),
             ppt.EDITOR_LAYER: self.editorLayer,
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,
@@ -87,7 +88,12 @@ class Component:
         return result
     
     def group_last_trigger(self, *new_groups: int | list[int]):
-        """Add additional groups to the most recently added trigger."""
+        """
+        Add groups to the most recently added trigger
+        
+        (ignores active group context).
+        """
+
         if not self.triggers:
             raise RuntimeError(f"Component '{self.name}' has no triggers to modify")
         
@@ -109,6 +115,28 @@ class Component:
         self.triggers[-1][ppt.GROUPS] = combined_groups
         return self
     
+    def start_group_context(self, *new_groups: int | list[int]):
+        """Start a group context: all subsequent triggers will include these additional groups."""
+        additional_groups = self._flatten_groups(*new_groups)
+        if not additional_groups:
+            raise ValueError("start_group_context requires at least one group")
+        
+        if len(self.groups) > 1:
+            raise RuntimeError(f"Component '{self.name}' already has an active group context. Call end_group_context() first.")
+        
+        # Replace entire list for optimization
+        self.groups = [self.groups[0]] + additional_groups
+        return self
+    
+    def end_group_context(self):
+        """End the most recent group context started with start_group_context."""
+        if len(self.groups) == 1:
+            raise RuntimeError(f"Component '{self.name}' has no active group context to end")
+        
+        # Replace entire list for optimization
+        self.groups = [self.groups[0]]
+        return self
+    
     # ===========================================================
     # 
     # TRIGGER METHODS
@@ -123,7 +151,7 @@ class Component:
         
         Optional: remap string, spawnDelay
         """
-        target = target.callerGroup if isinstance(target, Component) else target
+        target = target.groups[0] if isinstance(target, Component) else target
         self._validate_params(target=target)
         
         trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
@@ -143,7 +171,7 @@ class Component:
         WARNING: A deactivated object cannot be reactivated by a different group
         (collision triggers might be different)
         """
-        target = target.callerGroup if isinstance(target, Component) else target
+        target = target.groups[0] if isinstance(target, Component) else target
         self._validate_params(target=target)
         
         trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
@@ -556,8 +584,8 @@ class InstantPatterns:
                 bulletPos += spacing
                 if bulletPos >= 360: bulletPos -= 360
             
-            remap.pair(enum.EMPTY_MULTITARGET, comp.callerGroup) # final remap
-            self._component.Spawn(time, mt_comp.callerGroup, False, remap=remap.build())
+            remap.pair(enum.EMPTY_MULTITARGET, comp.groups[0]) # final remap
+            self._component.Spawn(time, mt_comp.groups[0], False, remap=remap.build())
         
         return self._component
     
@@ -639,8 +667,8 @@ class InstantPatterns:
                     else:
                         remap.pair(target, enum.EMPTY_MULTITARGET) # any empty works
             
-            remap.pair(enum.EMPTY_MULTITARGET, comp.callerGroup)
-            self._component.Spawn(time, mt_comp.callerGroup, False, remap=remap.build())
+            remap.pair(enum.EMPTY_MULTITARGET, comp.groups[0])
+            self._component.Spawn(time, mt_comp.groups[0], False, remap=remap.build())
         
         step = (slowestTime - fastestTime) / (numBullets - 1)
         for i, bullet_group in enumerate(bullet_groups):
@@ -711,7 +739,7 @@ class TimedPatterns:
         for i in range(0, numBullets):
             b, _ = bullet.next()
             self._component.Spawn(
-                time + (i * spacing), comp.callerGroup, True, remap=f"{enum.EMPTY_BULLET}:{b}")
+                time + (i * spacing), comp.groups[0], True, remap=f"{enum.EMPTY_BULLET}:{b}")
             self._component.MoveTowards(
                 time + (i * spacing), b, targetDir, t=t, dist=dist, type=type, rate=rate
             )

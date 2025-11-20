@@ -220,10 +220,10 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     # Build lookup: caller_group -> list of (component, trigger) pairs in that group
     group_to_triggers: dict[int, list[tuple[ComponentProtocol, Trigger]]] = {}
     for comp in components:
-        if comp.callerGroup not in group_to_triggers:
-            group_to_triggers[comp.callerGroup] = []
+        if comp.groups[0] not in group_to_triggers:
+            group_to_triggers[comp.groups[0]] = []
         for trigger in comp.triggers:
-            group_to_triggers[comp.callerGroup].append((comp, trigger))
+            group_to_triggers[comp.groups[0]].append((comp, trigger))
     
     # Case 2: Multiple unmapped spawns targeting same spawn trigger in same tick
     for comp in components:

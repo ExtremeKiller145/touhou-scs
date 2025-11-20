@@ -89,7 +89,7 @@ class ComponentProtocol(Protocol):
     This is Python's way of doing duck typing with type safety.
     """
     name: str
-    callerGroup: int
+    groups: list[int]
     editorLayer: int
     requireSpawnOrder: bool | None
     triggers: list[Trigger]
