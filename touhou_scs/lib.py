@@ -99,30 +99,32 @@ class BulletPool:
     Returns (bullet_group, collision_group) pairs.
     """
     
-    def __init__(self, min_group: int, max_group: int):
-        self.min_group: int = min_group
-        self.max_group: int = max_group
-        self._current: int = min_group - 1
+    def __init__(self, min_group: int, max_group: int, has_orientation: bool):
+        """Inclusive of both min_group and max_group."""
+        self.min_group = min_group
+        self.max_group = max_group
+        self.has_orientation = has_orientation
+        self.current = max_group
     
     def next(self) -> tuple[int, int]:
         """
-        Get the next bullet / collision group in the cycle.
+        Get the next bullet / collision group in the cycle. First call is 'min'.
         
         Returns: Tuple of (bullet_group, collision_group)
         """
-        self._current += 1
-        if self._current > self.max_group:
-            self._current = self.min_group
+        self.current += 1
+        if self.current > self.max_group:
+            self.current = self.min_group
         
-        bullet = self._current
+        bullet = self.current
         collision = self.max_group + bullet
         return bullet, collision
 
 
-bullet1 = BulletPool(501, 1000)
-bullet2 = BulletPool(1501, 2200)
-bullet3 = BulletPool(2901, 3600)
-bullet4 = BulletPool(4301, 4700)
+bullet1 = BulletPool(501, 1000, True)
+bullet2 = BulletPool(1501, 2200, False)
+bullet3 = BulletPool(2901, 3600, False)
+bullet4 = BulletPool(4301, 4700, False)
 
 
 def get_all_components() -> list[ComponentProtocol]:

@@ -123,7 +123,7 @@ class Properties(str):
     ROTATE_CENTER = "71"  # For Rotate triggers, type group
     ROTATE_TARGET = "401"
     ROTATE_AIM_MODE = "100"
-    ROTATE_DYNAMIC_EASING = "403"
+    ROTATE_DYNAMIC_EASING = "403" # int 0-1 (not normal easing)
     
     # ========== Spawn Trigger ==========
     REMAP_STRING = "442"  

@@ -60,7 +60,7 @@ Trigger = TypedDict("Trigger",{
     "68": float,                # ROTATE_ANGLE
     "401": int,                 # ROTATE_TARGET
     "100": bool,                # ROTATE_AIM_MODE (also MOVE_TARGET_MODE)
-    "403": bool,                # ROTATE_DYNAMIC_EASING
+    "403": int,                 # ROTATE_DYNAMIC_EASING
     # Spawn
     "442": str,                 # REMAP_STRING
     "581": bool,                # RESET_REMAP

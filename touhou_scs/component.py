@@ -46,6 +46,21 @@ class Component:
         if self._timed is None: self._timed = TimedPatterns(self)
         return self._timed
     
+    def has_trigger_properties(self, trigger: dict[str, Any]):
+        """
+        Check if component has a trigger matching all key-value pairs in trigger dict. \n
+        Not including extra properties in trigger.
+        
+        Use 'Any' as value to wildcard match any value for that key.
+        """
+        if len(trigger) == 0: raise ValueError("has_trigger_properties: empty trigger dict given")
+        for t in self.triggers:
+            num_matches = 0
+            for key, value in trigger.items():
+                if t.get(key) == value or t.get(key) and value is Any: num_matches += 1
+            if num_matches == len(trigger): return True
+        return False
+    
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
         """Create trigger with component defaults & target validation."""
         
@@ -63,15 +78,19 @@ class Component:
         })
         
     def _validate_params(self, *, 
-        t:Any = None, center:Any = None, target:Any = None):
+        t:Any = None, center:Any = None, target:Any = None, type:Any = None, rate:Any = None):
         """Value check common trigger parameters"""
 
         if t is not None and t < 0:
-            raise ValueError("Duration 't' must be non-negative")
+            raise ValueError(f"Duration 't' must be non-negative. Received: {t}")
         if center is not None and _RESTRICTED_LOOKUP.get(center):
             raise ValueError(f"Center group '{center}' is restricted.")
         if target is not None and _RESTRICTED_LOOKUP.get(target):
             raise ValueError(f"Target group '{target}' is restricted.")
+        if type is not None and (type < 0 or type > 18 or not type.is_integer()):
+            raise ValueError("Easing 'type' must be an integer between 0 and 18")
+        if rate is not None and (rate <= 0.10 or rate > 20.0):
+            raise ValueError(f"Easing 'rate' must be between 0.10 and 20.0, Got: {rate}")
     
     def assert_spawn_order(self, required: bool):
         """Set component spawn order requirement."""
@@ -84,7 +103,7 @@ class Component:
             if isinstance(g, list): result.extend(g)
             else: result.append(g)
         if len(result) != len(set(result)):
-            raise ValueError("Flatten Groups: Duplicate groups found!")
+            raise ValueError(f"Flatten Groups: Duplicate groups found!: \n{result}")
         return result
     
     def group_last_trigger(self, *new_groups: int | list[int]):
@@ -188,7 +207,7 @@ class Component:
         
         Optional: type, rate, dynamic, center of target
         """
-        self._validate_params(t=t, target=targetDir)
+        self._validate_params(t=t, target=targetDir, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -240,7 +259,7 @@ class Component:
         
         Optional: t, type, rate
         """
-        self._validate_params(t=t, target=target)
+        self._validate_params(t=t, target=target, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -263,7 +282,7 @@ class Component:
         
         Optional: t, type, rate
         """
-        self._validate_params(t=t, target=target)
+        self._validate_params(t=t, target=target, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -288,11 +307,8 @@ class Component:
         
         Optional: center (defaults to target), t, type, rate
         """
-        self._validate_params(t=t, target=target, center=center)
-        
         if center is None: center = target
-        elif _RESTRICTED_LOOKUP.get(center):
-            raise ValueError(f"Center group '{center}' is restricted.")
+        self._validate_params(t=t, target=target, center=center, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
@@ -313,7 +329,7 @@ class Component:
         
         Optional: t, type, rate
         """
-        self._validate_params(t=t, target=target)
+        self._validate_params(t=t, target=target, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
@@ -324,6 +340,11 @@ class Component:
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
         trigger[ppt.DYNAMIC] = dynamic
+        
+        if dynamic and type or dynamic and rate != 1.0:
+            raise ValueError(
+                f"PointToGroup: dynamic aiming cannot use easing. \n"
+                f"Given type {type}, rate {rate}")
         
         self.triggers.append(trigger)
         return self
@@ -337,7 +358,7 @@ class Component:
         
         Optional: divide, t, type, rate
         """
-        self._validate_params(t=t, target=target)
+        self._validate_params(t=t, target=target, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.SCALE, util.time_to_dist(time), target)
         
@@ -641,6 +662,9 @@ class InstantPatterns:
                 enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
         )
         
+        if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
+            warn("Instant.Line: Bullet has orientation enabled, but component has no PointToGroup trigger. Bullets may not face the correct direction.", stacklevel=2)
+        
         if fastestTime <= 0:
             raise ValueError(f"Instant.Line: fastestTime must be a positive number. Received: {fastestTime}")
         if slowestTime <= 0:
@@ -728,6 +752,9 @@ class TimedPatterns:
             excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
                 enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
         )
+        
+        if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
+            warn("Timed.Line: Bullet has orientation enabled, but component has no PointToGroup triggers. Bullets may not face the correct direction.", stacklevel=2)
         
         if numBullets < 2:
             raise ValueError("Timed.Line: numBullets must be at least 2")

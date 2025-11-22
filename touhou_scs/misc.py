@@ -132,7 +132,6 @@ collision1 = (Component("Collision 1", unknown_g(), editorLayer=6)
     .Pulse(0, enum.EMPTY_BULLET, lib.rgb(0,0,0), t=1)
     .Scale(1, enum.EMPTY_BULLET, t=0, factor=0.25, divide=True)
     .Alpha(1, enum.EMPTY_BULLET, t=0, opacity=100)
-    .Pulse(1, enum.EMPTY_BULLET, lib.HSB(100,0,0), t=1)
     .Toggle(1, enum.EMPTY_BULLET, False)
 )
 
