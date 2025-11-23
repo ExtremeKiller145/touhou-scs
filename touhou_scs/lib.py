@@ -430,7 +430,7 @@ def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> No
     _print_budget_analysis(stats)
     
     with open(filename, "w") as file:
-        json.dump(output, file)
+        file.write(json.dumps(output))
     
     elapsed = time.time() - _start_time
     print(f"\nSaved to {filename} successfully!")
