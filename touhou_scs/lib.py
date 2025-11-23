@@ -5,7 +5,7 @@ Core infrastructure: Spell system, GuiderCircles, BulletPools, and export functi
 Module-level storage for components and spells for automatic registration.
 """
 
-import json
+import orjson
 import random
 import time
 import colorsys
@@ -429,8 +429,8 @@ def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> No
     stats = _generate_statistics(object_budget)
     _print_budget_analysis(stats)
     
-    with open(filename, "w") as file:
-        file.write(json.dumps(output))
+    with open(filename, "wb") as file:
+        file.write(orjson.dumps(output))
     
     elapsed = time.time() - _start_time
     print(f"\nSaved to {filename} successfully!")
