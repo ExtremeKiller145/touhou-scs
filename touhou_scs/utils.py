@@ -44,33 +44,33 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
     """
     
     parts = remap_string.split(".")
-    if len(parts) == 0:
+    parts_len = len(parts)
+    
+    if parts_len == 0:
         raise ValueError("Remap string is empty")
-    if len(parts) % 2 != 0:
+    if parts_len % 2 != 0:
         raise ValueError(f"Remap string must contain an even number of parts:\n{remap_string}")
 
-    # Build pairs[source] = target as integers
     pairs: dict[int, int] = {}
-    for i in range(0, len(parts), 2):
-        source = int(parts[i])
-        target = int(parts[i + 1])
-        pairs[source] = target
-
-    source_check: dict[int, bool] = {}
-
-    # Duplicate targets are allowed.
-    # (i.e. must pass Vertical Line Test, but doesnt need to be one-to-one)
-    for source, target in pairs.items():
-        if source in source_check:
+    clean_parts: list[str] = []
+    for i in range(0, parts_len, 2):
+        source_str = parts[i]
+        target_str = parts[i + 1]
+        source = int(source_str)
+        target = int(target_str)
+        
+        # Duplicate targets are allowed (doesn't need to be one-to-one)
+        # But duplicate sources are not (must pass Vertical Line Test)
+        if source in pairs:
             raise ValueError(f"Duplicate source '{source}' in remap string - cannot remap one group to multiple targets")
-        source_check[source] = True
-
-    clean_pairs: list[str] = []
-    for source, target in pairs.items():
+        pairs[source] = target
+        
+        # Only include non-redundant mappings (source != target)
         if source != target:
-            clean_pairs.append(f"{source}.{target}")
+            clean_parts.append(source_str)
+            clean_parts.append(target_str)
     
-    clean_string = ".".join(clean_pairs)
+    clean_string = ".".join(clean_parts)
     
     if clean_string != remap_string:
         warn(f"Remap string had redundant mappings:\n{remap_string}", stacklevel=2)

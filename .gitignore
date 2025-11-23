@@ -2,7 +2,7 @@ __pycache__/
 debug/__pycache__/
 nul
 debug/report.html
-
+test.js
 # Zed
 .zed
 .luarc.json
