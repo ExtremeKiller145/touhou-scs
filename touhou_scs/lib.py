@@ -389,12 +389,15 @@ def _print_budget_analysis(stats: dict[str, Any]) -> None:
         print(f"\nShared components: {shared_count} triggers")
 
 
-def save_all(filename: str = "triggers.json", object_budget: int = 200000) -> None:
+def save_all(*, 
+    filename: str = "triggers.json",
+    object_budget: int = 200000,
+    check_spawn_limit: bool = False):
     """
     Export all component triggers to JSON file for main.js processing.
     Handles spreading, sorting, validation, and statistics.
     """
-    _enforce_spawn_limit(all_components)
+    if check_spawn_limit: _enforce_spawn_limit(all_components)
     
     output: dict[str, list[Trigger]] = {"triggers": []}
     
