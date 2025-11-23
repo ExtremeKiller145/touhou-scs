@@ -51,13 +51,15 @@ class Component:
         Check if component has a trigger matching all key-value pairs in trigger dict. \n
         Not including extra properties in trigger.
         
-        Use 'Any' as value to wildcard match any value for that key.
+        Use 'Any' to allow any value other than None.
         """
         if len(trigger) == 0: raise ValueError("has_trigger_properties: empty trigger dict given")
         for t in self.triggers:
             num_matches = 0
             for key, value in trigger.items():
-                if t.get(key) == value or t.get(key) and value is Any: num_matches += 1
+                if t.get(key) is None: continue
+                if t.get(key) == value or value is Any:
+                    num_matches += 1
             if num_matches == len(trigger): return True
         return False
     
