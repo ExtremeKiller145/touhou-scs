@@ -1,9 +1,18 @@
 """
-Touhou SCS - Shattered Crystal Shards
+## Touhou SCS - Shattered Crystal Shards
 Bullet pattern generation system for Geometry Dash
 
 A Python-based framework for creating complex bullet hell patterns
 within Geometry Dash using automated trigger generation.
+
+# Interpreting the output:
+
+The generated components and triggers are flattened to a list of triggers,
+which follows this JSON format:
+{
+    "{property_number}": value,
+    "{group_property_number}": [int1, int2, ...]
+}
 """
 
 __version__ = "2.0.0"

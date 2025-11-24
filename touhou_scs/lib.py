@@ -232,8 +232,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         unmapped_spawns = [
             t for t in comp.triggers 
             if (t[ppt.OBJ_ID] == enum.ObjectID.SPAWN and 
-                not t.get(ppt.REMAP_STRING, "") and
-                (t.get(ppt.SPAWN_DELAY, 0) == 0 or t.get(ppt.SPAWN_DELAY, 0) == 0.0))
+                not t.get(ppt.REMAP_STRING, "") and t.get(ppt.SPAWN_DELAY, 0) == 0)
         ]
         
         if len(unmapped_spawns) >= 2:
@@ -247,8 +246,6 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     for layer1_comp in components:
         for layer1_trigger in layer1_comp.triggers:
             if layer1_trigger[ppt.OBJ_ID] != enum.ObjectID.SPAWN: continue
-            
-            spawn_delay = layer1_trigger.get(ppt.SPAWN_DELAY, 0)
             
             remap_string = str(layer1_trigger.get(ppt.REMAP_STRING, ""))
             if not remap_string: continue
