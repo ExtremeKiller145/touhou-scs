@@ -49,42 +49,17 @@ def add_collisions():
     cols = Component("Base Collisions (un-mapped)", 18, editorLayer=7)
     cols.assert_spawn_order(False)
     
-    def unmapped_collision(*, target: int, blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
-        col = cols.create_trigger(enum.ObjectID.COLLISION, 0, target)
-        col[ppt.BLOCK_A] = blockA
-        col[ppt.BLOCK_B] = blockB
-        col[ppt.ACTIVATE_GROUP] = activateGroup
-        if onExit: col[ppt.TRIGGER_ON_EXIT] = True
-        cols.triggers.append(col)
-        
-    unmapped_collision(
-        target=enum.EMPTY_BULLET,
-        blockA=enum.EMPTY_BULLET,
-        blockB=BOUNDARY_HITBOX,
-        activateGroup=False,
-        onExit=True,
-    )
+    cols.Collision(0, enum.EMPTY_BULLET, 
+        blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
     
-    unmapped_collision(
-        target=GRAZE_FUNCTION,
-        blockA=enum.EMPTY_BULLET,
-        blockB=PLR_GRAZE_HITBOX,
-        activateGroup=True
-    )
+    cols.Collision(0, GRAZE_FUNCTION, 
+        blockA=enum.EMPTY_BULLET, blockB=PLR_GRAZE_HITBOX, activateGroup=True)
     
-    unmapped_collision(
-        target=DESPAWN_FUNCTION,
-        blockA=enum.EMPTY_BULLET,
-        blockB=BOMB_HITBOX,
-        activateGroup=True
-    )
-    
-    unmapped_collision(
-        target=enum.EMPTY_BULLET,
-        blockA=enum.EMPTY_BULLET,
-        blockB=PLR_HURTBOX,
-        activateGroup=True
-    )
+    cols.Collision(0, DESPAWN_FUNCTION, 
+        blockA=enum.EMPTY_BULLET, blockB=BOMB_HITBOX, activateGroup=True)
+
+    cols.Collision(0, enum.EMPTY_BULLET, 
+        blockA=enum.EMPTY_BULLET, blockB=PLR_HURTBOX, activateGroup=True)
     
     def spawn(comp: Component, target: int, spawnOrdered: bool, *, remap: str):
         """Specialized spawn trigger without validation"""
@@ -148,6 +123,7 @@ despawn_function = Component("Despawn Function List", DESPAWN_FUNCTION, editorLa
 
 (despawn_function
     .assert_spawn_order(False)
+    # Note: if a collisionX component seems to be be spawning delayed, its a GD bug. reload level.
     .Spawn(0, collision1.groups[0], True) # toggle this on/off same tick w/ unique group
     # .Spawn(0, collision2.groups[0], True)
 )

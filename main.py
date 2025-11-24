@@ -1,3 +1,4 @@
+import sys
 from touhou_scs import enums as e
 from touhou_scs import lib
 from touhou_scs.component import Component
@@ -5,6 +6,8 @@ from touhou_scs.lib import rgb, save_all, HSB
 from touhou_scs.misc import add_disable_all_bullets, add_collisions
 from touhou_scs.utils import group, unknown_g
 
+if __name__ != "__main__": sys.exit()
+    
 c1 = lib.circle1
 
 # First bullet component - fades in, points to target, moves with pulse

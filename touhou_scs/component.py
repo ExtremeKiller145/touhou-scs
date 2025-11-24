@@ -46,6 +46,10 @@ class Component:
         if self._timed is None: self._timed = TimedPatterns(self)
         return self._timed
     
+    def get_triggers(self, trigger: dict[str, Any]) -> list[Trigger]:
+        """Returns all triggers matching the given trigger dict (not implemented yet)"""
+        raise NotImplementedError()
+    
     def has_trigger_properties(self, trigger: dict[str, Any]):
         """
         Check if component has a trigger matching all key-value pairs in trigger dict. \n
@@ -352,8 +356,7 @@ class Component:
         return self
     
     def Scale(self, time: float, target: int, *,
-        factor: float,
-        divide: bool = False,
+        factor: float, divide: bool = False,
         t: float = 0, type: int = 0, rate: float = 1.0):
         """
         Scale target by a factor
@@ -446,6 +449,25 @@ class Component:
         Optional: useControlID
         """
         self._stop_trigger_common(time, target, 2, useControlID)
+        return self
+    
+    def Collision(self, time: float, target: int, *, 
+        blockA: int, blockB: int, activateGroup: bool, onExit: bool = True):
+        """
+        Set up collision between two groups for the target group
+        
+        Optional: activateGroup
+        """
+        self._validate_params(target=target)
+        
+        trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), target)
+        
+        trigger[ppt.BLOCK_A] = blockA
+        trigger[ppt.BLOCK_B] = blockB
+        trigger[ppt.ACTIVATE_GROUP] = activateGroup
+        if onExit: trigger[ppt.TRIGGER_ON_EXIT] = True
+        
+        self.triggers.append(trigger)
         return self
 
 

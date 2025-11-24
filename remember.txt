@@ -38,8 +38,7 @@ Auto Scale Trigger Reset Validation (optional, complicated but possible):
 make a system that goes through all triggers, creates an execution tree (i.e tracks spawn trigger chains) and looks to see if a scale trigger's reset would ever get run AFTER the bullet is triggered again elsewhere.
 
 TODO SYSTEMS:
-# URGENT ! ! !
-Fix guidercircle group assignment in the level. check to ensure no conflicts with other groups. make sure it is synced withe guidercircle definitions in lib.lua
+
 
 
 Health system (enemy & player)

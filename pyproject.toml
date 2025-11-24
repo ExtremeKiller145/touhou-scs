@@ -1,3 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "touhou-scs"
+version = "0.1.0"
+description = "Touhou SCS - Spell Card System"
+requires-python = ">=3.13"
+dependencies = [
+    "orjson>=3.10.0",
+]
+
+# Optional dependencies for development
+[project.optional-dependencies]
+dev = [
+    "basedpyright",
+    "ruff",
+]
+
 [tool.basedpyright]
 typeCheckingMode = "strict"
 reportAny = "none" # Allow implicit any types
