@@ -14,7 +14,7 @@ from warnings import warn
 
 from touhou_scs import enums as enum
 from touhou_scs import utils as util
-from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger
+from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger, TriggerArea
 from dataclasses import dataclass
 
 all_spells: list[SpellProtocol] = []
@@ -22,7 +22,7 @@ all_components: list[ComponentProtocol] = []
 
 _start_time = time.time()
 
-TRIGGER_AREA = {
+DEFAULT_TRIGGER_AREA: TriggerArea = {
     "min_x": 1350,
     "min_y": 1300,
     "max_x": 4000,
@@ -126,6 +126,7 @@ bullet2 = BulletPool(1501, 2200, False)
 bullet3 = BulletPool(2901, 3600, False)
 bullet4 = BulletPool(4301, 4700, False)
 
+# reimuA_level1 = BulletPool(, True)
 
 def get_all_components() -> list[ComponentProtocol]:
     """Return list of all registered components."""
@@ -271,14 +272,14 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
                 layer1_comp.name, "Case 1 (remapped)"
             )
 
-def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> None:
+def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_area: TriggerArea):
     if len(triggers) < 1:
-        raise ValueError(f"No triggers in component {component.name}")
+        raise ValueError(f"No triggers in component {comp.name}")
     
-    min_x = TRIGGER_AREA["min_x"]
-    max_x = TRIGGER_AREA["max_x"]
-    min_y = TRIGGER_AREA["min_y"]
-    max_y = TRIGGER_AREA["max_y"]
+    min_x = trigger_area["min_x"]
+    max_x = trigger_area["max_x"]
+    min_y = trigger_area["min_y"]
+    max_y = trigger_area["max_y"]
     ppt = enum.Properties
     
     # Single trigger - random position
@@ -290,17 +291,26 @@ def _spread_triggers(triggers: list[Trigger], component: ComponentProtocol) -> N
     # Check if all triggers have same X (time-based pattern)
     same_x = all(t[ppt.X] == triggers[0][ppt.X] for t in triggers)
     
-    if same_x and not component.requireSpawnOrder:
+    all_keyframe_objs = all(t[ppt.OBJ_ID] == enum.ObjectID.KEYFRAME_OBJ for t in triggers)
+    if all_keyframe_objs:
+        rand_x = random.randint(min_x, max_x)
+        rand_y = random.randint(min_y, max_y)
+        for keyframe_obj in triggers:
+            keyframe_obj[ppt.X] = rand_x
+            keyframe_obj[ppt.Y] = rand_y
+        return
+    
+    if same_x and not comp.requireSpawnOrder:
         for trigger in triggers:
             trigger[ppt.X] = random.randint(min_x // 2, max_x // 2) * 2
-    elif component.requireSpawnOrder:
+    elif comp.requireSpawnOrder:
         # Rigid chain - maintain exact spacing (ordered spawn)
         chain_min_x = min(float(t[ppt.X]) for t in triggers)
         chain_max_x = max(float(t[ppt.X]) for t in triggers)
         chain_width = chain_max_x - chain_min_x
 
         if chain_width > (max_x - min_x):
-            raise ValueError(f"Rigid chain too wide ({chain_width}) to fit in trigger area for {component.name}")
+            raise ValueError(f"Rigid chain too wide ({chain_width}) to fit in trigger area for {comp.name}")
 
         # Shift entire chain to random position
         shift = float(random.randint(min_x, int(max_x - chain_width)) - chain_min_x)
@@ -389,7 +399,8 @@ def _print_budget_analysis(stats: dict[str, Any]) -> None:
 def save_all(*, 
     filename: str = "triggers.json",
     object_budget: int = 200000,
-    check_spawn_limit: bool = False):
+    check_spawn_limit: bool = True,
+    trigger_area: TriggerArea = DEFAULT_TRIGGER_AREA):
     """
     Export all component triggers to JSON file for main.js processing.
     Handles spreading, sorting, validation, and statistics.
@@ -406,7 +417,7 @@ def save_all(*,
             continue
         
         sorted_triggers: list[Trigger] = comp.triggers.copy()
-        _spread_triggers(sorted_triggers, comp)
+        _spread_triggers(sorted_triggers, comp, trigger_area)
         sorted_triggers.sort(key=lambda t: float(t[ppt.X]))
         
         prev_x = -10000

@@ -9,7 +9,7 @@ const __startTime = Date.now();
 const PROPERTY_REMAP_STRING = '442';
 const PROPERTY_GROUPS = '57';
 const groupPropertyField = (key) => {
-	const groupFields = ['51','71']; // expandable if needed
+	const groupFields = ['51', '71', '76', '373'];
 	return groupFields.includes(key);
 };
 

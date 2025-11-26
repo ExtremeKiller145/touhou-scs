@@ -1,5 +1,8 @@
 
-## NEW SYSTEM ##
+# BUG NOTES:
+- If bullet collisions are delayed, its from some weird onExit mismatch stuff. Restart/recompiling and switching onExit a few times eventually might fix it. Current theory: WSLiveEditor has stability issues when alt-tabbing back in before it finishes. Wait it out.
+
+- If adding a new trigger/object, make sure you check EVERY default (dont repeat the KeyframeAnim mistake)
 
 Keep stage practice in mind: 
 all spells are modular and should be able to run in a vacuum
@@ -27,6 +30,17 @@ Midboss: none
 Endboss: ??? (formerly called Nameless Entity)
 
 TODO:
+
+- Organize current components into more proper editor layers
+
+- Optimization: Use Keyframe Anim's time-mod to possibly re-use keyframe components. This will depend on t/hold timing ratios.
+
+- Make spawn trigger warn if spawning a component but not matching its assertSpawnOrder
+
+- Formerly add and test enemy collision components in misc
+
+- Investigate why group field not being replaced for target groups 401 & 395 in main.js
+(theory: intentionally left out bc those fields should never have non-solid groups?)
 
 
 Better Trigger spread (not needed for a while)
@@ -71,7 +85,7 @@ Current: 20k
 Spells: 10k - 30k 
 Common enemies: 11k - 36k 
 Player shots: 1.5k - 4k 
-Backgrounds: 2k - 5k (massively reduced!) 
+Backgrounds: 2k - 5k 
 UI: 3k - 8k 
 Visual effects: 5k - 10k 
 Total projected: 52.5k - 113k objects 

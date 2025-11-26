@@ -1,4 +1,3 @@
-import sys
 from touhou_scs import enums as e
 from touhou_scs import lib
 from touhou_scs.component import Component
@@ -6,7 +5,9 @@ from touhou_scs.lib import rgb, save_all, HSB
 from touhou_scs.misc import add_disable_all_bullets, add_collisions
 from touhou_scs.utils import group, unknown_g
 
-if __name__ != "__main__": sys.exit()
+if __name__ != "__main__":
+    print("Don't import this! exiting.")
+    exit()
     
 c1 = lib.circle1
 
@@ -19,8 +20,7 @@ emitter = 30
     .Toggle(e.TICK, e.EMPTY_BULLET, True)
     .Alpha(0, e.EMPTY_BULLET, t=0, opacity=0)
     .Alpha(e.TICK, e.EMPTY_BULLET, t=1, opacity=100)
-    .Scale(0, e.EMPTY_BULLET, factor=2, t=0)
-    .Scale(e.TICK*2, e.EMPTY_BULLET, factor=2, t=0.3, divide = True)
+    .Scale(0, e.EMPTY_BULLET, factor=2, t=0.5, reverse=True)
     .PointToGroup(e.TICK, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP)
     .PointToGroup(0.3, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP)
     .MoveTowards(0.3, e.EMPTY_BULLET, e.EMPTY_TARGET_GROUP,
@@ -37,8 +37,7 @@ test2 = Component("TestRadial2", unknown_g(), 4)
 (test2
     .assert_spawn_order(True)
     .GotoGroup(0, e.EMPTY_BULLET, emitter2, t=0)
-    .Scale(0, e.EMPTY_BULLET, factor=4, t=0)
-    .Scale(e.TICK*2, e.EMPTY_BULLET, factor=4, t=0.3, divide=True)
+    .Scale(0, e.EMPTY_BULLET, factor=4, t=0.3, hold=0, reverse=True)
     .Toggle(e.TICK, e.EMPTY_BULLET, True)
     .Alpha(0, e.EMPTY_BULLET, t=0, opacity=0)
     .Alpha(e.TICK, e.EMPTY_BULLET, t=1, opacity=100)
@@ -75,13 +74,12 @@ callerComponent = Component("CallerComponent", group(36), 4)
 test_line = (Component("TestLine", unknown_g(), 4)
     .assert_spawn_order(True)
     .GotoGroup(0, e.EMPTY_BULLET, emitter2)
-    .Scale(0, e.EMPTY_BULLET, factor=3, t=0)
+    .Scale(0, e.EMPTY_BULLET, factor=3, t=1.5, reverse=True)
     .Pulse(0, e.EMPTY_BULLET, rgb(200,100,0), t=10)
     .Alpha(0, e.EMPTY_BULLET, t=0, opacity=0)
     .Toggle(e.TICK, e.EMPTY_BULLET, True)
     .PointToGroup(e.TICK, e.EMPTY_BULLET, e.PLR)
     .Alpha(e.TICK, e.EMPTY_BULLET, t=0.5, opacity=100)
-    .Scale(e.TICK*2, e.EMPTY_BULLET, factor=3, t=0.3, divide=True)
 )
 
 # Create radial pattern with second bullet type

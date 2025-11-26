@@ -13,6 +13,7 @@ BOMB_HITBOX = 4
 GRAZE_FUNCTION = 34
 PLR_HIT_FUNCTION = 35
 DESPAWN_FUNCTION = 27 #PLR_HIT calls despawn in level, BOMB_HIT calls directly in code
+ENEMY_HITBOX = 5
 
 ppt = enum.Properties
 
@@ -82,7 +83,7 @@ def add_collisions():
     plr_hit_col = Component("Player Hit Collisions", unknown_g(), editorLayer=7) \
         .assert_spawn_order(False)
     
-    def add_collision_triggers(bullet: lib.BulletPool):
+    def add_collision_trigger_remaps(bullet: lib.BulletPool):
         min, max = bullet.min_group, bullet.max_group
         
         for bullet_hitbox in range(min, max + 1):
@@ -92,20 +93,37 @@ def add_collisions():
             spawn(plr_hit_col, PLR_HIT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             plr_hit_col.group_last_trigger(bullet_hitbox)
     
+    add_collision_trigger_remaps(lib.bullet1)
+    add_collision_trigger_remaps(lib.bullet2)
+    add_collision_trigger_remaps(lib.bullet3)
+    add_collision_trigger_remaps(lib.bullet4)
     
-    add_collision_triggers(lib.bullet1)
-    add_collision_triggers(lib.bullet2)
-    add_collision_triggers(lib.bullet3)
-    add_collision_triggers(lib.bullet4)
+    # enemy_col = Component("Enemy Player Collisions", unknown_g(), editorLayer=7) \
+    #     .assert_spawn_order(False)
+    
+    # enemy_col.Collision(0, PLR_HIT_FUNCTION,
+    #     blockA=ENEMY_HITBOX, blockB=PLR_HURTBOX, activateGroup=True)
+    
+    # plr_bullet_col = Component("Player's Bullet Collisions", unknown_g(), editorLayer=7)\
+    #     .assert_spawn_order(False)
+    
+    # def add_plr_bullet_collision_remaps(bullet: lib.BulletPool):
+    #     min, max = bullet.min_group, bullet.max_group
+        
+    #     for bullet_hitbox in range(min, max + 1):
+    #         ...
+    
+    # add_plr_bullet_collision_remaps(lib.reimuA_level1)
+    
     
     added_collisions = True
 
 collision1 = (Component("Collision 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
-    .Scale(0, enum.EMPTY_BULLET, t=1, factor=0.25)
+    .Scale(0, enum.EMPTY_BULLET, 
+        factor=0.25, hold=0, t=1, type=enum.Easing.ELASTIC_IN_OUT, rate=1)
     .Alpha(0, enum.EMPTY_BULLET, t=1, opacity=0)
     .Pulse(0, enum.EMPTY_BULLET, lib.rgb(0,0,0), t=1)
-    .Scale(1, enum.EMPTY_BULLET, t=0, factor=0.25, divide=True)
     .Alpha(1, enum.EMPTY_BULLET, t=0, opacity=100)
     .Toggle(1, enum.EMPTY_BULLET, False)
 )

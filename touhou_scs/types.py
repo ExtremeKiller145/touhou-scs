@@ -17,11 +17,11 @@ Trigger = TypedDict("Trigger",{
     
     "1": Required[int],         # OBJ_ID - Trigger type
     "2": Required[float],       # X - X position (time-based)
-    "20": Required[int],                  # EDITOR_LAYER
+    "20": Required[int],        # EDITOR_LAYER
     "51": Required[int],        # TARGET
     "57": Required[list[int]],  # GROUPS - Caller group(s)
-    "62": Required[bool],                 # SPAWN_TRIGGERED
-    "87": Required[bool],                 # MULTI_TRIGGERED
+    "62": Required[bool],       # SPAWN_TRIGGERED
+    "87": Required[bool],       # MULTI_TRIGGERED
     # General optional fields
     "3": float,                 # Y - Y position (set by spread)
     "10": float,                # DURATION
@@ -36,7 +36,14 @@ Trigger = TypedDict("Trigger",{
     # Stop
     "580": int,                 # STOP_OPTION
     "535": bool,                # STOP_USE_CONTROL_ID
-    
+    # Keyframe Animate
+    "76": int,                  # KEYMAP_ANIM_GID
+    "520": float,               # KEYMAP_ANIM_TIME_MOD
+    "521": float,               # KEYMAP_ANIM_POS_X_MOD
+    "545": float,               # KEYMAP_ANIM_POS_Y_MOD
+    "522": float,               # KEYMAP_ANIM_ROT_MOD
+    "523": float,               # KEYMAP_ANIM_SCALE_X_MOD
+    "546": float,               # KEYMAP_ANIM_SCALE_Y_MOD
     # Toggle
     "56": bool,                 # ACTIVATE_GROUP
     # Collision
@@ -115,8 +122,15 @@ class SpellProtocol(Protocol):
 
 
 # ==========================================
-# TYPE ALIASES FOR SELF-DOCUMENTING CODE
+# RANDOM TYPE ALIASES AND STUFF
 # ==========================================
+
+TriggerArea = TypedDict('TriggerArea', {
+    "min_x": int,
+    "min_y": int,
+    "max_x": int,
+    "max_y": int
+})
 
 GroupID = int
 """Normal group (0-9999) or unknown_g placeholder (10000+)"""

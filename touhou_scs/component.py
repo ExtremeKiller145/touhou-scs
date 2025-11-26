@@ -7,7 +7,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 """
 
 from __future__ import annotations
-from typing import Any
+from typing import Any, NamedTuple
 from warnings import warn
 
 from touhou_scs import enums as enum, lib, utils as util
@@ -17,6 +17,16 @@ from touhou_scs.types import Trigger
 _RESTRICTED_LOOKUP = { group_id: True for group_id in enum.RESTRICTED_GROUPS }
 
 ppt = enum.Properties # shorthand
+
+class ScaleSettings(NamedTuple):
+    factor: float
+    hold: float
+    duration: float
+    type: int
+    rate: float
+    reverse: bool
+
+scale_keyframes: dict[ScaleSettings, Component] = {}
 
 class Component:
     """
@@ -84,7 +94,7 @@ class Component:
         })
         
     def _validate_params(self, *, 
-        t:Any = None, center:Any = None, target:Any = None, type:Any = None, rate:Any = None):
+        t:Any = None, center:Any = None, target:Any = None, type:Any = None, rate:Any = None, factor:Any = None):
         """Value check common trigger parameters"""
 
         if t is not None and t < 0:
@@ -97,6 +107,8 @@ class Component:
             raise ValueError("Easing 'type' must be an integer between 0 and 18")
         if rate is not None and (rate <= 0.10 or rate > 20.0):
             raise ValueError(f"Easing 'rate' must be between 0.10 and 20.0, Got: {rate}")
+        if factor is not None and factor <= 0:
+            raise ValueError(f"Scale 'factor' must be > 0. Got: {factor}")
     
     def assert_spawn_order(self, required: bool):
         """Set component spawn order requirement."""
@@ -356,26 +368,76 @@ class Component:
         return self
     
     def Scale(self, time: float, target: int, *,
-        factor: float, divide: bool = False,
-        t: float = 0, type: int = 0, rate: float = 1.0):
+        factor: float, hold: float = 0, t: float = 0, 
+        type: int = 0, rate: float = 1.0, reverse: bool = False):
         """
-        Scale target by a factor
+        Scale target by a factor using Keyframes.
         
-        Optional: divide, t, type, rate
+        't' is the time to scale and 'hold' is the time to stay at that scale.
+        
+        Reverse mode: Start at full size and scale down (doesnt use hold)
+        Optional: t, hold, type, rate, reverse
         """
         self._validate_params(t=t, target=target, type=type, rate=rate)
+        self._validate_params(t=hold, factor=factor)
         
-        trigger = self.create_trigger(enum.ObjectID.SCALE, util.time_to_dist(time), target)
+        if factor == 1.0:
+            raise ValueError("Scale: Given factor is 1.0 (no scale change)")
+        if hold and reverse:
+            warn("Scale: 'hold' time is ignored in reverse mode: "
+                "(no need to hold if it goes to original scale)", stacklevel=2)
+        if not hold and not reverse:
+            warn("Scale: 'hold' time is 0 but not in reverse."
+                f" Target will instantly revert to full size after {t}s.", stacklevel=2)
         
-        trigger[ppt.SCALE_CENTER] = target
-        trigger[ppt.SCALE_X] = factor
-        trigger[ppt.SCALE_Y] = factor
-        trigger[ppt.DURATION] = t
-        trigger[ppt.EASING] = type
-        trigger[ppt.EASING_RATE] = rate
-        trigger[ppt.SCALE_DIV_BY_X] = divide
-        trigger[ppt.SCALE_DIV_BY_Y] = divide
+        scale_settings = ScaleSettings(factor, hold, t, type, rate, reverse)
         
+        if scale_settings in scale_keyframes:
+            keyframe_group = scale_keyframes[scale_settings].groups[0]
+        else:
+            name = f"Keyframe Scale<{factor}>,T<{t}>,Reverse<{reverse}>"
+            new_keyframe_group = Component(name, util.unknown_g(), 8) \
+                .assert_spawn_order(True)
+            
+            def keyframe_obj(*, scale: float, duration: float, order: int, 
+                close_loop: bool = False, ease_type: int = 0, ease_rate: float = 1.0):
+                new_keyframe_group.triggers.append({ #type: ignore
+                    ppt.OBJ_ID: enum.ObjectID.KEYFRAME_OBJ,
+                    ppt.X: 0.0, ppt.Y: 0.0,
+                    ppt.GROUPS: [new_keyframe_group.groups[0]],
+                    ppt.KEYFRAME_OBJ_MODE: 0,  # time mode
+                    ppt.KEYFRAME_ID: new_keyframe_group.groups[0],
+                    ppt.CLOSE_LOOP: close_loop,
+                    ppt.SCALE: scale,
+                    ppt.DURATION: duration,
+                    ppt.ORDER_INDEX: order,
+                    ppt.EASING: ease_type,
+                    ppt.EASING_RATE: ease_rate,
+                    ppt.LINE_OPACITY: 1.0,
+                })
+            
+            if reverse:
+                keyframe_obj(scale=1, duration=0, order=1)
+                keyframe_obj(scale=factor, duration=t, order=2,
+                    ease_type=type, ease_rate=rate, close_loop=True)
+            else:
+                keyframe_obj(scale=1, duration=t, order=1, ease_type=type, ease_rate=rate)
+                keyframe_obj(scale=factor, duration=hold, order=2)
+                keyframe_obj(scale=factor, duration=0, order=3, close_loop=True)
+            
+            keyframe_group = new_keyframe_group.groups[0]
+            scale_keyframes[scale_settings] = new_keyframe_group
+            
+        trigger = self.create_trigger(enum.ObjectID.KEYFRAME_ANIM, util.time_to_dist(time), target)
+        
+        trigger[ppt.KEYMAP_ANIM_GID] = keyframe_group
+        trigger[ppt.KEYMAP_ANIM_TIME_MOD] = 1.0
+        trigger[ppt.KEYMAP_ANIM_POS_X_MOD] = 1.0
+        trigger[ppt.KEYMAP_ANIM_POS_Y_MOD] = 1.0
+        trigger[ppt.KEYMAP_ANIM_ROT_MOD] = 1.0
+        trigger[ppt.KEYMAP_ANIM_SCALE_X_MOD] = 1.0
+        trigger[ppt.KEYMAP_ANIM_SCALE_Y_MOD] = 1.0
+    
         self.triggers.append(trigger)
         return self
     
@@ -452,7 +514,7 @@ class Component:
         return self
     
     def Collision(self, time: float, target: int, *, 
-        blockA: int, blockB: int, activateGroup: bool, onExit: bool = True):
+        blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
         """
         Set up collision between two groups for the target group
         

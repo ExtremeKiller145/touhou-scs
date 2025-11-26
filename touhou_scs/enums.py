@@ -29,6 +29,8 @@ class ObjectID(IntEnum):
     INSTANT_COUNT = 1811
     RANDOM = 1912
     ADVANCED_RANDOM = 2068
+    KEYFRAME_OBJ = 3032
+    KEYFRAME_ANIM = 3033
 
 
 # ============================================================================
@@ -94,6 +96,26 @@ class Properties(str):
     # ========== Toggle Trigger ==========
     ACTIVATE_GROUP = "56"
     
+    # ========== Keyframe Animate Trigger =========
+    KEYMAP_ANIM_GID = "76" # Keyframe objects to follow
+    KEYMAP_ANIM_PARENT_GID = "71"
+    KEYMAP_ANIM_TIME_MOD = "520" # float, time multiplier (default 0, should be 1)
+    KEYMAP_ANIM_POS_X_MOD = "521" # float, position X multiplier (default 0, should be 1)
+    KEYMAP_ANIM_POS_Y_MOD = "545" # float, position Y multiplier (default 0, should be 1)
+    KEYMAP_ANIM_ROT_MOD = "522" # float, rotation multiplier (default 0, should be 1)
+    KEYMAP_ANIM_SCALE_X_MOD = "523" # float, scale X multiplier (default 0, should be 1)
+    KEYMAP_ANIM_SCALE_Y_MOD = "546" # float, scale Y multiplier (default 0, should be 1)
+    
+    # ========== Keyframe Object ==========
+    KEYFRAME_OBJ_MODE = "379"
+    """0=time, 1=even, 2=dist"""
+    KEYFRAME_ID = "373" # int, unique identifier for keyframe set
+    ORDER_INDEX = "374" # int, order of keyframe objects
+    CLOSE_LOOP = "376" # boolean, whether last object connects to first
+    LINE_OPACITY = "524" # float 0.0-1.0, % opacity of connecting lines
+    SCALE = "32"
+    """Generic object scale property"""
+    
     # ========== Collision Trigger ==========
     BLOCK_A = "80"
     BLOCK_B = "95"
@@ -153,8 +175,8 @@ class Properties(str):
 
 # ========== Fields That Can Target Groups ==========
 # Used for trigger validation systems
-TARGET_FIELDS: Final[tuple[str, ...]] = ("51", "71", "401", "395")
-
+TARGET_FIELDS: Final[tuple[str, ...]] = ("51", "71", "401", "395", "76")
+"""WARNING: Update the list in main.js !! (if editing)"""
 
 # ============================================================================
 # GAME CONSTANTS
@@ -179,7 +201,7 @@ EMPTY3: Final[int] = 24
 EMPTY_BULLET: Final[int] = 10
 EMPTY_TARGET_GROUP: Final[int] = 20
 
-EMPTY_MULTITARGET: Final[int] = 9989 # Restricted; multitarget exclusive
+EMPTY_MULTITARGET: Final[int] = 25 # Restricted; multitarget exclusive
 
 # Distance
 OFFSCREEN_DIST: Final[int] = 480  # Minimum distance to get bullet offscreen
@@ -189,7 +211,7 @@ EDITOR_LAYER: Final[int] = 4
 """Default editor layer"""
 
 RESTRICTED_GROUPS: Final[tuple[int, ...]] = (
-    1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 19, 22, 25, 9999
+    1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 19, 22, 9999
 )
 """Reserved groups for various safety reasons - DO NOT USE THESE GROUP IDs"""
 
