@@ -4,9 +4,14 @@ Touhou SCS - Utilities Module
 Helper functions for component building and validation.
 """
 
-from warnings import warn
+import warnings
 from touhou_scs import enums as enum
 from touhou_scs.types import ComponentProtocol
+
+def warn(message: str):
+    print("\u001B[33m")
+    warnings.warn("\n" + message, stacklevel=2)
+    print("\u001B[0m")
 
 def time_to_dist(time: float) -> float:
     """
@@ -73,7 +78,7 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
     clean_string = ".".join(clean_parts)
     
     if clean_string != remap_string:
-        warn(f"Remap string had redundant mappings:\n{remap_string}", stacklevel=2)
+        warn(f"Remap string had redundant mappings:\n{remap_string}")
     if len(clean_string) == 0:
         raise ValueError(f"Remap string is empty after cleaning redundant mappings: \n {remap_string}")
 

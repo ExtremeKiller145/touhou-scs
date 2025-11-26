@@ -10,10 +10,10 @@ import random
 import time
 import colorsys
 from typing import Any
-from warnings import warn
 
 from touhou_scs import enums as enum
 from touhou_scs import utils as util
+from touhou_scs.utils import warn
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger, TriggerArea
 from dataclasses import dataclass
 
@@ -354,7 +354,7 @@ def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
     shared_trigger_count = sum(len(comp.triggers) for comp in shared_components)
     
     for comp in all_components:
-        component_stats[comp.name] = len(comp.triggers)
+        component_stats[comp.name] = (len(comp.triggers), comp.groups[0])
     
     usage_percent = (total_triggers / object_budget) * 100 if total_triggers > 0 else 0
     remaining_budget = object_budget - total_triggers
@@ -375,7 +375,7 @@ def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
 def _print_budget_analysis(stats: dict[str, Any]) -> None:
     """Print formatted budget analysis to console."""
     budget = stats["budget"]
-    print("\n=== BUDGET ANALYSIS ===")
+    print("\n\033[4m=== BUDGET ANALYSIS ===\033[0m")
     print(f"Total triggers: {budget['total_triggers']} ({budget['usage_percent']:.3f}%)")
     print(f"Remaining budget: {budget['remaining_budget']} triggers")
     
@@ -388,8 +388,17 @@ def _print_budget_analysis(stats: dict[str, Any]) -> None:
     component_stats = stats.get("component_stats", {})
     if component_stats:
         print("\nComponents:")
-        for component_name, count in component_stats.items():
-            print(f"  {component_name}: {count} triggers")
+        
+        max_group_width = max(len(str(group)) for _, (_, group) in component_stats.items())
+        max_name_width = max(len(name) for name in component_stats.keys())
+        
+        print(f"\033[4m  Group{" " * (max_group_width-2)}"
+              f"Name{" "*(max_name_width-3)} Triggers\033[0m")
+        
+        for component_name, (count, group) in component_stats.items():
+            group_str = f"G{group}".ljust(max_group_width + 1)
+            name_str = component_name.ljust(max_name_width)
+            print(f"  {group_str}  {name_str}  {count}")
     
     shared_count = stats.get("shared_trigger_count", 0)
     if shared_count > 0:
@@ -413,7 +422,7 @@ def save_all(*,
     
     for comp in all_components:
         if len(comp.triggers) == 0:
-            warn(f"Component {comp.name} has no triggers", stacklevel=2)
+            warn(f"Component {comp.name} has no triggers")
             continue
         
         sorted_triggers: list[Trigger] = comp.triggers.copy()

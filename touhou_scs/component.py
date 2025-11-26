@@ -8,9 +8,9 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 
 from __future__ import annotations
 from typing import Any, NamedTuple
-from warnings import warn
 
 from touhou_scs import enums as enum, lib, utils as util
+from touhou_scs.utils import warn
 from touhou_scs.types import Trigger
 
 
@@ -385,10 +385,10 @@ class Component:
             raise ValueError("Scale: Given factor is 1.0 (no scale change)")
         if hold and reverse:
             warn("Scale: 'hold' time is ignored in reverse mode: "
-                "(no need to hold if it goes to original scale)", stacklevel=2)
+                "(no need to hold if it goes to original scale)")
         if not hold and not reverse:
             warn("Scale: 'hold' time is 0 but not in reverse."
-                f" Target will instantly revert to full size after {t}s.", stacklevel=2)
+                f" Target will instantly revert to full size after {t}s.")
         
         scale_settings = ScaleSettings(factor, hold, t, type, rate, reverse)
         
@@ -559,7 +559,7 @@ class Multitarget:
         
         for trigger in comp.triggers:
             if trigger[ppt.OBJ_ID] == enum.ObjectID.SPAWN:
-                warn(f"Spawn limit: [{comp.name}] Multitarget components cannot have Spawn triggers", stacklevel=2)
+                warn(f"Spawn limit: [{comp.name}] Multitarget components cannot have Spawn triggers")
 
         if not cls._initialized: cls._initialize_binary_bases()
         
@@ -749,7 +749,7 @@ class InstantPatterns:
         )
         
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
-            warn("Instant.Line: Bullet has orientation enabled, but component has no PointToGroup trigger. Bullets may not face the correct direction.", stacklevel=2)
+            warn("Instant.Line: Bullet has orientation enabled, but component has no PointToGroup trigger. Bullets may not face the correct direction.")
         
         if fastestTime <= 0:
             raise ValueError(f"Instant.Line: fastestTime must be a positive number. Received: {fastestTime}")
@@ -840,7 +840,7 @@ class TimedPatterns:
         )
         
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
-            warn("Timed.Line: Bullet has orientation enabled, but component has no PointToGroup triggers. Bullets may not face the correct direction.", stacklevel=2)
+            warn("Timed.Line: Bullet has orientation enabled, but component has no PointToGroup triggers. Bullets may not face the correct direction.")
         
         if numBullets < 2:
             raise ValueError("Timed.Line: numBullets must be at least 2")
