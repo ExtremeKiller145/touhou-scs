@@ -1,7 +1,7 @@
 
 
-from touhou_scs import enums as enum, lib
-from touhou_scs.component import Component
+from touhou_scs import enums as enum, lib, utils as util
+from touhou_scs.component import Component, Multitarget
 from touhou_scs.types import Trigger
 from touhou_scs.utils import unknown_g
 
@@ -24,18 +24,45 @@ def add_disable_all_bullets():
     if added_disable_all_bullets: 
         raise RuntimeError("Disable All Bullets has already been added")
     
-    comp = Component("Disable All Bullets", 32, editorLayer=7)
-    comp.assert_spawn_order(False)
-
-    def add_disable_triggers(bullet: lib.BulletPool):
-        max, min = bullet.max_group, bullet.min_group
-        for i in range(min, max + 1):
-            comp.Toggle(0, i, True)
+    comp = Component("Disable All Bullets", 32, editorLayer=4) \
+        .assert_spawn_order(False)
     
-    add_disable_triggers(lib.bullet1)
-    add_disable_triggers(lib.bullet2)
-    add_disable_triggers(lib.bullet3)
-    add_disable_triggers(lib.bullet4)
+    single = Component("Disable Single Bullet", unknown_g(), editorLayer=6) \
+        .assert_spawn_order(False) \
+        .Toggle(0, enum.EMPTY_BULLET, False)
+
+    bullet_groups = (
+        list(range(lib.bullet1.min_group, lib.bullet1.max_group + 1)) +
+        list(range(lib.bullet2.min_group, lib.bullet2.max_group + 1)) +
+        list(range(lib.bullet3.min_group, lib.bullet3.max_group + 1)) +
+        list(range(lib.bullet4.min_group, lib.bullet4.max_group + 1))
+    )
+    
+    bullet_iter = iter(bullet_groups)
+    remaining = len(bullet_groups)
+    
+    # Chunk into max-64 batches and handle remainder normally
+    while remaining > 0:
+        batch_size = 64 if remaining > 127 else remaining
+        
+        comps = Multitarget.get_binary_components(batch_size, single)
+        for mt_comp in comps:
+            remap = util.Remap()
+            for spawn_trigger in mt_comp.triggers:
+                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
+                if not isinstance(remap_string, str): continue
+                
+                remap_pairs, _ = util.translate_remap_string(remap_string)
+                for source, target in remap_pairs.items():
+                    if source == enum.EMPTY_BULLET:
+                        remap.pair(target, next(bullet_iter))
+                    else:
+                        remap.pair(target, enum.EMPTY_MULTITARGET)
+            
+            remap.pair(enum.EMPTY_MULTITARGET, single.groups[0])
+            comp.Spawn(0, mt_comp.groups[0], False, remap=remap.build())
+        
+        remaining -= batch_size
     
     added_disable_all_bullets = True
 

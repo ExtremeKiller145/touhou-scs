@@ -547,11 +547,8 @@ class Multitarget:
     """
 
     _powers: list[int] = [1, 2, 4, 8, 16, 32, 64]
-    """List of binary powers; each component has 2^n targets"""
     _initialized: bool = False
-    """Private registration flag"""
     _binary_bases: dict[int, Component] = {}
-    """Private storage for binary base components (powers of 2)"""
     
     @classmethod
     def get_binary_components(cls, num_targets: int, comp: Component) -> list[Component]:
@@ -563,11 +560,9 @@ class Multitarget:
 
         if not cls._initialized: cls._initialize_binary_bases()
         
-        if num_targets < 1: raise ValueError("num_of_targets must be at least 1")
-        
         max_targets: int = 2 ** len(cls._powers) - 1
-        if num_targets <= 0 or num_targets > max_targets:
-            raise ValueError(f"num_of_targets must be between 1 and {max_targets}")
+        if not (1 <= num_targets <= max_targets):
+            raise ValueError(f"num_targets must be between 1 and {max_targets}. Got: {num_targets}")
         
         comps: list[Component] = []
         remaining = num_targets

@@ -31,6 +31,10 @@ Endboss: ??? (formerly called Nameless Entity)
 
 TODO:
 
+- Add the 'calltracker' decorator as laid out in utils.py and use it for addDisableAllBullets, addCollisions, and maybe multitarget init. decorator doesnt work for multiple functions yet so fix that too.
+
+- Replace all number range restrictions with the cleaner (min < x < max) format
+
 - Optimization: Use Keyframe Anim's time-mod to possibly re-use keyframe components. This will depend on t/hold timing ratios.
 
 - Optimization: Make disableAllBullets component use Multitarget instead of per-bullet (to save on object count)
@@ -46,7 +50,7 @@ TODO:
 Better Trigger spread (not needed for a while)
 
 
-Within lib.lua:
+Within lib.py:
 
 Auto Scale Trigger Reset Validation (optional, complicated but possible): 
 make a system that goes through all triggers, creates an execution tree (i.e tracks spawn trigger chains) and looks to see if a scale trigger's reset would ever get run AFTER the bullet is triggered again elsewhere.

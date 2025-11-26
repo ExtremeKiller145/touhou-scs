@@ -8,6 +8,15 @@ import warnings
 from touhou_scs import enums as enum
 from touhou_scs.types import ComponentProtocol
 
+
+# def calltracker(func):
+#     @functools.wraps(func)
+#     def wrapper(*args):
+#         wrapper.has_been_called = True
+#         return func(*args)
+#     wrapper.has_been_called = False
+#     return wrapper
+
 def warn(message: str):
     print("\u001B[33m")
     warnings.warn("\n" + message, stacklevel=2)
