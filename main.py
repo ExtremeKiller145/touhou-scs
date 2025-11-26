@@ -12,7 +12,7 @@ if __name__ != "__main__":
 c1 = lib.circle1
 
 # First bullet component - fades in, points to target, moves with pulse
-testRadialComp = Component("TestRadial", unknown_g(), 4)
+testRadialComp = Component("TestRadial", unknown_g(), 5)
 emitter = 30
 (testRadialComp
     .assert_spawn_order(True)
@@ -33,7 +33,7 @@ emitter = 30
 
 # Second bullet component - larger scale, different colors, tracks player
 emitter2 = 200
-test2 = Component("TestRadial2", unknown_g(), 4)
+test2 = Component("TestRadial2", unknown_g(), 5)
 (test2
     .assert_spawn_order(True)
     .GotoGroup(0, e.EMPTY_BULLET, emitter2, t=0)
@@ -55,7 +55,7 @@ test2 = Component("TestRadial2", unknown_g(), 4)
 )
 
 # Main caller component that creates the patterns
-callerComponent = Component("CallerComponent", group(36), 4)
+callerComponent = Component("CallerComponent", group(36), 5)
 (callerComponent
     .assert_spawn_order(True)
     .GotoGroup(0, c1.all, emitter, t=0)
@@ -71,7 +71,7 @@ callerComponent = Component("CallerComponent", group(36), 4)
         numBullets=10, spacing=14, centerAt=0)
 )
 
-test_line = (Component("TestLine", unknown_g(), 4)
+test_line = (Component("TestLine", unknown_g(), 5)
     .assert_spawn_order(True)
     .GotoGroup(0, e.EMPTY_BULLET, emitter2)
     .Scale(0, e.EMPTY_BULLET, factor=3, t=1.5, reverse=True)

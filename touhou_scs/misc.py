@@ -24,7 +24,7 @@ def add_disable_all_bullets():
     if added_disable_all_bullets: 
         raise RuntimeError("Disable All Bullets has already been added")
     
-    comp = Component("Disable All Bullets", 32, editorLayer=6)
+    comp = Component("Disable All Bullets", 32, editorLayer=7)
     comp.assert_spawn_order(False)
 
     def add_disable_triggers(bullet: lib.BulletPool):
@@ -47,7 +47,7 @@ def add_collisions():
     if added_collisions: 
         raise RuntimeError("Collisions have already been added")
     
-    cols = Component("Base Collisions (un-mapped)", 18, editorLayer=7)
+    cols = Component("Base Collisions (un-mapped)", 18, editorLayer=6)
     cols.assert_spawn_order(False)
     
     cols.Collision(0, enum.EMPTY_BULLET, 
@@ -77,10 +77,10 @@ def add_collisions():
         }
         comp.triggers.append(trig)
     
-    global_col = Component("Bullet Collision remap wrapper", 17, editorLayer=7) \
+    global_col = Component("Bullet Collision remap wrapper", 17, editorLayer=4) \
         .assert_spawn_order(False)
 
-    plr_hit_col = Component("Player Hit Collisions", unknown_g(), editorLayer=7) \
+    plr_hit_col = Component("Player Hit Collisions", unknown_g(), editorLayer=4) \
         .assert_spawn_order(False)
     
     def add_collision_trigger_remaps(bullet: lib.BulletPool):

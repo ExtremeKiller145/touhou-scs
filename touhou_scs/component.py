@@ -396,7 +396,7 @@ class Component:
             keyframe_group = scale_keyframes[scale_settings].groups[0]
         else:
             name = f"Keyframe Scale<{factor}>,T<{t}>,Reverse<{reverse}>"
-            new_keyframe_group = Component(name, util.unknown_g(), 8) \
+            new_keyframe_group = Component(name, util.unknown_g(), 6) \
                 .assert_spawn_order(True)
             
             def keyframe_obj(*, scale: float, duration: float, order: int, 
