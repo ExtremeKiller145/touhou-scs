@@ -3,6 +3,7 @@ debug/__pycache__/
 nul
 debug/report.html
 test.js
+test.py
 # Zed
 .zed
 .luarc.json

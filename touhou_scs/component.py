@@ -595,9 +595,9 @@ class Multitarget:
                 component.Spawn(0, enum.EMPTY_MULTITARGET, True, remap=rb.build())
             cls._binary_bases[power] = component
         
-        cls._initialized = True
         max_targets: int = 2 ** len(cls._powers) - 1
         print(f"Multitarget: Initialized {len(cls._powers)} binary components, {max_targets} targets supported)")
+        cls._initialized = True
 
 
 # ===========================================================

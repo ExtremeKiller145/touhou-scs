@@ -4,18 +4,29 @@ Touhou SCS - Utilities Module
 Helper functions for component building and validation.
 """
 
+from typing import Any, Callable
 import warnings
+import functools
 from touhou_scs import enums as enum
 from touhou_scs.types import ComponentProtocol
 
 
-# def calltracker(func):
-#     @functools.wraps(func)
-#     def wrapper(*args):
-#         wrapper.has_been_called = True
-#         return func(*args)
-#     wrapper.has_been_called = False
-#     return wrapper
+class CallTracked:
+    def __init__(self, func: Callable[..., Any]):
+        self.__func = func
+        self.has_been_called = False
+        """Becomes true after the first function call ends."""
+        functools.update_wrapper(self, func)
+    
+    def __call__(self, *args: Any, **kwargs: Any):
+        try:
+            return self.__func(*args, **kwargs)
+        finally:
+            self.has_been_called = True
+
+def calltracker(func: Callable[..., Any]) -> CallTracked:
+    """Decorator that assigns func.has_been_called. Does not track call count."""
+    return CallTracked(func)
 
 def warn(message: str):
     print("\u001B[33m")

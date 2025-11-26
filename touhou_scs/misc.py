@@ -3,7 +3,7 @@
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.component import Component, Multitarget
 from touhou_scs.types import Trigger
-from touhou_scs.utils import unknown_g
+from touhou_scs.utils import unknown_g, calltracker
 
 
 BOUNDARY_HITBOX = 1
@@ -17,11 +17,9 @@ ENEMY_HITBOX = 5
 
 ppt = enum.Properties
 
-added_disable_all_bullets = False
-
+@calltracker
 def add_disable_all_bullets():
-    global added_disable_all_bullets
-    if added_disable_all_bullets: 
+    if add_disable_all_bullets.has_been_called: 
         raise RuntimeError("Disable All Bullets has already been added")
     
     comp = Component("Disable All Bullets", 32, editorLayer=4) \
@@ -64,14 +62,10 @@ def add_disable_all_bullets():
         
         remaining -= batch_size
     
-    added_disable_all_bullets = True
 
-
-added_collisions = False
-
+@calltracker
 def add_collisions():
-    global added_collisions
-    if added_collisions: 
+    if add_collisions.has_been_called: 
         raise RuntimeError("Collisions have already been added")
     
     cols = Component("Base Collisions (un-mapped)", 18, editorLayer=6)
@@ -141,9 +135,6 @@ def add_collisions():
     #         ...
     
     # add_plr_bullet_collision_remaps(lib.reimuA_level1)
-    
-    
-    added_collisions = True
 
 collision1 = (Component("Collision 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
