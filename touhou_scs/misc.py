@@ -119,22 +119,24 @@ def add_collisions():
     add_collision_trigger_remaps(lib.bullet3)
     add_collision_trigger_remaps(lib.bullet4)
     
-    # enemy_col = Component("Enemy Player Collisions", unknown_g(), editorLayer=7) \
-    #     .assert_spawn_order(False)
+    enemy_col = Component("Enemy Player Collisions", unknown_g(), editorLayer=7) \
+        .assert_spawn_order(False)
     
-    # enemy_col.Collision(0, PLR_HIT_FUNCTION,
-    #     blockA=ENEMY_HITBOX, blockB=PLR_HURTBOX, activateGroup=True)
+    enemy_col.Collision(0, PLR_HIT_FUNCTION,
+        blockA=ENEMY_HITBOX, blockB=PLR_HURTBOX, activateGroup=True)
     
-    # plr_bullet_col = Component("Player's Bullet Collisions", unknown_g(), editorLayer=7)\
-    #     .assert_spawn_order(False)
+    plr_bullet_col = Component("Player's Bullet Collisions", unknown_g(), editorLayer=7)\
+        .assert_spawn_order(False)
     
-    # def add_plr_bullet_collision_remaps(bullet: lib.BulletPool):
-    #     min, max = bullet.min_group, bullet.max_group
+    def add_plr_bullet_collision_remaps(bullet: lib.BulletPool, despawn_function: int):
+        min, max = bullet.min_group, bullet.max_group
         
-    #     for bullet_hitbox in range(min, max + 1):
-    #         ...
+        for bullet_hitbox in range(min, max + 1):
+            # Note: uses generic bullet despawn function instead of player or shottype-specific
+            spawn(plr_bullet_col, despawn_function, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
     
-    # add_plr_bullet_collision_remaps(lib.reimuA_level1)
+    add_plr_bullet_collision_remaps(lib.reimuA_level1, DESPAWN_FUNCTION)
+    
 
 collision1 = (Component("Collision 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)

@@ -1,6 +1,6 @@
 
 # BUG NOTES:
-- If bullet collisions are delayed, its from some weird onExit mismatch stuff. Restart/recompiling and switching onExit a few times eventually might fix it. Current theory: WSLiveEditor has stability issues when alt-tabbing back in before it finishes. Wait it out.
+- If bullet collisions are delayed, its from some weird onExit mismatch stuff. Restart/recompiling and switching onExit a few times eventually might fix it. Current theory: WSLiveEditor has stability issues when alt-tabbing back in before it finishes. Wait it out. Update: try panning to where the triggers get placed (triggerarea) before running main.js
 
 - If adding a new trigger/object, make sure you check EVERY default (dont repeat the KeyframeAnim mistake)
 
@@ -98,7 +98,3 @@ Remaining budget: 137k - 197k objects
 MAKE BULLETS BOUNCE (off walls and such):
 use advanced follow with all 0 on mode 2
 use edit advanced follow to change velocity
-
-PREVENT SPAWN-LIMIT BUGS in Multitarget:
-A spawn trigger can only activate once per tick. 
-To activate a group mutliple times in one tick, use multiple spawn triggers with different groups.

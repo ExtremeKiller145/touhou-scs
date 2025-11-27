@@ -25,8 +25,8 @@ _start_time = time.time()
 DEFAULT_TRIGGER_AREA: TriggerArea = {
     "min_x": 1350,
     "min_y": 1300,
-    "max_x": 4000,
-    "max_y": 2000
+    "max_x": 7000,
+    "max_y": 3500
 }
 
 class Spell:
@@ -36,13 +36,7 @@ class Spell:
     """
     
     def __init__(self, spell_name: str, caller_group: int):
-        """
-        Create a new spell.
-        
-        Args:
-            spell_name: Name for identification
-            caller_group: Group that triggers this spell
-        """
+        """Create a new spell."""
         self.spell_name: str = spell_name
         self.caller_group: int = caller_group
         self.components: list[ComponentProtocol] = []
@@ -126,7 +120,7 @@ bullet2 = BulletPool(1501, 2200, False)
 bullet3 = BulletPool(2901, 3600, False)
 bullet4 = BulletPool(4301, 4700, False)
 
-# reimuA_level1 = BulletPool(, True)
+reimuA_level1 = BulletPool(111,128, True)
 
 def get_all_components() -> list[ComponentProtocol]:
     """Return list of all registered components."""
