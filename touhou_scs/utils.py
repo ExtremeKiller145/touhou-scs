@@ -41,19 +41,19 @@ def time_to_dist(time: float) -> float:
     return 311.58 * time
 
 
-_unknown_counter = 10000
-
-def unknown_g() -> int:
-    """
-    Generate unique unknown group ID for placeholder groups.
+class UnknownGroupGenerator:
+    def __init__(self) -> None:
+        self.counter = 10000
+        self.used_groups: list[int] = []
     
-    Returns integer starting from 10,000 and incrementing.
-    These placeholders are resolved to actual group IDs by main.js before export.
-    """
-    global _unknown_counter
-    result = _unknown_counter
-    _unknown_counter += 1
-    return result
+    def __call__(self) -> int:
+        result = self.counter
+        self.used_groups.append(result)
+        self.counter += 1
+        return result
+
+unknown_g = UnknownGroupGenerator()
+"""Call with 'unknown_g()' and access list with 'unknown_g.used_groups'."""
 
 
 def group(group_id: int) -> int:
