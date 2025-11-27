@@ -103,9 +103,9 @@ class Component:
             raise ValueError(f"Center group '{center}' is restricted.")
         if target is not None and _RESTRICTED_LOOKUP.get(target):
             raise ValueError(f"Target group '{target}' is restricted.")
-        if type is not None and (type < 0 or type > 18 or not type.is_integer()):
+        if type is not None and (not (0 <= type <= 18) or not type.is_integer()):
             raise ValueError("Easing 'type' must be an integer between 0 and 18")
-        if rate is not None and (rate <= 0.10 or rate > 20.0):
+        if rate is not None and not (0.10 < rate <= 20.0):
             raise ValueError(f"Easing 'rate' must be between 0.10 and 20.0, Got: {rate}")
         if factor is not None and factor <= 0:
             raise ValueError(f"Scale 'factor' must be > 0. Got: {factor}")
@@ -464,7 +464,7 @@ class Component:
         Optional: t (duration)
         """
         self._validate_params(t=t, target=target)
-        if opacity < 0 or opacity > 100:
+        if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
         
         trigger = self.create_trigger(enum.ObjectID.ALPHA, util.time_to_dist(time), target)
@@ -638,9 +638,9 @@ class InstantPatterns:
         # data restriction checks
         if not centerAt.is_integer() and not (centerAt * 2).is_integer():
             raise ValueError("Arc: centerAt must be an integer or integer.5")
-        if spacing < 1 or spacing > 360:
+        if not (1 <= spacing <= 360):
             raise ValueError("Arc: spacing must be between 1 and 360 degrees")
-        if numBullets < 1 or numBullets > 360:
+        if not (1 <= numBullets <= 360):
             raise ValueError("Arc: numBullets must be between 1 and 360")
         if numBullets * spacing > 360:
             raise ValueError(f"Arc: numBullets {numBullets} times spacing {spacing} exceeds 360°")
