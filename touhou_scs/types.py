@@ -46,8 +46,15 @@ Trigger = TypedDict("Trigger",{
     "546": float,               # KEYMAP_ANIM_SCALE_Y_MOD
     # Toggle
     "56": bool,                 # ACTIVATE_GROUP
+    # Count
+    "77": int,                  # COUNT_TARGET, PICKUP_COUNT
+    "104": bool,                # MULTI_ACTIVATE
+    # Pickup
+    "139": bool,                # PICKUP_OVERRIDE
+    "88": int,                  # PICKUP_MULTIPLY_DIVIDE
+    "449": float,               # PICKUP_MODIFIER
     # Collision
-    "80": int,                  # BLOCK_A
+    "80": int,                  # BLOCK_A (also ITEM_ID)
     "95": int,                  # BLOCK_B
     "93": bool,                 # TRIGGER_ON_EXIT
     # Pulse

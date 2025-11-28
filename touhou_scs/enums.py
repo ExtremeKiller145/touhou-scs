@@ -22,6 +22,7 @@ class ObjectID(IntEnum):
     MOVE = 901
     ROTATE = 1346
     COLLISION = 1815
+    PICKUP = 1817
     STOP = 1616
     COUNT = 1611
     FOLLOW = 1347
@@ -116,6 +117,16 @@ class Properties(str):
     SCALE = "32"
     """Generic object scale property"""
     
+    # ========== Count Trigger ==========
+    ITEM_ID = "80"
+    COUNT_TARGET = "77"
+    MULTI_ACTIVATE = "104"
+    
+    # ========== Pickup Trigger ==========
+    PICKUP_OVERRIDE = "139"
+    PICKUP_MULTIPLY_DIVIDE = "88" # 0=none, 1=multiply, 2=divide
+    PICKUP_MODIFIER = "449" 
+    PICKUP_COUNT = "77"
     # ========== Collision Trigger ==========
     BLOCK_A = "80"
     BLOCK_B = "95"

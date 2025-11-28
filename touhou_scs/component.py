@@ -94,15 +94,20 @@ class Component:
         })
         
     def _validate_params(self, *, 
-        t:Any = None, center:Any = None, target:Any = None, type:Any = None, rate:Any = None, factor:Any = None):
+        t:Any = None, center:Any = None, target:Any = None, 
+        type:Any = None, rate:Any = None, factor:Any = None):
         """Value check common trigger parameters"""
 
         if t is not None and t < 0:
             raise ValueError(f"Duration 't' must be non-negative. Received: {t}")
         if center is not None and _RESTRICTED_LOOKUP.get(center):
             raise ValueError(f"Center group '{center}' is restricted.")
+        if center is not None and not (0 < center <= util.unknown_g.counter):
+            raise ValueError(f"Target group '{center}' is out of valid range.")
         if target is not None and _RESTRICTED_LOOKUP.get(target):
             raise ValueError(f"Target group '{target}' is restricted.")
+        if target is not None and not (0 < target <= util.unknown_g.counter):
+            raise ValueError(f"Target group '{target}' is out of valid range.")
         if type is not None and (not (0 <= type <= 18) or not type.is_integer()):
             raise ValueError("Easing 'type' must be an integer between 0 and 18")
         if rate is not None and not (0.10 < rate <= 20.0):
@@ -531,6 +536,68 @@ class Component:
         
         self.triggers.append(trigger)
         return self
+    
+    def Count(self, time: float, target: int, *, item_id: int, count: int, activateGroup: bool):
+        """Activate target when item count is reached for item ID."""
+        self._validate_params(target=target)
+        
+        if not (0 < item_id <= 9999):
+                raise ValueError("Count: Item ID must be positive integer")
+        
+        trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), target)
+        
+        trigger[ppt.ITEM_ID] = item_id
+        trigger[ppt.COUNT_TARGET] = count
+        trigger[ppt.ACTIVATE_GROUP] = activateGroup
+        trigger[ppt.MULTI_ACTIVATE] = True
+        
+        self.triggers.append(trigger)
+        return self
+    
+    def Pickup(self, time: float, *, item_id: int, count: int, override: bool):
+        """Change an Item ID value by 'count' amount, or set to amount w/ 'override'"""
+        
+        
+        if count == 0: 
+            raise ValueError("Pickup: Count is 0 (no change)")
+        if not (0 < item_id <= 9999):
+            raise ValueError("Pickup: Item ID must be positive integer")
+
+        trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
+        
+        del trigger[ppt.TARGET] # type: ignore
+        trigger[ppt.ITEM_ID] = item_id
+        trigger[ppt.PICKUP_COUNT] = count
+        trigger[ppt.PICKUP_OVERRIDE] = override
+        trigger[ppt.PICKUP_MULTIPLY_DIVIDE] = 0
+        
+        self.triggers.append(trigger)
+        return self
+    
+    def PickupModify(self, time: float, *, item_id: int, factor: float,
+        multiply: bool = False, divide: bool = False):
+        """Multiply/divide an Item ID value by 'factor' amount"""
+        
+        mode = 1 if multiply else 2 if divide else 0
+
+        if not (0 < item_id <= 9999):
+            raise ValueError("PickupModify: Item ID must be positive integer")
+        if mode == 0:
+            raise ValueError("PickupModify: must specify multiply=True or divide=True")
+        if factor == 1:
+            raise ValueError("PickupModify: multiplying/dividing by 1 has no effect")
+        if multiply and divide:
+            raise ValueError("PickupModify: cannot both multiply and divide")
+
+        trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
+        
+        del trigger[ppt.TARGET] # type: ignore
+        trigger[ppt.ITEM_ID] = item_id
+        trigger[ppt.PICKUP_MULTIPLY_DIVIDE] = mode
+        trigger[ppt.PICKUP_MODIFIER] = factor
+        
+        self.triggers.append(trigger)
+        return self
 
 
 # ===========================================================
@@ -668,8 +735,8 @@ class InstantPatterns:
             
             for spawn_trigger in mt_comp.triggers:
                 remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
-                if not isinstance(remap_string, str): continue # to appease type checker
-                    
+                assert remap_string is not None # to appease type checker
+                
                 remap_pairs, _ = util.translate_remap_string(remap_string)
                 
                 for source, target in remap_pairs.items():
@@ -761,7 +828,7 @@ class InstantPatterns:
             remap = util.Remap()
             for spawn_trigger in mt_comp.triggers:
                 remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
-                if not isinstance(remap_string, str): continue # to appease type checker
+                assert remap_string is not None # to appease type checker
                 
                 remap_pairs, _ = util.translate_remap_string(remap_string)
                 for source, target in remap_pairs.items():
