@@ -7,7 +7,6 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
 from typing import Any, NamedTuple, Self
 
 from touhou_scs import enums as enum, lib, utils as util
@@ -29,49 +28,48 @@ class ScaleSettings(NamedTuple):
 
 scale_keyframes: dict[ScaleSettings, Component] = {}
 
-@dataclass
-class ValidateParams:
-    """Validates any given common trigger parameters."""
-    positive: float | int | list[float | int] | None = None
-    non_negative: float | int | list[float | int] | None = None
-    targets: int | list[int] | None = None
-    type: int | None = None
-    rate: float | None = None
-    factor: float | None = None
+def validate_params(*,
+    positive: float | int | list[float | int] | None = None,
+    non_negative: float | int | list[float | int] | None = None,
+    targets: int | list[int] | None = None,
+    type: int | None = None,
+    rate: float | None = None,
+    factor: float | None = None,
     item_id: int | None = None
+) -> None:
+    """Validates common trigger parameters."""
     
-    def __post_init__(self):
-        # flatten single values to lists
-        if isinstance(self.positive, (int, float)):
-            self.positive = [self.positive]
-        if isinstance(self.non_negative, (int, float)):
-            self.non_negative = [self.non_negative]
-        if isinstance(self.targets, int):
-            self.targets = [self.targets]
-        
-        if self.positive is not None:
-            if (values := list(filter(lambda n: n <= 0, self.positive))):
-                raise ValueError(f"Values must be positive (>0). Got: {values}")
-        if self.non_negative is not None:
-            if (values := list(filter(lambda n: n < 0, self.non_negative))):
-                raise ValueError(f"Values must be non-negative (>=0). Got: {values}")
-        if self.targets is not None:
-            for g in self.targets:
-                if _RESTRICTED_LOOKUP.get(g):
-                    raise ValueError(f"Group '{g}' is restricted.")
-                c = util.unknown_g.counter
-                if not (0 < g <= (c)):
-                    raise ValueError(f"Group '{g}' is out of valid range 0-{c}.")
-        if self.type is not None and (not (0 <= self.type <= 18) or not self.type.is_integer()):
-            raise ValueError(f"Easing 'type' must be an int in range 0-18. Got: {self.type}")
-        if self.rate is not None and not (0.10 < self.rate <= 20.0):
-            raise ValueError(f"Easing 'rate' must be in range 0.10-20.0, Got: {self.rate}")
-        if self.factor is not None and self.factor <= 0:
-            raise ValueError(f"Factor must be >0. Got: {self.factor}")
-        if self.factor == 1:
-            raise ValueError("Factor of multiplying/dividing by 1 has no effect")
-        if self.item_id is not None and not (1 <= self.item_id <= 9999):
-            raise ValueError(f"Item ID must be a positive int in range 1-9999. Got: {self.item_id}")
+    # Flatten single values to lists
+    if isinstance(positive, (int, float)):
+        positive = [positive]
+    if isinstance(non_negative, (int, float)):
+        non_negative = [non_negative]
+    if isinstance(targets, int):
+        targets = [targets]
+    
+    if positive is not None:
+        if (values := list(filter(lambda n: n <= 0, positive))):
+            raise ValueError(f"Values must be positive (>0). Got: {values}")
+    if non_negative is not None:
+        if (values := list(filter(lambda n: n < 0, non_negative))):
+            raise ValueError(f"Values must be non-negative (>=0). Got: {values}")
+    if targets is not None:
+        for g in targets:
+            if _RESTRICTED_LOOKUP.get(g):
+                raise ValueError(f"Group '{g}' is restricted.")
+            c = util.unknown_g.counter
+            if not (0 < g <= (c)):
+                raise ValueError(f"Group '{g}' is out of valid range 0-{c}.")
+    if type is not None and (not (0 <= type <= 18) or not type.is_integer()):
+        raise ValueError(f"Easing 'type' must be an int in range 0-18. Got: {type}")
+    if rate is not None and not (0.10 < rate <= 20.0):
+        raise ValueError(f"Easing 'rate' must be in range 0.10-20.0, Got: {rate}")
+    if factor is not None and factor <= 0:
+        raise ValueError(f"Factor must be >0. Got: {factor}")
+    if factor == 1:
+        raise ValueError("Factor of multiplying/dividing by 1 has no effect")
+    if item_id is not None and not (1 <= item_id <= 9999):
+        raise ValueError(f"Item ID must be a positive int in range 1-9999. Got: {item_id}")
 
 class Component:
     def __init__(self, name: str, callerGroup: int, editorLayer: int = 4):
@@ -192,7 +190,7 @@ class Component:
         remap: str | None = None, delay: float = 0 ):
         """Spawn another component or group's triggers"""
         target = target.groups[0] if isinstance(target, Component) else target
-        ValidateParams(targets=target, non_negative=delay)
+        validate_params(targets=target, non_negative=delay)
         
         trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
         
@@ -211,7 +209,7 @@ class Component:
         (collision triggers might be different)
         """
         target = target.groups[0] if isinstance(target, Component) else target
-        ValidateParams(targets=target)
+        validate_params(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
@@ -223,7 +221,7 @@ class Component:
         t: float, dist: int,
         type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Move target a set distance towards another group (direction mode)"""
-        ValidateParams(targets=[target, targetDir], non_negative=t, type=type, rate=rate)
+        validate_params(targets=[target, targetDir], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -245,7 +243,7 @@ class Component:
     def Pulse(self, time: float, target: int, 
         hsb: lib.HSB, *, exclusive: bool = False,
         fadeIn: float = 0, t: float = 0, fadeOut: float = 0):
-        ValidateParams(non_negative=[fadeIn, t, fadeOut], targets=target)
+        validate_params(non_negative=[fadeIn, t, fadeOut], targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), target)
 
@@ -264,7 +262,7 @@ class Component:
     def MoveBy(self, time: float, target: int, *,
         dx: float, dy: float,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        ValidateParams(targets=target, non_negative=t, type=type, rate=rate)
+        validate_params(targets=target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -282,7 +280,7 @@ class Component:
     
     def GotoGroup(self, time: float, target: int, location: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        ValidateParams(targets=[target, location], non_negative=t, type=type, rate=rate)
+        validate_params(targets=[target, location], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -304,7 +302,7 @@ class Component:
         t: float = 0, type: int = 0, rate: float = 1.0):
         """Rotate target by angle (degrees, clockwise is positive)"""
         if center is None: center = target
-        ValidateParams(targets=[target, center], non_negative=t, type=type, rate=rate)
+        validate_params(targets=[target, center], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
@@ -321,7 +319,7 @@ class Component:
         target: int, targetDir: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Point target towards another group"""
-        ValidateParams(targets=target, non_negative=t, type=type, rate=rate)
+        validate_params(targets=target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
@@ -352,7 +350,7 @@ class Component:
         Reverse mode: Start at full size and scale down (doesnt use hold)
         Optional: t, hold, type, rate, reverse
         """
-        ValidateParams(targets=target, factor=factor, non_negative=[t, hold], type=type, rate=rate)
+        validate_params(targets=target, factor=factor, non_negative=[t, hold], type=type, rate=rate)
         
         if hold and reverse:
             warn("Scale: 'hold' time is ignored in reverse mode: "
@@ -416,7 +414,7 @@ class Component:
         """Make target follow another group's movement"""
         
         raise NotImplementedError("Follow trigger is not tested yet.")
-        # ValidateParams(targets=target, non_negative=t)
+        # validate_params(targets=target, non_negative=t)
         
         # trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
         
@@ -428,7 +426,7 @@ class Component:
     
     def Alpha(self, time: float, target: int, *, opacity: float, t: float = 0):
         """Change target's opacity from a range of 0-100 over time."""
-        ValidateParams(targets=target, non_negative=t)
+        validate_params(targets=target, non_negative=t)
         if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
         
@@ -441,7 +439,7 @@ class Component:
         return self
     
     def _stop_trigger_common(self, time: float, target: int, option: int, useControlID: bool):
-        ValidateParams(targets=target)
+        validate_params(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
         
@@ -467,7 +465,7 @@ class Component:
     
     def Collision(self, time: float, target: int, *, 
         blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
-        ValidateParams(targets=target)
+        validate_params(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), target)
         
@@ -481,7 +479,7 @@ class Component:
     
     def Count(self, time: float, target: int, *, item_id: int, count: int, activateGroup: bool):
         """Activate target when item count is reached for item ID."""
-        ValidateParams(targets=target, item_id=item_id)
+        validate_params(targets=target, item_id=item_id)
         
         trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), target)
         
@@ -495,7 +493,7 @@ class Component:
     
     def Pickup(self, time: float, *, item_id: int, count: int, override: bool):
         """Change an Item ID value by 'count' amount, or set to amount w/ 'override'"""
-        ValidateParams(item_id=item_id)
+        validate_params(item_id=item_id)
         
         if count == 0: raise ValueError("Pickup: Count is 0 (no change)")
 
@@ -513,7 +511,7 @@ class Component:
     def PickupModify(self, time: float, *, item_id: int, factor: float,
         multiply: bool = False, divide: bool = False):
         """Multiply/divide an Item ID value by 'factor' amount"""
-        ValidateParams(item_id=item_id, factor=factor)
+        validate_params(item_id=item_id, factor=factor)
         
         if multiply and divide:
             raise ValueError("PickupModify: cannot both multiply and divide")
@@ -728,7 +726,7 @@ class InstantPatterns:
         
         Optional: type, rate
         """
-        ValidateParams(positive=[fastestTime, slowestTime], type=type, rate=rate)
+        validate_params(positive=[fastestTime, slowestTime], type=type, rate=rate)
         IL = "Instant.Line:"
         
         util.enforce_component_targets(IL, comp,
