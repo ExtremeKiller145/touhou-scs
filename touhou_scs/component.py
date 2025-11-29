@@ -8,7 +8,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Self
 
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.utils import warn
@@ -74,11 +74,6 @@ class ValidateParams:
             raise ValueError(f"Item ID must be a positive int in range 1-9999. Got: {self.item_id}")
 
 class Component:
-    """
-    Component for building trigger sequences.
-    Auto-registers to lib.all_components. All methods return self for chaining.
-    """
-    
     def __init__(self, name: str, callerGroup: int, editorLayer: int = 4):
         self.name: str = name
         self.groups: list[int] = [callerGroup]  # groups[0] is always the caller
@@ -106,12 +101,6 @@ class Component:
         raise NotImplementedError()
     
     def has_trigger_properties(self, trigger: dict[str, Any]):
-        """
-        Check if component has a trigger matching all key-value pairs in trigger dict. \n
-        Not including extra properties in trigger.
-        
-        Use 'Any' to allow any value other than None.
-        """
         if len(trigger) == 0: raise ValueError("has_trigger_properties: empty trigger dict given")
         for t in self.triggers:
             num_matches = 0
@@ -123,11 +112,8 @@ class Component:
         return False
     
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
-        """Create trigger with component defaults & target validation."""
-        
         if _RESTRICTED_LOOKUP.get(target):
             raise ValueError(f"Group '{target}' is restricted due to known conflicts.")
-        
         return Trigger({
             ppt.OBJ_ID: obj_id,
             ppt.X: x,
@@ -139,7 +125,6 @@ class Component:
         })
     
     def assert_spawn_order(self, required: bool):
-        """Set component spawn order requirement."""
         self.requireSpawnOrder = required
         return self
     
@@ -153,11 +138,7 @@ class Component:
         return result
     
     def group_last_trigger(self, *new_groups: int | list[int]):
-        """
-        Add groups to the most recently added trigger
-        
-        (ignores active group context).
-        """
+        """Add groups to the most recently added trigger."""
 
         if not self.triggers:
             raise RuntimeError(f"Component '{self.name}' has no triggers to modify")
@@ -189,7 +170,6 @@ class Component:
         if len(self.groups) > 1:
             raise RuntimeError(f"Component '{self.name}' already has an active group context. Call end_group_context() first.")
         
-        # Replace entire list for optimization
         self.groups = [self.groups[0]] + additional_groups
         return self
     
@@ -198,7 +178,6 @@ class Component:
         if len(self.groups) == 1:
             raise RuntimeError(f"Component '{self.name}' has no active group context to end")
         
-        # Replace entire list for optimization
         self.groups = [self.groups[0]]
         return self
     
@@ -211,11 +190,7 @@ class Component:
     def Spawn(self, time: float,
         target: int | Component, spawnOrdered: bool, *,
         remap: str | None = None, delay: float = 0 ):
-        """
-        Spawn another component or group's triggers
-        
-        Optional: remap string, spawnDelay
-        """
+        """Spawn another component or group's triggers"""
         target = target.groups[0] if isinstance(target, Component) else target
         ValidateParams(targets=target, non_negative=delay)
         
@@ -230,9 +205,9 @@ class Component:
     
     def Toggle(self, time: float, target: int | Component, activateGroup: bool):
         """
-        Toggle a group or component on or off
-        
+        Activating does not spawn the target, it only enables it.
         WARNING: A deactivated object cannot be reactivated by a different group
+        
         (collision triggers might be different)
         """
         target = target.groups[0] if isinstance(target, Component) else target
@@ -247,11 +222,7 @@ class Component:
     def MoveTowards(self, time: float, target: int, targetDir: int, *,
         t: float, dist: int,
         type: int = 0, rate: float = 1.0, dynamic: bool = False):
-        """
-        Move target a set distance towards another group (direction mode)
-        
-        Optional: type, rate, dynamic, center of target
-        """
+        """Move target a set distance towards another group (direction mode)"""
         ValidateParams(targets=[target, targetDir], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
@@ -261,7 +232,6 @@ class Component:
         trigger[ppt.MOVE_SMALL_STEP] = True
         trigger[ppt.MOVE_TARGET_DIR] = targetDir
         trigger[ppt.MOVE_TARGET_CENTER] = target
-
         trigger[ppt.MOVE_DIRECTION_MODE_DISTANCE] = dist
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
@@ -275,11 +245,6 @@ class Component:
     def Pulse(self, time: float, target: int, 
         hsb: lib.HSB, *, exclusive: bool = False,
         fadeIn: float = 0, t: float = 0, fadeOut: float = 0):
-        """
-        Pulse a group's HSV/color
-        
-        Optional: fadeIn, t, fadeOut
-        """
         ValidateParams(non_negative=[fadeIn, t, fadeOut], targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), target)
@@ -299,11 +264,6 @@ class Component:
     def MoveBy(self, time: float, target: int, *,
         dx: float, dy: float,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        """
-        Move target by a relative offset (dx, dy)
-        
-        Optional: t, type, rate
-        """
         ValidateParams(targets=target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
@@ -322,11 +282,6 @@ class Component:
     
     def GotoGroup(self, time: float, target: int, location: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        """
-        Move target to another group's position
-        
-        Optional: t, type, rate
-        """
         ValidateParams(targets=[target, location], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
@@ -347,11 +302,7 @@ class Component:
         target: int, angle: float,
         center: int | None = None,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        """
-        Rotate target by angle (degrees, clockwise is positive)
-        
-        Optional: center (defaults to target), t, type, rate
-        """
+        """Rotate target by angle (degrees, clockwise is positive)"""
         if center is None: center = target
         ValidateParams(targets=[target, center], non_negative=t, type=type, rate=rate)
         
@@ -369,11 +320,7 @@ class Component:
     def PointToGroup(self, time: float, 
         target: int, targetDir: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0, dynamic: bool = False):
-        """
-        Point target towards another group
-        
-        Optional: t, type, rate
-        """
+        """Point target towards another group"""
         ValidateParams(targets=target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
@@ -465,28 +412,22 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def Follow(self, time: float, target: int, targetDir: int, *, t: float = 0):
-        """
-        Make target follow another group's movement
+    def Follow(self, time: float, target: int, targetDir: int, *, t: float = 0) -> Self:
+        """Make target follow another group's movement"""
         
-        Optional: t (duration)
-        """
-        ValidateParams(targets=target, non_negative=t)
+        raise NotImplementedError("Follow trigger is not tested yet.")
+        # ValidateParams(targets=target, non_negative=t)
         
-        trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
+        # trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
         
-        trigger[ppt.FOLLOW_GROUP] = targetDir
-        trigger[ppt.DURATION] = t
+        # trigger[ppt.FOLLOW_GROUP] = targetDir
+        # trigger[ppt.DURATION] = t
         
-        self.triggers.append(trigger)
-        return self
+        # self.triggers.append(trigger)
+        # return self
     
     def Alpha(self, time: float, target: int, *, opacity: float, t: float = 0):
-        """
-        Change target's opacity from a range of 0-100
-        
-        Optional: t (duration)
-        """
+        """Change target's opacity from a range of 0-100 over time."""
         ValidateParams(targets=target, non_negative=t)
         if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
@@ -500,7 +441,6 @@ class Component:
         return self
     
     def _stop_trigger_common(self, time: float, target: int, option: int, useControlID: bool):
-        """Common logic for Stop, Pause, Resume triggers (internal use, made bc DRY principle)"""
         ValidateParams(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
@@ -511,39 +451,22 @@ class Component:
         self.triggers.append(trigger)
     
     def Stop(self, time: float, target: int, *, useControlID: bool = False):
-        """
-        Stop target's active triggers (Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn)
-        
-        Optional: useControlID
-        """
+        """WARNING: Does not stop all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 0, useControlID)
         return self
     
     def Pause(self, time: float, target: int, *, useControlID: bool = False):
-        """
-        Pause target's active triggers (Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn)
-        
-        Optional: useControlID
-        """
+        """WARNING: Does not pause all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 1, useControlID)
         return self
     
     def Resume(self, time: float, target: int, *, useControlID: bool = False):
-        """
-        Resume target's paused triggers (Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn)
-        
-        Optional: useControlID
-        """
+        """Resume target's paused triggers (Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn)"""
         self._stop_trigger_common(time, target, 2, useControlID)
         return self
     
     def Collision(self, time: float, target: int, *, 
         blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
-        """
-        Set up collision between two groups for the target group
-        
-        Optional: activateGroup
-        """
         ValidateParams(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), target)
@@ -617,11 +540,7 @@ class Component:
 # ===========================================================
 
 class Multitarget:
-    """
-    Make triggers effect multiple targets using precise component remapping.
-    
-    Works by creating components with many spawn triggers, and remap chaining to execute at once.
-    """
+    """Make triggers effect multiple targets using a remap to components full of spawns."""
 
     _powers: list[int] = [1, 2, 4, 8, 16, 32, 64]
     _initialized: bool = False
@@ -652,10 +571,6 @@ class Multitarget:
     
     @classmethod
     def _initialize_binary_bases(cls):
-        """
-        Initialize all binary base components (1, 2, 4, 8, 16, 32, 64).
-        Called automatically on first use of get_binary_components.
-        """
         if cls._initialized: raise RuntimeError("Multitarget binary bases already initialized")
         
         for power in cls._powers:
@@ -684,7 +599,6 @@ class Multitarget:
 # ===========================================================
 
 class InstantPatterns:
-    """Instant pattern methods - spawn bullets in a single frame."""
     def __init__(self, component: Component):
         self._component = component
 
@@ -759,7 +673,7 @@ class InstantPatterns:
                         angle_index = bulletPos if bulletPos > 0 else 360
                         remap.pair(target, gc.groups[angle_index])
                     else:
-                        remap.pair(target, enum.EMPTY_MULTITARGET) # any empty works
+                        remap.pair(target, enum.EMPTY_MULTITARGET)
                 
                 bulletPos += spacing
                 if bulletPos >= 360: bulletPos -= 360
@@ -865,12 +779,6 @@ class InstantPatterns:
 
 
 class TimedPatterns:
-    """
-    Timed pattern methods - spawn bullets over multiple frames.
-    
-    Built on top of instant patterns by calling them repeatedly with time offsets.
-    """
-    
     def __init__(self, component: Component):
         self._component = component
     

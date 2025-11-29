@@ -9,7 +9,7 @@ import orjson
 import random
 import time
 import colorsys
-from typing import Any
+from typing import Any, Self
 
 from touhou_scs import enums as enum
 from touhou_scs import utils as util
@@ -30,20 +30,13 @@ DEFAULT_TRIGGER_AREA: TriggerArea = {
 }
 
 class Spell:
-    """
-    Spell composed of multiple components with a caller group.
-    Automatically registers itself in all_spells on creation.
-    """
-    
     def __init__(self, spell_name: str, caller_group: int):
-        """Create a new spell."""
         self.spell_name: str = spell_name
         self.caller_group: int = caller_group
         self.components: list[ComponentProtocol] = []
         all_spells.append(self)
     
-    def add_component(self, component: ComponentProtocol) -> 'Spell':
-        """Add a component to this spell. Returns self for chaining."""
+    def add_component(self, component: ComponentProtocol) -> Self:
         self.components.append(component)
         return self
 
@@ -57,7 +50,6 @@ class GuiderCircle:
     """Circle of 360 pointer objects for angle-based aiming"""
     
     def __init__(self, all_group: int, center: int, pointer: int):
-        """Create a guider circle."""
         self.all: int = all_group
         self.center: int = center
         self.pointer: int = pointer
@@ -88,10 +80,7 @@ class GuiderLine:
 
 
 class BulletPool:
-    """
-    Bullet pool with group range and cycler for sequential allocation.
-    Returns (bullet_group, collision_group) pairs.
-    """
+    """Bullet pool with group range and cycler for sequential allocation."""
     
     def __init__(self, min_group: int, max_group: int, has_orientation: bool):
         """Inclusive of both min_group and max_group."""
@@ -101,11 +90,7 @@ class BulletPool:
         self.current = max_group
     
     def next(self) -> tuple[int, int]:
-        """
-        Get the next bullet / collision group in the cycle. First call is 'min'.
-        
-        Returns: Tuple of (bullet_group, collision_group)
-        """
+        """Returns: (bullet_group, collision_group)"""
         self.current += 1
         if self.current > self.max_group:
             self.current = self.min_group
@@ -122,9 +107,7 @@ bullet4 = BulletPool(4301, 4700, False)
 
 reimuA_level1 = BulletPool(111,128, True)
 
-def get_all_components() -> list[ComponentProtocol]:
-    """Return list of all registered components."""
-    return all_components
+def get_all_components() -> list[ComponentProtocol]: return all_components
 
 @dataclass
 class HSB:
@@ -133,18 +116,14 @@ class HSB:
     b: float
 
 def rgb(r: float, g: float, b: float) -> HSB:
-    """
-    Convert RGB into HSB adjustments for converting red into desired color.
-    
-    Returns: HSB object with hue, saturation, brightness offsets.
-    """
+    """Convert RGB into HSB adjustments for converting red into desired color."""
     # Normalize RGB to [0, 1]
     r, g, b = r / 255, g / 255, b / 255
     h, s, b = colorsys.rgb_to_hsv(r, g, b)
 
     base_h, base_s, base_b = 0.0, 1.0, 1.0 # Base red in HSV is (0°, 1, 1)
 
-    hue_offset = (h * 360.0) - (base_h * 360.0) # Compute offsets
+    hue_offset = (h * 360.0) - (base_h * 360.0)
 
     # Wrap hue to -180..180
     if hue_offset > 180: hue_offset -= 360
@@ -170,8 +149,6 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     ppt = enum.Properties
     
     def _group_triggers_by_same_tick(triggers: list[Trigger], comp: ComponentProtocol) -> list[list[Trigger]]:
-        """Group triggers by whether they execute in the same tick."""
-        
         if not comp.requireSpawnOrder: return [triggers]
         
         x_groups: dict[float, list[Trigger]] = {}
@@ -189,8 +166,6 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         comp_name: str,
         case_description: str
     ) -> None:
-        """Check if same-tick spawn group causes spawn limit bug."""
-        
         if len(same_tick_group) < 2: return
         
         target_count: dict[int, int] = {}
@@ -276,14 +251,11 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
     max_y = trigger_area["max_y"]
     ppt = enum.Properties
     
-    # Single trigger - random position
     if len(triggers) == 1:
         triggers[0][ppt.X] = random.randint(min_x, max_x)
         triggers[0][ppt.Y] = random.randint(min_y, max_y)
         return
     
-    # Check if all triggers have same X (time-based pattern)
-    same_x = all(t[ppt.X] == triggers[0][ppt.X] for t in triggers)
     
     all_keyframe_objs = all(t[ppt.OBJ_ID] == enum.ObjectID.KEYFRAME_OBJ for t in triggers)
     if all_keyframe_objs:
@@ -294,7 +266,8 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
             keyframe_obj[ppt.Y] = rand_y
         return
     
-    if same_x and not comp.requireSpawnOrder:
+    all_same_x = all(t[ppt.X] == triggers[0][ppt.X] for t in triggers)
+    if all_same_x and not comp.requireSpawnOrder:
         for trigger in triggers:
             trigger[ppt.X] = random.randint(min_x // 2, max_x // 2) * 2
     elif comp.requireSpawnOrder:
@@ -306,7 +279,6 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
         if chain_width > (max_x - min_x):
             raise ValueError(f"Rigid chain too wide ({chain_width}) to fit in trigger area for {comp.name}")
 
-        # Shift entire chain to random position
         shift = float(random.randint(min_x, int(max_x - chain_width)) - chain_min_x)
         for trigger in triggers:
             trigger[ppt.X] = float(trigger[ppt.X]) + shift
@@ -320,7 +292,6 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
                 spacing = random.randint(1, 10)
                 trigger[ppt.X] = float(triggers[i - 1][ppt.X]) + spacing
     
-    # Set random Y for all triggers
     for trigger in triggers:
         trigger[ppt.Y] = random.randint(min_y, max_y)
 

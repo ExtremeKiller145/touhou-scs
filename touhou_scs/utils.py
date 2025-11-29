@@ -15,7 +15,6 @@ class CallTracked:
     def __init__(self, func: Callable[..., Any]):
         self.__func = func
         self.has_been_called = False
-        """Becomes true after the first function call ends."""
         functools.update_wrapper(self, func)
     
     def __call__(self, *args: Any, **kwargs: Any):
@@ -32,10 +31,7 @@ def warn(message: str, *, stacklevel: int = 3):
     warnings.warn("\u001B[33m\n" + message + "\u001B[0m", stacklevel=stacklevel)
 
 def time_to_dist(time: float) -> float:
-    """
-    Convert time in seconds to distance in studs (X position).
-    Based on player movement speed of 311.58 studs/second.
-    """
+    """Based on plr move speed of 311.58 studs/s"""
     return 311.58 * time
 
 
@@ -53,18 +49,10 @@ class UnknownGroupGenerator:
 unknown_g = UnknownGroupGenerator()
 """Call with 'unknown_g()' and access list with 'unknown_g.used_groups'."""
 
-
-def group(group_id: int) -> int:
-    """Group integer wrapper for self-documenting code"""
-    return group_id
-
+def group(group_id: int) -> int: """Semantic Wrapper"""; return group_id # noqa
 
 def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
-    """
-    Parse remap string into source -> target dictionary, w/ remap validation.
-    
-    Returns (dict[source] = target, clean_remap_string)
-    """
+    """Returns (dict[source] = target, clean_remap_string)"""
     
     parts = remap_string.split(".")
     parts_len = len(parts)
@@ -82,13 +70,10 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
         source = int(source_str)
         target = int(target_str)
         
-        # Duplicate targets are allowed (doesn't need to be one-to-one)
-        # But duplicate sources are not (must pass Vertical Line Test)
         if source in pairs:
             raise ValueError(f"Duplicate source '{source}' in remap string - cannot remap one group to multiple targets")
         pairs[source] = target
         
-        # Only include non-redundant mappings (source != target)
         if source != target:
             clean_parts.append(source_str)
             clean_parts.append(target_str)
@@ -104,33 +89,22 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
 
 
 class Remap:
-    """
-    Remap string builder class with chainable API
+    """Remap string builder class with chainable API."""
     
-    Example:
-        rb = Remap().pair(10, 20).pair(30, 40)
-        
-        remap_string = rb.build()  # "10.20.30.40"
-    """
-    
-    def __init__(self):
-        self._pairs: dict[int,int] = {}
+    def __init__(self): self._pairs: dict[int,int] = {}
     
     def pair(self, source: int, target: int):
-        """Add a source -> target remap pair"""
         self._pairs[source] = target
         return self
     
     def build(self) -> str:
-        """Build to remap string from added pairs"""
         parts: list[str] = []
         for source, target in self._pairs.items():
             parts.append(f"{source}.{target}")
         return ".".join(parts)
 
 
-def create_number_cycler(min_val: int, max_val: int):
-    """Returns a cycler function that returns sequential numbers in a range."""
+def create_number_cycler(min_val: int, max_val: int) -> Callable[[], int]:
     if min_val > max_val: raise ValueError("create_number_cycler: min cannot be greater than max")
     
     current = min_val - 1
@@ -144,12 +118,7 @@ def create_number_cycler(min_val: int, max_val: int):
 
 def enforce_component_targets(fn_name: str, comp: ComponentProtocol,*,
     requires: set[int] | None = None, excludes: set[int] | None = None):
-    """
-    Validate that component targets (or doesn't target) specific groups.
-    
-    requires: Set of group IDs that must be targeted
-    excludes: Set of group IDs that must NOT be targeted
-    """
+    """Validate that component targets (or doesn't target) specific groups"""
     if comp.requireSpawnOrder is not True:
         raise ValueError(f"{fn_name}: component must require spawn order")
 
