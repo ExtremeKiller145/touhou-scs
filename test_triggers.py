@@ -12,8 +12,17 @@ Philosophy: Tests should expose logic bugs and verify validation.
 """
 
 import pytest
+from pytest import ExceptionInfo
 from touhou_scs.component import Component
 from touhou_scs import enums, lib, utils
+
+
+def assert_error(exc_info: ExceptionInfo[BaseException], *patterns: str) -> None:
+    """Assert exception message contains all patterns."""
+    msg_clean = str(exc_info.value).lower().replace(" ", "")
+    for pattern in patterns:
+        p = pattern.lower().replace(" ", "")
+        assert p in msg_clean, f"Expected '{pattern}' in: {str(exc_info.value)}"
 
 
 # ============================================================================
@@ -26,14 +35,16 @@ class TestSpawnTargetValidation:
     def test_spawn_target_zero_rejected(self):
         """Target group 0 is out of valid range"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="out of valid range"):
+        with pytest.raises(ValueError) as exc: 
             comp.Spawn(0, 0, spawnOrdered=False)
+        assert_error(exc, "out of valid range", "0")
     
     def test_spawn_target_negative_rejected(self):
         """Negative target groups are rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="out of valid range"):
+        with pytest.raises(ValueError) as exc:
             comp.Spawn(0, -50, spawnOrdered=False)
+        assert_error(exc, "out of valid range", "-50")
     
     def test_spawn_target_10_valid(self):
         """Target group 10 is valid (non-restricted)"""
@@ -53,25 +64,27 @@ class TestSpawnTargetValidation:
     def test_spawn_target_above_counter_rejected(self):
         """Target above unknown_g.counter is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="out of valid range"):
+        with pytest.raises(ValueError) as exc:
             comp.Spawn(0, utils.unknown_g.counter + 1, spawnOrdered=False)
+        assert_error(exc, "out of valid range")
     
     def test_spawn_restricted_group_rejected(self):
         """Restricted groups are rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="restricted"):
+        with pytest.raises(ValueError) as exc:
             comp.Spawn(0, 3, spawnOrdered=False)
+        assert_error(exc, "restricted", "3")
 
 
 class TestSpawnDelayValidation:
     """Test Spawn delay parameter behavior"""
     
-    def test_spawn_negative_delay_not_stored(self):
-        """Negative delay is treated like zero (not stored)"""
+    def test_spawn_negative_delay_rejected(self):
+        """Negative delay is rejected"""
         comp = Component("Test", 100)
-        comp.Spawn(0, 50, spawnOrdered=False, delay=-5.0)
-        trigger = comp.triggers[0]
-        assert enums.Properties.SPAWN_DELAY not in trigger
+        with pytest.raises(ValueError) as exc:
+            comp.Spawn(0, 50, spawnOrdered=False, delay=-1)
+        assert_error(exc, "non-negative", "-1")
     
     def test_spawn_zero_delay_not_stored(self):
         """Zero delay is not stored"""
@@ -101,14 +114,16 @@ class TestSpawnRemapValidation:
     def test_spawn_remap_odd_pairs_rejected(self):
         """Odd number of remap values is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as exc:
             comp.Spawn(0, 50, spawnOrdered=False, remap="1.2.3")
+        assert_error(exc, "even number")
     
     def test_spawn_remap_duplicate_source_rejected(self):
         """Remapping same source to different targets is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="Duplicate source"):
+        with pytest.raises(ValueError) as exc:
             comp.Spawn(0, 50, spawnOrdered=False, remap="10.20.10.30")
+        assert_error(exc, "Duplicate source", "10")
 
 
 # ============================================================================
@@ -121,14 +136,16 @@ class TestMoveEasingValidation:
     def test_easing_type_negative_rejected(self):
         """Negative easing type is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="[Ee]asing.*type"):
+        with pytest.raises(ValueError) as exc:
             comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, type=-1)
+        assert_error(exc, "type", "-1")
     
     def test_easing_type_19_rejected(self):
         """Easing type 19 (above max 18) is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="[Ee]asing.*type"):
+        with pytest.raises(ValueError) as exc:
             comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, type=19)
+        assert_error(exc, "type", "19")
     
     def test_easing_type_0_valid(self):
         """Easing type 0 (NONE) is valid"""
@@ -147,20 +164,23 @@ class TestMoveEasingValidation:
     def test_easing_rate_0_10_rejected(self):
         """Easing rate at 0.10 is rejected (must be > 0.10)"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="rate"):
+        with pytest.raises(ValueError) as exc:
             comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, rate=0.10)
+        assert_error(exc, "rate", "0.1")
     
     def test_easing_rate_below_0_10_rejected(self):
         """Easing rate below 0.10 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="rate"):
+        with pytest.raises(ValueError) as exc:
             comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, rate=0.05)
+        assert_error(exc, "rate", "0.05")
     
     def test_easing_rate_above_20_rejected(self):
         """Easing rate above 20.0 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="rate"):
+        with pytest.raises(ValueError) as exc:
             comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, rate=20.01)
+        assert_error(exc, "rate", "20.01")
     
     def test_easing_rate_20_valid(self):
         """Easing rate 20.0 is valid (upper boundary)"""
@@ -179,8 +199,9 @@ class TestMoveEasingValidation:
     def test_easing_type_float_non_integer_rejected(self):
         """Easing type as non-integer float is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="[Ee]asing.*type"):
+        with pytest.raises(ValueError) as exc:
             comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, type=2.5)
+        assert_error(exc, "type", "2.5")
 
 
 class TestMoveDurationValidation:
@@ -189,8 +210,9 @@ class TestMoveDurationValidation:
     def test_duration_negative_rejected(self):
         """Negative duration is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="non-negative"):
+        with pytest.raises(ValueError) as exc:
             comp.MoveTowards(0, target=50, targetDir=60, t=-0.5, dist=100)
+        assert_error(exc, "non-negative", "-0.5")
     
     def test_duration_zero_sets_silent(self):
         """Duration zero sets MOVE_SILENT flag"""
@@ -217,14 +239,16 @@ class TestAlphaOpacityValidation:
     def test_opacity_negative_rejected(self):
         """Negative opacity is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as exc:
             comp.Alpha(0, target=50, opacity=-1)
+        assert_error(exc, "between 0 and 100")
     
     def test_opacity_above_100_rejected(self):
         """Opacity above 100 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as exc:
             comp.Alpha(0, target=50, opacity=101)
+        assert_error(exc, "between 0 and 100")
     
     def test_opacity_0_valid(self):
         """Opacity 0 (fully transparent) is valid"""
@@ -253,25 +277,26 @@ class TestAlphaOpacityValidation:
 # ============================================================================
 
 class TestScaleFactorValidation:
-    """Test Scale trigger factor validation"""
-    
     def test_scale_factor_zero_rejected(self):
         """Scale factor 0 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="factor.*> 0"):
+        with pytest.raises(ValueError) as exc:
             comp.Scale(0, target=50, factor=0, t=1.0)
+        assert_error(exc, "factor", ">0", "0")
     
     def test_scale_factor_negative_rejected(self):
         """Negative scale factor is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="factor.*> 0"):
+        with pytest.raises(ValueError) as exc:
             comp.Scale(0, target=50, factor=-1.0, t=1.0)
+        assert_error(exc, "factor", ">0", "-1")
     
     def test_scale_factor_one_rejected(self):
         """Scale factor 1.0 (no change) is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="factor is 1.0"):
+        with pytest.raises(ValueError) as exc:
             comp.Scale(0, target=50, factor=1.0, t=1.0)
+        assert_error(exc, "1", "has no effect")
     
     def test_scale_factor_barely_above_one_valid(self):
         """Scale factor just above 1.0 is valid"""
@@ -288,8 +313,9 @@ class TestScaleFactorValidation:
     def test_scale_hold_negative_rejected(self):
         """Negative hold time is rejected via duration validation"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="non-negative"):
+        with pytest.raises(ValueError) as exc:
             comp.Scale(0, target=50, factor=2.0, t=1.0, hold=-5.0)
+        assert_error(exc, "non-negative", "-5")
 
 
 # ============================================================================
@@ -302,20 +328,23 @@ class TestCountItemIdValidation:
     def test_count_item_id_zero_rejected(self):
         """Item ID 0 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.Count(0, 10, item_id=0, count=100, activateGroup=True)
+        assert_error(exc, "positive", "0")
     
     def test_count_item_id_negative_rejected(self):
         """Negative item ID is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.Count(0, 10, item_id=-5, count=100, activateGroup=True)
+        assert_error(exc, "positive", "-5")
     
     def test_count_item_id_above_9999_rejected(self):
         """Item ID above 9999 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.Count(0, 10, item_id=10000, count=100, activateGroup=True)
+        assert_error(exc, "positive", "10000")
     
     def test_count_item_id_1_valid(self):
         """Item ID 1 (lower boundary) is valid"""
@@ -342,26 +371,30 @@ class TestPickupValidation:
     def test_pickup_item_id_zero_rejected(self):
         """Item ID 0 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.Pickup(0, item_id=0, count=50, override=False)
+        assert_error(exc, "positive", "0")
     
     def test_pickup_item_id_negative_rejected(self):
         """Negative item ID is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.Pickup(0, item_id=-10, count=50, override=False)
+        assert_error(exc, "positive", "-10")
     
     def test_pickup_item_id_above_9999_rejected(self):
         """Item ID above 9999 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.Pickup(0, item_id=10000, count=50, override=False)
+        assert_error(exc, "positive", "10000")
     
     def test_pickup_count_zero_rejected(self):
         """Count of 0 (no change) is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="no change"):
+        with pytest.raises(ValueError) as exc:
             comp.Pickup(0, item_id=5, count=0, override=False)
+        assert_error(exc, "no change", "0")
     
     def test_pickup_count_negative_allowed(self):
         """Negative count (subtract items) is allowed"""
@@ -388,38 +421,44 @@ class TestPickupModifyValidation:
     def test_pickup_modify_item_id_zero_rejected(self):
         """Item ID 0 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.PickupModify(0, item_id=0, factor=1.5, multiply=True)
+        assert_error(exc, "positive", "0")
     
     def test_pickup_modify_item_id_above_9999_rejected(self):
         """Item ID above 9999 is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="positive"):
+        with pytest.raises(ValueError) as exc:
             comp.PickupModify(0, item_id=10000, factor=1.5, multiply=True)
+        assert_error(exc, "positive", "10000")
     
     def test_pickup_modify_factor_one_rejected(self):
         """Factor of 1 (no effect) is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="1 has no effect"):
+        with pytest.raises(ValueError) as exc:
             comp.PickupModify(0, item_id=5, factor=1, multiply=True)
+        assert_error(exc, "1 has no effect")
     
     def test_pickup_modify_factor_one_float_rejected(self):
         """Factor of 1.0 (no effect) is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="1 has no effect"):
+        with pytest.raises(ValueError) as exc:
             comp.PickupModify(0, item_id=5, factor=1.0, multiply=True)
+        assert_error(exc, "1 has no effect")
     
     def test_pickup_modify_no_mode_rejected(self):
         """Neither multiply nor divide specified is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="multiply.*divide"):
+        with pytest.raises(ValueError) as exc:
             comp.PickupModify(0, item_id=5, factor=1.5)
+        assert_error(exc, "multiply", "divide")
     
     def test_pickup_modify_both_modes_rejected(self):
         """Both multiply and divide specified is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="both multiply and divide"):
+        with pytest.raises(ValueError) as exc:
             comp.PickupModify(0, item_id=5, factor=1.5, multiply=True, divide=True)
+        assert_error(exc, "both", "multiply", "divide")
     
     def test_pickup_modify_multiply_mode_value(self):
         """Multiply mode sets PICKUP_MULTIPLY_DIVIDE to 1"""
@@ -453,14 +492,16 @@ class TestPointToGroupValidation:
     def test_point_to_group_dynamic_with_easing_type_rejected(self):
         """Dynamic mode with easing type is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="dynamic aiming cannot use easing"):
+        with pytest.raises(ValueError) as exc:
             comp.PointToGroup(0, target=50, targetDir=60, dynamic=True, type=3)
+        assert_error(exc, "dynamic", "easing", "3")
     
     def test_point_to_group_dynamic_with_easing_rate_rejected(self):
         """Dynamic mode with non-default easing rate is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="dynamic aiming cannot use easing"):
+        with pytest.raises(ValueError) as exc:
             comp.PointToGroup(0, target=50, targetDir=60, dynamic=True, rate=1.5)
+        assert_error(exc, "dynamic", "easing", "1.5")
     
     def test_point_to_group_dynamic_without_easing_valid(self):
         """Dynamic mode without easing is valid"""
@@ -499,8 +540,9 @@ class TestRotateValidation:
     def test_rotate_restricted_center_rejected(self):
         """Restricted center group is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="restricted"):
+        with pytest.raises(ValueError) as exc:
             comp.Rotate(0, target=50, angle=90, center=3)
+        assert_error(exc, "restricted", "3")
 
 
 # ============================================================================
@@ -533,14 +575,16 @@ class TestGroupContextManagement:
         """Starting context while one is active is rejected"""
         comp = Component("Test", 100)
         comp.start_group_context(200)
-        with pytest.raises(RuntimeError, match="already has an active group context"):
+        with pytest.raises(RuntimeError) as exc:
             comp.start_group_context(300)
+        assert_error(exc, "already has an active group context")
     
     def test_end_without_start_rejected(self):
         """Ending context without starting is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(RuntimeError, match="no active group context"):
+        with pytest.raises(RuntimeError) as exc:
             comp.end_group_context()
+        assert_error(exc, "no active group context")
     
     def test_context_with_multiple_groups(self):
         """Context can add multiple groups at once"""
@@ -562,8 +606,9 @@ class TestGroupContextManagement:
     def test_context_empty_rejected(self):
         """Starting context with no groups is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="at least one group"):
+        with pytest.raises(ValueError) as exc:
             comp.start_group_context()
+        assert_error(exc, "at least one group")
 
 
 class TestGroupLastTrigger:
@@ -582,8 +627,9 @@ class TestGroupLastTrigger:
     def test_group_last_trigger_no_triggers_rejected(self):
         """Grouping when no triggers exist is rejected"""
         comp = Component("Test", 100)
-        with pytest.raises(RuntimeError, match="no triggers"):
+        with pytest.raises(RuntimeError) as exc:
             comp.group_last_trigger(300)
+        assert_error(exc, "no triggers")
     
     def test_group_last_trigger_duplicate_rejected(self):
         """Adding duplicate group to trigger is rejected"""
@@ -597,8 +643,9 @@ class TestGroupLastTrigger:
         """Grouping with no groups is rejected"""
         comp = Component("Test", 100)
         comp.Toggle(0, 50, activateGroup=True)
-        with pytest.raises(ValueError, match="at least one group"):
+        with pytest.raises(ValueError) as exc:
             comp.group_last_trigger()
+        assert_error(exc, "at least one group")
 
 
 class TestFlattenGroups:
@@ -627,29 +674,32 @@ class TestInstantPatternSpawnOrderRequirement:
     def test_arc_without_spawn_order_rejected(self):
         """Arc without spawn order raises ValueError"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="must require spawn order"):
+        with pytest.raises(ValueError) as exc:
             comp.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=5, spacing=30
             )
+        assert_error(exc, "must require spawn order")
     
     def test_radial_without_spawn_order_rejected(self):
         """Radial without spawn order raises ValueError"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="must require spawn order"):
+        with pytest.raises(ValueError) as exc:
             comp.instant.Radial(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=12
             )
+        assert_error(exc, "must require spawn order")
     
     def test_line_without_spawn_order_rejected(self):
         """Line without spawn order raises ValueError"""
         comp = Component("Test", 100)
-        with pytest.raises(ValueError, match="must require spawn order"):
+        with pytest.raises(ValueError) as exc:
             comp.instant.Line(
                 time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
                 numBullets=5, fastestTime=0.5, slowestTime=2.0, dist=100
             )
+        assert_error(exc, "must require spawn order")
 
 
 # ============================================================================
@@ -666,11 +716,12 @@ class TestInstantArcValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="odd bullets requires integer centerAt"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=5, spacing=30, centerAt=45.5
             )
+        assert_error(exc, "odd bullets requires integer centerAt")
     
     def test_arc_even_bullets_odd_spacing_integer_center_rejected(self):
         """Even bullets with odd spacing requires .5 centerAt"""
@@ -679,11 +730,12 @@ class TestInstantArcValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="even bullets with odd spacing requires .5 centerAt"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=4, spacing=15, centerAt=0
             )
+        assert_error(exc, "even", "odd spacing", ".5")
     
     def test_arc_even_bullets_even_spacing_fractional_center_rejected(self):
         """Even bullets with even spacing requires integer centerAt"""
@@ -692,11 +744,12 @@ class TestInstantArcValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="even bullets with even spacing requires integer centerAt"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=4, spacing=30, centerAt=45.5
             )
+        assert_error(exc, "even bullets with even spacing requires integer centerAt")
     
     def test_arc_spacing_zero_rejected(self):
         """Spacing below 1 is rejected"""
@@ -705,11 +758,12 @@ class TestInstantArcValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="spacing must be between 1 and 360"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=5, spacing=0
             )
+        assert_error(exc, "spacing", "1", "360", "0")
     
     def test_arc_spacing_above_360_rejected(self):
         """Spacing above 360 is rejected"""
@@ -718,11 +772,12 @@ class TestInstantArcValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="spacing must be between 1 and 360"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=1, spacing=361
             )
+        assert_error(exc, "spacing must be between 1 and 360")
     
     def test_arc_exceeds_360_degrees_rejected(self):
         """numBullets * spacing > 360 is rejected"""
@@ -731,11 +786,12 @@ class TestInstantArcValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="exceeds 360"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=10, spacing=40  # 10 * 40 = 400 > 360
             )
+        assert_error(exc, "exceeds 360")
     
     def test_arc_center_at_invalid_fraction_rejected(self):
         """centerAt must be integer or .5 increments"""
@@ -744,11 +800,12 @@ class TestInstantArcValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="centerAt must be an integer or integer.5"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=5, spacing=30, centerAt=45.3, radialBypass=True  # bypass arc logic to hit generic check
             )
+        assert_error(exc, "centerAt must be an integer or integer.5")
 
 
 # ============================================================================
@@ -765,10 +822,11 @@ class TestInstantRadialValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="must provide either spacing or numBullets"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1
             )
+        assert_error(exc, "must provide", "spacing", "numBullets")
     
     def test_radial_mismatched_spacing_and_numbullets_rejected(self):
         """spacing and numBullets must be consistent"""
@@ -777,11 +835,12 @@ class TestInstantRadialValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="don't match"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=12, spacing=20  # 360/20 = 18, not 12
             )
+        assert_error(exc, "don't match")
     
     def test_radial_non_factor_of_360_spacing_rejected(self):
         """Spacing must be a factor of 360"""
@@ -790,11 +849,12 @@ class TestInstantRadialValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="factor of 360"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 spacing=7  # 7 is not a factor of 360
             )
+        assert_error(exc, "factor of 360", "7")
     
     def test_radial_non_factor_of_360_numbullets_rejected(self):
         """numBullets must be a factor of 360"""
@@ -803,11 +863,12 @@ class TestInstantRadialValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="factor of 360"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 numBullets=7  # 7 is not a factor of 360
             )
+        assert_error(exc, "factor of 360")
 
 
 # ============================================================================
@@ -823,11 +884,12 @@ class TestInstantLineValidation:
         comp.Toggle(0, enums.EMPTY_BULLET, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="fastestTime must be a positive"):
+        with pytest.raises(ValueError) as exc: 
             caller.instant.Line(
                 time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
                 numBullets=5, fastestTime=0, slowestTime=2.0, dist=100
             )
+        assert_error(exc, "positive", "0")
     
     def test_line_slowest_not_greater_than_fastest_rejected(self):
         """slowestTime must be greater than fastestTime"""
@@ -835,11 +897,12 @@ class TestInstantLineValidation:
         comp.Toggle(0, enums.EMPTY_BULLET, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="slowestTime.*must be greater than fastestTime"):
+        with pytest.raises(ValueError) as exc: 
             caller.instant.Line(
                 time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
                 numBullets=5, fastestTime=2.0, slowestTime=1.0, dist=100
             )
+        assert_error(exc, "greater than", "2.0", "1.0")
     
     def test_line_too_few_bullets_rejected(self):
         """numBullets must be at least 3"""
@@ -847,11 +910,12 @@ class TestInstantLineValidation:
         comp.Toggle(0, enums.EMPTY_BULLET, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="numBullets must be at least 3"):
+        with pytest.raises(ValueError) as exc:
             caller.instant.Line(
                 time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
                 numBullets=2, fastestTime=0.5, slowestTime=2.0, dist=100
             )
+        assert_error(exc, "numBullets must be at least 3")
 
 
 # ============================================================================
@@ -868,11 +932,12 @@ class TestTimedRadialWaveValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="waves must be at least 1"):
+        with pytest.raises(ValueError) as exc:
             caller.timed.RadialWave(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 waves=0, numBullets=12
             )
+        assert_error(exc, "waves must be at least 1")
     
     def test_radial_wave_single_wave_rejected(self):
         """Single wave should use instant.Radial instead"""
@@ -881,11 +946,12 @@ class TestTimedRadialWaveValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="use instant.Radial"):
+        with pytest.raises(ValueError) as exc:
             caller.timed.RadialWave(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 waves=1, numBullets=12
             )
+        assert_error(exc, "use instant.Radial")
     
     def test_radial_wave_negative_interval_rejected(self):
         """interval must be non-negative"""
@@ -894,11 +960,12 @@ class TestTimedRadialWaveValidation:
         comp.Toggle(0, enums.EMPTY_TARGET_GROUP, activateGroup=True)
         
         caller = Component("Caller", 200)
-        with pytest.raises(ValueError, match="interval must be non-negative"):
+        with pytest.raises(ValueError) as exc: 
             caller.timed.RadialWave(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
                 waves=3, interval=-0.5, numBullets=12
             )
+        assert_error(exc, "non-negative", "-0.5")
 
 
 class TestTimedLineValidation:

@@ -7,6 +7,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 """
 
 from __future__ import annotations
+from dataclasses import dataclass
 from typing import Any, NamedTuple
 
 from touhou_scs import enums as enum, lib, utils as util
@@ -27,6 +28,50 @@ class ScaleSettings(NamedTuple):
     reverse: bool
 
 scale_keyframes: dict[ScaleSettings, Component] = {}
+
+@dataclass
+class ValidateParams:
+    """Validates any given common trigger parameters."""
+    positive: float | int | list[float | int] | None = None
+    non_negative: float | int | list[float | int] | None = None
+    targets: int | list[int] | None = None
+    type: int | None = None
+    rate: float | None = None
+    factor: float | None = None
+    item_id: int | None = None
+    
+    def __post_init__(self):
+        # flatten single values to lists
+        if isinstance(self.positive, (int, float)):
+            self.positive = [self.positive]
+        if isinstance(self.non_negative, (int, float)):
+            self.non_negative = [self.non_negative]
+        if isinstance(self.targets, int):
+            self.targets = [self.targets]
+        
+        if self.positive is not None:
+            if (values := list(filter(lambda n: n <= 0, self.positive))):
+                raise ValueError(f"Values must be positive (>0). Got: {values}")
+        if self.non_negative is not None:
+            if (values := list(filter(lambda n: n < 0, self.non_negative))):
+                raise ValueError(f"Values must be non-negative (>=0). Got: {values}")
+        if self.targets is not None:
+            for g in self.targets:
+                if _RESTRICTED_LOOKUP.get(g):
+                    raise ValueError(f"Group '{g}' is restricted.")
+                c = util.unknown_g.counter
+                if not (0 < g <= (c)):
+                    raise ValueError(f"Group '{g}' is out of valid range 0-{c}.")
+        if self.type is not None and (not (0 <= self.type <= 18) or not self.type.is_integer()):
+            raise ValueError(f"Easing 'type' must be an int in range 0-18. Got: {self.type}")
+        if self.rate is not None and not (0.10 < self.rate <= 20.0):
+            raise ValueError(f"Easing 'rate' must be in range 0.10-20.0, Got: {self.rate}")
+        if self.factor is not None and self.factor <= 0:
+            raise ValueError(f"Factor must be >0. Got: {self.factor}")
+        if self.factor == 1:
+            raise ValueError("Factor of multiplying/dividing by 1 has no effect")
+        if self.item_id is not None and not (1 <= self.item_id <= 9999):
+            raise ValueError(f"Item ID must be a positive int in range 1-9999. Got: {self.item_id}")
 
 class Component:
     """
@@ -92,28 +137,6 @@ class Component:
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,
         })
-        
-    def _validate_params(self, *, 
-        t:Any = None, center:Any = None, target:Any = None, 
-        type:Any = None, rate:Any = None, factor:Any = None):
-        """Value check common trigger parameters"""
-
-        if t is not None and t < 0:
-            raise ValueError(f"Duration 't' must be non-negative. Received: {t}")
-        if center is not None and _RESTRICTED_LOOKUP.get(center):
-            raise ValueError(f"Center group '{center}' is restricted.")
-        if center is not None and not (0 < center <= util.unknown_g.counter):
-            raise ValueError(f"Target group '{center}' is out of valid range.")
-        if target is not None and _RESTRICTED_LOOKUP.get(target):
-            raise ValueError(f"Target group '{target}' is restricted.")
-        if target is not None and not (0 < target <= util.unknown_g.counter):
-            raise ValueError(f"Target group '{target}' is out of valid range.")
-        if type is not None and (not (0 <= type <= 18) or not type.is_integer()):
-            raise ValueError("Easing 'type' must be an integer between 0 and 18")
-        if rate is not None and not (0.10 < rate <= 20.0):
-            raise ValueError(f"Easing 'rate' must be between 0.10 and 20.0, Got: {rate}")
-        if factor is not None and factor <= 0:
-            raise ValueError(f"Scale 'factor' must be > 0. Got: {factor}")
     
     def assert_spawn_order(self, required: bool):
         """Set component spawn order requirement."""
@@ -194,14 +217,13 @@ class Component:
         Optional: remap string, spawnDelay
         """
         target = target.groups[0] if isinstance(target, Component) else target
-        self._validate_params(target=target)
+        ValidateParams(targets=target, non_negative=delay)
         
         trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
         
         if spawnOrdered: trigger[ppt.SPAWN_ORDERED] = True
         if delay > 0: trigger[ppt.SPAWN_DELAY] = delay
-        if remap: # cleans/validates remaps
-            _, trigger[ppt.REMAP_STRING] = util.translate_remap_string(remap)
+        if remap: _, trigger[ppt.REMAP_STRING] = util.translate_remap_string(remap)
         
         self.triggers.append(trigger)
         return self
@@ -214,7 +236,7 @@ class Component:
         (collision triggers might be different)
         """
         target = target.groups[0] if isinstance(target, Component) else target
-        self._validate_params(target=target)
+        ValidateParams(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
@@ -230,7 +252,7 @@ class Component:
         
         Optional: type, rate, dynamic, center of target
         """
-        self._validate_params(t=t, target=targetDir, type=type, rate=rate)
+        ValidateParams(targets=[target, targetDir], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -258,7 +280,7 @@ class Component:
         
         Optional: fadeIn, t, fadeOut
         """
-        self._validate_params(t=t, target=target)
+        ValidateParams(non_negative=[fadeIn, t, fadeOut], targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), target)
 
@@ -282,7 +304,7 @@ class Component:
         
         Optional: t, type, rate
         """
-        self._validate_params(t=t, target=target, type=type, rate=rate)
+        ValidateParams(targets=target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -305,7 +327,7 @@ class Component:
         
         Optional: t, type, rate
         """
-        self._validate_params(t=t, target=target, type=type, rate=rate)
+        ValidateParams(targets=[target, location], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
         
@@ -331,7 +353,7 @@ class Component:
         Optional: center (defaults to target), t, type, rate
         """
         if center is None: center = target
-        self._validate_params(t=t, target=target, center=center, type=type, rate=rate)
+        ValidateParams(targets=[target, center], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
@@ -352,7 +374,7 @@ class Component:
         
         Optional: t, type, rate
         """
-        self._validate_params(t=t, target=target, type=type, rate=rate)
+        ValidateParams(targets=target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
         
@@ -383,11 +405,8 @@ class Component:
         Reverse mode: Start at full size and scale down (doesnt use hold)
         Optional: t, hold, type, rate, reverse
         """
-        self._validate_params(t=t, target=target, type=type, rate=rate)
-        self._validate_params(t=hold, factor=factor)
+        ValidateParams(targets=target, factor=factor, non_negative=[t, hold], type=type, rate=rate)
         
-        if factor == 1.0:
-            raise ValueError("Scale: Given factor is 1.0 (no scale change)")
         if hold and reverse:
             warn("Scale: 'hold' time is ignored in reverse mode: "
                 "(no need to hold if it goes to original scale)")
@@ -452,7 +471,7 @@ class Component:
         
         Optional: t (duration)
         """
-        self._validate_params(t=t, target=target)
+        ValidateParams(targets=target, non_negative=t)
         
         trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
         
@@ -468,7 +487,7 @@ class Component:
         
         Optional: t (duration)
         """
-        self._validate_params(t=t, target=target)
+        ValidateParams(targets=target, non_negative=t)
         if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
         
@@ -482,7 +501,7 @@ class Component:
     
     def _stop_trigger_common(self, time: float, target: int, option: int, useControlID: bool):
         """Common logic for Stop, Pause, Resume triggers (internal use, made bc DRY principle)"""
-        self._validate_params(target=target)
+        ValidateParams(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
         
@@ -525,7 +544,7 @@ class Component:
         
         Optional: activateGroup
         """
-        self._validate_params(target=target)
+        ValidateParams(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), target)
         
@@ -539,10 +558,7 @@ class Component:
     
     def Count(self, time: float, target: int, *, item_id: int, count: int, activateGroup: bool):
         """Activate target when item count is reached for item ID."""
-        self._validate_params(target=target)
-        
-        if not (0 < item_id <= 9999):
-                raise ValueError("Count: Item ID must be positive integer")
+        ValidateParams(targets=target, item_id=item_id)
         
         trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), target)
         
@@ -556,12 +572,9 @@ class Component:
     
     def Pickup(self, time: float, *, item_id: int, count: int, override: bool):
         """Change an Item ID value by 'count' amount, or set to amount w/ 'override'"""
+        ValidateParams(item_id=item_id)
         
-        
-        if count == 0: 
-            raise ValueError("Pickup: Count is 0 (no change)")
-        if not (0 < item_id <= 9999):
-            raise ValueError("Pickup: Item ID must be positive integer")
+        if count == 0: raise ValueError("Pickup: Count is 0 (no change)")
 
         trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
         
@@ -577,18 +590,15 @@ class Component:
     def PickupModify(self, time: float, *, item_id: int, factor: float,
         multiply: bool = False, divide: bool = False):
         """Multiply/divide an Item ID value by 'factor' amount"""
+        ValidateParams(item_id=item_id, factor=factor)
         
-        mode = 1 if multiply else 2 if divide else 0
-
-        if not (0 < item_id <= 9999):
-            raise ValueError("PickupModify: Item ID must be positive integer")
-        if mode == 0:
-            raise ValueError("PickupModify: must specify multiply=True or divide=True")
-        if factor == 1:
-            raise ValueError("PickupModify: multiplying/dividing by 1 has no effect")
         if multiply and divide:
             raise ValueError("PickupModify: cannot both multiply and divide")
-
+        if not multiply and not divide:
+            raise ValueError("PickupModify: must specify multiply=True or divide=True")
+        
+        mode = 1 if multiply else 2 # multiply=1, divide=2
+        
         trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
         
         del trigger[ppt.TARGET] # type: ignore
@@ -688,6 +698,7 @@ class InstantPatterns:
         Component must use EMPTY_BULLET and EMPTY_TARGET_GROUP. \n
         Optional: centerAt
         """
+        IA = "Instant Arc:"
         
         util.enforce_component_targets("Instant Arc", comp,
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
@@ -697,22 +708,22 @@ class InstantPatterns:
         # Arc logic checks
         if not radialBypass:
             if numBullets % 2 != 0 and not centerAt.is_integer():
-                raise ValueError("Arc: odd bullets requires integer centerAt")
+                raise ValueError(f"{IA} odd bullets requires integer centerAt")
             if numBullets % 2 == 0 and spacing % 2 != 0 and centerAt.is_integer():
-                raise ValueError("Arc: even bullets with odd spacing requires .5 centerAt")
+                raise ValueError(f"{IA} even bullets with odd spacing requires .5 centerAt")
             if numBullets % 2 == 0 and spacing % 2 == 0 and not centerAt.is_integer():
-                raise ValueError("Arc: even bullets with even spacing requires integer centerAt")
+                raise ValueError(f"{IA} even bullets with even spacing requires integer centerAt")
         # data restriction checks
         if not centerAt.is_integer() and not (centerAt * 2).is_integer():
-            raise ValueError("Arc: centerAt must be an integer or integer.5")
+            raise ValueError(f"{IA} centerAt must be an integer or integer.5")
         if not (1 <= spacing <= 360):
-            raise ValueError("Arc: spacing must be between 1 and 360 degrees")
+            raise ValueError(f"{IA} spacing must be between 1 and 360 degrees")
         if not (1 <= numBullets <= 360):
-            raise ValueError("Arc: numBullets must be between 1 and 360")
+            raise ValueError(f"{IA} numBullets must be between 1 and 360")
         if numBullets * spacing > 360:
-            raise ValueError(f"Arc: numBullets {numBullets} times spacing {spacing} exceeds 360°")
+            raise ValueError(f"{IA} numBullets {numBullets} times spacing {spacing} exceeds 360°")
         if numBullets * spacing == 360 and not radialBypass:
-            warn(f"Arc: numBullets {numBullets} times spacing {spacing} is 360°, making a circle. \nFIX: Use instant.Radial() instead")
+            warn(f"{IA} numBullets {numBullets} times spacing {spacing} is 360°, making a circle. \nFIX: Use instant.Radial() instead")
         
         # Calculate Arc positioning
         arclength = (numBullets - 1) * spacing
@@ -720,8 +731,8 @@ class InstantPatterns:
         startpos = 0
         if radialBypass: startpos = centerAt
         else: startpos = centerAt - arclength / 2
-        if not startpos.is_integer():
-            raise ValueError(f"Arc: Internal error! startpos {startpos} not an integer. centerAt={centerAt}, arclength={arclength}")
+        assert startpos.is_integer(), \
+            f"FATAL: startpos {startpos} not int. centerAt={centerAt}, arclength={arclength}"
         
         # normalize startpos to [0, 360) range
         startpos = startpos % 360
@@ -768,26 +779,26 @@ class InstantPatterns:
         Component must use EMPTY_BULLET and EMPTY_TARGET_GROUP.  \n
         Optional: spacing or numBullets, centerAt
         """
-        
-        util.enforce_component_targets("Instant Radial",comp,
+        IR = "Instant Radial:"
+        util.enforce_component_targets(IR,comp,
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
             excludes={enum.EMPTY_MULTITARGET}
         )
         
         if spacing and numBullets:
             if numBullets != int(360 / spacing):
-                raise ValueError("Radial: spacing and numBullets don't match!\n\n"+
-                f"(numOfBullets should be {int(360 / spacing)}, \n" +
-                f"or spacing should be {int(360 / numBullets)}, \n\n" +
-                "or just use one or the other")
+                raise ValueError(f"{IR} spacing and numBullets don't match!\n\n"
+                f"(numOfBullets should be {int(360 / spacing)}, \n"
+                f"or spacing should be {int(360 / numBullets)}, \n\n"
+                f"or just use one or the other)")
         elif spacing: numBullets = int(360 / spacing)
         elif numBullets: spacing = int(360 / numBullets)
-        else: raise ValueError("Radial: must provide either spacing or numBullets")
+        else: raise ValueError(f"{IR} must provide either spacing or numBullets")
 
         if 360 % spacing != 0:
-            raise ValueError(f"Radial: spacing must be a factor of 360 for perfect circles. Received: {spacing}")
+            raise ValueError(f"{IR} spacing must be a factor of 360 for perfect circles. Received: {spacing}")
         elif 360 % numBullets != 0:
-            raise ValueError(f"Radial: numBullets must be a factor of 360 for perfect circles. Received: {numBullets}")
+            raise ValueError(f"{IR} numBullets must be a factor of 360 for perfect circles. Received: {numBullets}")
             
         self.Arc(time, comp, gc, bullet, 
             numBullets=numBullets, spacing=spacing, centerAt=centerAt, radialBypass=True)
@@ -803,24 +814,22 @@ class InstantPatterns:
         
         Optional: type, rate
         """
+        ValidateParams(positive=[fastestTime, slowestTime], type=type, rate=rate)
+        IL = "Instant.Line:"
         
-        util.enforce_component_targets("Instant Line", comp,
+        util.enforce_component_targets(IL, comp,
             requires={ enum.EMPTY_BULLET },
             excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
                 enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
         )
         
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
-            warn("Instant.Line: Bullet has orientation enabled, but component has no PointToGroup trigger. Bullets may not face the correct direction.")
+            warn(f"{IL} Bullet has orientation enabled, but component has no PointToGroup trigger. Bullets may not face the correct direction.")
         
-        if fastestTime <= 0:
-            raise ValueError(f"Instant.Line: fastestTime must be a positive number. Received: {fastestTime}")
-        if slowestTime <= 0:
-            raise ValueError(f"Instant.Line: slowestTime must be a positive number. Received: {slowestTime}")
-        if slowestTime <= fastestTime:
-            raise ValueError(f"Instant.Line: slowestTime {slowestTime} must be greater than fastestTime {fastestTime}")
+        if fastestTime >= slowestTime:
+            raise ValueError(f"{IL} slowestTime {slowestTime} must be greater than fastestTime {fastestTime}")
         if numBullets < 3:
-            raise ValueError("Instant.Line: numBullets must be at least 3")
+            raise ValueError(f"{IL} numBullets must be at least 3. Got: {numBullets}")
         
         bullet_groups: list[int] = []
         mt_comps = Multitarget.get_binary_components(numBullets, comp)
@@ -873,12 +882,13 @@ class TimedPatterns:
         
         Optional: spacing or numBullets, centerAt
         """
+        RW = "RadialWave:"
         if waves < 1:
-            raise ValueError("RadialWave: waves must be at least 1")
+            raise ValueError(f"{RW} waves must be at least 1. Got: {waves}")
         elif waves == 1:
-            raise ValueError("RadialWave: for single wave, use instant.Radial() instead")
+            raise ValueError(f"{RW} for single wave, use instant.Radial() instead")
         if interval < 0:
-            raise ValueError("RadialWave: interval must be non-negative")
+            raise ValueError(f"{RW} interval must be non-negative. Got: {interval}")
         
         for wave_number in range(waves):
             self._component.instant.Radial(
@@ -895,21 +905,23 @@ class TimedPatterns:
         
         Optional: type, rate
         """
-        util.enforce_component_targets("Instant Line", comp,
+        TL = "Timed.Line:"
+        
+        util.enforce_component_targets(TL, comp,
             requires={ enum.EMPTY_BULLET },
             excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
                 enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
         )
         
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
-            warn("Timed.Line: Bullet has orientation enabled, but component has no PointToGroup triggers. Bullets may not face the correct direction.")
+            warn(f"{TL} Bullet has orientation enabled, but component has no PointToGroup triggers. Bullets may not face the correct direction.")
         
         if numBullets < 2:
-            raise ValueError("Timed.Line: numBullets must be at least 2")
+            raise ValueError(f"{TL} numBullets must be at least 2. Got: {numBullets}")
         if spacing < 0:
-            raise ValueError("Timed.Line: spacing must be non-negative")
+            raise ValueError(f"{TL} spacing must be non-negative. Got: {spacing}")
         if t < 0:
-            raise ValueError("Timed.Line: t must be non-negative")
+            raise ValueError(f"{TL} t must be non-negative. Got: {t}")
         
         for i in range(0, numBullets):
             b, _ = bullet.next()

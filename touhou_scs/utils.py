@@ -28,10 +28,8 @@ def calltracker(func: Callable[..., Any]) -> CallTracked:
     """Decorator that assigns func.has_been_called. Does not track call count."""
     return CallTracked(func)
 
-def warn(message: str):
-    print("\u001B[33m")
-    warnings.warn("\n" + message, stacklevel=2)
-    print("\u001B[0m")
+def warn(message: str, *, stacklevel: int = 3):
+    warnings.warn("\u001B[33m\n" + message + "\u001B[0m", stacklevel=stacklevel)
 
 def time_to_dist(time: float) -> float:
     """
