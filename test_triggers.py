@@ -803,7 +803,7 @@ class TestInstantArcValidation:
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
                 time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
-                numBullets=5, spacing=30, centerAt=45.3, radialBypass=True  # bypass arc logic to hit generic check
+                numBullets=5, spacing=30, centerAt=45.3, _radialBypass=True  # bypass arc logic to hit generic check
             )
         assert_error(exc, "centerAt must be an integer or integer.5")
 

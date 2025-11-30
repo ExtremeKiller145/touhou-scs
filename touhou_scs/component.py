@@ -7,7 +7,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 """
 
 from __future__ import annotations
-from typing import Any, NamedTuple, Self
+from typing import Any, Callable, NamedTuple, Self
 
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.utils import warn
@@ -545,7 +545,7 @@ class Multitarget:
     _binary_bases: dict[int, Component] = {}
     
     @classmethod
-    def get_binary_components(cls, num_targets: int, comp: Component) -> list[Component]:
+    def _get_binary_components(cls, num_targets: int, comp: Component) -> list[Component]:
         """Get the binary components needed to represent num_of_targets."""
         
         for trigger in comp.triggers:
@@ -588,6 +588,30 @@ class Multitarget:
         max_targets: int = 2 ** len(cls._powers) - 1
         print(f"Multitarget: Initialized {len(cls._powers)} binary components, {max_targets} targets supported)")
         cls._initialized = True
+    
+    @classmethod
+    def spawn_with_remap(cls, caller: Component, time: float, num_targets: int, comp: Component,
+        remap_callback: Callable[[dict[int, int], util.Remap], None]
+    ) -> None:
+        """
+        Spawn binary components with custom remap logic via callback.
+        
+        caller: Component that will spawn the multitarget components
+        comp: Component that will be called multiple times
+        remap_callback: Function that receives (remap_pairs, remap_builder)
+         and should call remap_builder.pair() to map sources to actual resources.
+        """
+        for mt_comp in cls._get_binary_components(num_targets, comp):
+            remap = util.Remap()
+            for spawn_trigger in mt_comp.triggers:
+                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
+                assert remap_string is not None
+                remap_pairs, _ = util.translate_remap_string(remap_string)
+                
+                remap_callback(remap_pairs, remap)
+            
+            remap.pair(enum.EMPTY_MULTITARGET, comp.groups[0])
+            caller.Spawn(time, mt_comp.groups[0], False, remap=remap.build())
 
 
 # ===========================================================
@@ -603,7 +627,7 @@ class InstantPatterns:
     
     def Arc(self, time: float, comp: Component, 
         gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
-        numBullets: int, spacing: int, centerAt: float = 0, radialBypass: bool = False):
+        numBullets: int, spacing: int, centerAt: float = 0, _radialBypass: bool = False):
         """
         Arc pattern - partial circle of bullets
         
@@ -618,7 +642,7 @@ class InstantPatterns:
         )
         
         # Arc logic checks
-        if not radialBypass:
+        if not _radialBypass:
             if numBullets % 2 != 0 and not centerAt.is_integer():
                 raise ValueError(f"{IA} odd bullets requires integer centerAt")
             if numBullets % 2 == 0 and spacing % 2 != 0 and centerAt.is_integer():
@@ -634,14 +658,14 @@ class InstantPatterns:
             raise ValueError(f"{IA} numBullets must be between 1 and 360")
         if numBullets * spacing > 360:
             raise ValueError(f"{IA} numBullets {numBullets} times spacing {spacing} exceeds 360°")
-        if numBullets * spacing == 360 and not radialBypass:
+        if numBullets * spacing == 360 and not _radialBypass:
             warn(f"{IA} numBullets {numBullets} times spacing {spacing} is 360°, making a circle. \nFIX: Use instant.Radial() instead")
         
         # Calculate Arc positioning
         arclength = (numBullets - 1) * spacing
         
         startpos = 0
-        if radialBypass: startpos = centerAt
+        if _radialBypass: startpos = centerAt
         else: startpos = centerAt - arclength / 2
         assert startpos.is_integer(), \
             f"FATAL: startpos {startpos} not int. centerAt={centerAt}, arclength={arclength}"
@@ -650,34 +674,25 @@ class InstantPatterns:
         startpos = startpos % 360
         if startpos < 0: startpos += 360
         
-        comps = Multitarget.get_binary_components(numBullets, comp)
-        
         bulletPos = int(startpos)
-        for mt_comp in comps:
-            remap = util.Remap()
+        
+        def remap_arc(remap_pairs: dict[int, int], remap: util.Remap):
+            nonlocal bulletPos
+            for source, target in remap_pairs.items():
+                if source == enum.EMPTY_BULLET:
+                    bullet_group, _ = bullet.next()
+                    remap.pair(target, bullet_group)
+                elif source == enum.EMPTY_TARGET_GROUP:
+                    # Convert 0-359 range to 1-360 for GuiderCircle indexing
+                    angle_index = bulletPos if bulletPos > 0 else 360
+                    remap.pair(target, gc.groups[angle_index])
+                else:
+                    remap.pair(target, enum.EMPTY_MULTITARGET)
             
-            for spawn_trigger in mt_comp.triggers:
-                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
-                assert remap_string is not None # to appease type checker
-                
-                remap_pairs, _ = util.translate_remap_string(remap_string)
-                
-                for source, target in remap_pairs.items():
-                    if source == enum.EMPTY_BULLET:
-                        bullet_group, _ = bullet.next()
-                        remap.pair(target, bullet_group)
-                    elif source == enum.EMPTY_TARGET_GROUP:
-                        # Convert 0-359 range to 1-360 for GuiderCircle indexing
-                        angle_index = bulletPos if bulletPos > 0 else 360
-                        remap.pair(target, gc.groups[angle_index])
-                    else:
-                        remap.pair(target, enum.EMPTY_MULTITARGET)
-                
-                bulletPos += spacing
-                if bulletPos >= 360: bulletPos -= 360
-            
-            remap.pair(enum.EMPTY_MULTITARGET, comp.groups[0]) # final remap
-            self._component.Spawn(time, mt_comp.groups[0], False, remap=remap.build())
+            bulletPos += spacing
+            if bulletPos >= 360: bulletPos -= 360
+        
+        Multitarget.spawn_with_remap(self._component, time, numBullets, comp, remap_arc)
         
         return self._component
     
@@ -713,7 +728,7 @@ class InstantPatterns:
             raise ValueError(f"{IR} numBullets must be a factor of 360 for perfect circles. Received: {numBullets}")
             
         self.Arc(time, comp, gc, bullet, 
-            numBullets=numBullets, spacing=spacing, centerAt=centerAt, radialBypass=True)
+            numBullets=numBullets, spacing=spacing, centerAt=centerAt, _radialBypass=True)
         
         return self._component
     
@@ -744,24 +759,17 @@ class InstantPatterns:
             raise ValueError(f"{IL} numBullets must be at least 3. Got: {numBullets}")
         
         bullet_groups: list[int] = []
-        mt_comps = Multitarget.get_binary_components(numBullets, comp)
-        for mt_comp in mt_comps:
-            remap = util.Remap()
-            for spawn_trigger in mt_comp.triggers:
-                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
-                assert remap_string is not None # to appease type checker
-                
-                remap_pairs, _ = util.translate_remap_string(remap_string)
-                for source, target in remap_pairs.items():
-                    if source == enum.EMPTY_BULLET:
-                        bullet_group, _ = bullet.next()
-                        bullet_groups.append(bullet_group)
-                        remap.pair(target, bullet_group)
-                    else:
-                        remap.pair(target, enum.EMPTY_MULTITARGET) # any empty works
-            
-            remap.pair(enum.EMPTY_MULTITARGET, comp.groups[0])
-            self._component.Spawn(time, mt_comp.groups[0], False, remap=remap.build())
+        
+        def remap_line(remap_pairs: dict[int, int], remap: util.Remap):
+            for source, target in remap_pairs.items():
+                if source == enum.EMPTY_BULLET:
+                    bullet_group, _ = bullet.next()
+                    bullet_groups.append(bullet_group)
+                    remap.pair(target, bullet_group)
+                else:
+                    remap.pair(target, enum.EMPTY_MULTITARGET)
+        
+        Multitarget.spawn_with_remap(self._component, time, numBullets, comp, remap_line)
         
         step = (slowestTime - fastestTime) / (numBullets - 1)
         for i, bullet_group in enumerate(bullet_groups):

@@ -43,23 +43,14 @@ def add_disable_all_bullets():
     while remaining > 0:
         batch_size = 64 if remaining > 127 else remaining
         
-        comps = Multitarget.get_binary_components(batch_size, single)
-        for mt_comp in comps:
-            remap = util.Remap()
-            for spawn_trigger in mt_comp.triggers:
-                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
-                if not isinstance(remap_string, str): continue
-                
-                remap_pairs, _ = util.translate_remap_string(remap_string)
-                for source, target in remap_pairs.items():
-                    if source == enum.EMPTY_BULLET:
-                        remap.pair(target, next(bullet_iter))
-                    else:
-                        remap.pair(target, enum.EMPTY_MULTITARGET)
-            
-            remap.pair(enum.EMPTY_MULTITARGET, single.groups[0])
-            comp.Spawn(0, mt_comp.groups[0], False, remap=remap.build())
+        def remap_disable(remap_pairs: dict[int, int], remap: util.Remap):
+            for source, target in remap_pairs.items():
+                if source == enum.EMPTY_BULLET:
+                    remap.pair(target, next(bullet_iter))
+                else:
+                    remap.pair(target, enum.EMPTY_MULTITARGET)
         
+        Multitarget.spawn_with_remap(comp, 0, batch_size, single, remap_disable)
         remaining -= batch_size
     
 
