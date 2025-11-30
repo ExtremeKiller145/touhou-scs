@@ -25,3 +25,6 @@ reportExplicitAny = "none" # Allow explicit any types
 
 [tool.ruff.lint]
 ignore = ["E701"] # Ignore multiple statements on one line
+
+[tool.pytest.ini_options]
+addopts = "-qv"

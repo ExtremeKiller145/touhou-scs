@@ -25,8 +25,8 @@ _start_time = time.time()
 DEFAULT_TRIGGER_AREA: TriggerArea = {
     "min_x": 1350,
     "min_y": 1300,
-    "max_x": 7000,
-    "max_y": 3500
+    "max_x": 6000,
+    "max_y": 2500
 }
 
 class Spell:
@@ -105,7 +105,7 @@ bullet2 = BulletPool(1501, 2200, False)
 bullet3 = BulletPool(2901, 3600, False)
 bullet4 = BulletPool(4301, 4700, False)
 
-reimuA_level1 = BulletPool(111,128, True)
+reimuA_level1 = BulletPool(110, 128, True)
 
 def get_all_components() -> list[ComponentProtocol]: return all_components
 
@@ -386,6 +386,10 @@ def save_all(*,
     ppt = enum.Properties # shorthand
     
     for comp in all_components:
+        if comp.requireSpawnOrder is None:
+            warn(f"Component '{comp.name}' has no spawn order requirement set; defaulting to False")
+            comp.assert_spawn_order(False)
+        
         if len(comp.triggers) == 0:
             warn(f"Component {comp.name} has no triggers")
             continue
@@ -413,6 +417,8 @@ def save_all(*,
     
     stats = _generate_statistics(object_budget)
     _print_budget_analysis(stats)
+    
+    if filename == "testing": return
     
     with open(filename, "wb") as file:
         file.write(orjson.dumps(output))

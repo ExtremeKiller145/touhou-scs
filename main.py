@@ -2,13 +2,13 @@ from touhou_scs import enums as e
 from touhou_scs import lib
 from touhou_scs.component import Component
 from touhou_scs.lib import rgb, save_all, HSB
-from touhou_scs.misc import add_disable_all_bullets, add_collisions
+from touhou_scs.misc import add_disable_all_bullets, add_enemy_collisions, add_plr_collisions
 from touhou_scs.utils import group, unknown_g
 
 if __name__ != "__main__":
     print("Don't import this! exiting.")
     exit()
-    
+
 c1 = lib.circle1
 
 # First bullet component - fades in, points to target, moves with pulse
@@ -98,7 +98,7 @@ test_line = (Component("TestLine", unknown_g(), 5)
         numBullets=15, fastestTime=1, slowestTime=4, dist=400)
 )
 
-
+add_enemy_collisions()
 add_disable_all_bullets()
-add_collisions()
+add_plr_collisions()
 save_all()

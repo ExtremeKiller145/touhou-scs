@@ -1,19 +1,17 @@
 
-
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.component import Component, Multitarget
-from touhou_scs.types import Trigger
 from touhou_scs.utils import unknown_g, calltracker
 
-
+# Hitbox is the weapon, hurtbox is the target
 BOUNDARY_HITBOX = 1
 PLR_HURTBOX = 2
-PLR_GRAZE_HITBOX = 3
+PLR_GRAZE_HURTBOX = 3
 BOMB_HITBOX = 4
 GRAZE_FUNCTION = 34
-PLR_HIT_FUNCTION = 35
-DESPAWN_FUNCTION = 27 #PLR_HIT calls despawn in level, BOMB_HIT calls directly in code
-ENEMY_HITBOX = 5
+PLR_HURT_FUNCTION = 35
+DESPAWN_FUNCTION = 27 #PLR_HURT calls despawn in level, BOMB_HURT calls directly in code
+ENEMY_HITBOX = 5 # shared for every enemy
 
 ppt = enum.Properties
 
@@ -55,104 +53,113 @@ def add_disable_all_bullets():
     
 
 @calltracker
-def add_collisions():
-    if add_collisions.has_been_called: 
+def add_plr_collisions():
+    if add_plr_collisions.has_been_called: 
         raise RuntimeError("Collisions have already been added")
     
-    cols = Component("Base Collisions (un-mapped)", 18, editorLayer=6)
-    cols.assert_spawn_order(False)
-    
-    cols.Collision(0, enum.EMPTY_BULLET, 
-        blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
-    
-    cols.Collision(0, GRAZE_FUNCTION, 
-        blockA=enum.EMPTY_BULLET, blockB=PLR_GRAZE_HITBOX, activateGroup=True)
-    
-    cols.Collision(0, DESPAWN_FUNCTION, 
-        blockA=enum.EMPTY_BULLET, blockB=BOMB_HITBOX, activateGroup=True)
-
-    cols.Collision(0, enum.EMPTY_BULLET, 
-        blockA=enum.EMPTY_BULLET, blockB=PLR_HURTBOX, activateGroup=True)
-    
-    def spawn(comp: Component, target: int, spawnOrdered: bool, *, remap: str):
-        """Specialized spawn trigger without validation"""
-        trig: Trigger = {
-            ppt.OBJ_ID: enum.ObjectID.SPAWN,
-            ppt.X: 0,
-            ppt.TARGET: target,
-            ppt.EDITOR_LAYER: 7,
-            ppt.SPAWN_TRIGGERED: True,
-            ppt.MULTI_TRIGGERED: True,
-            ppt.GROUPS: [comp.groups[0]],
-            ppt.REMAP_STRING: remap,
-            ppt.SPAWN_ORDERED: spawnOrdered,  
-        }
-        comp.triggers.append(trig)
-    
-    global_col = Component("Bullet Collision remap wrapper", 17, editorLayer=4) \
+    cols = (Component("Base Enemy's Bullet Collisions (un-mapped)", 18, editorLayer=6)
         .assert_spawn_order(False)
-
-    plr_hit_col = Component("Player Hit Collisions", unknown_g(), editorLayer=4) \
-        .assert_spawn_order(False)
+        .Collision(0, enum.EMPTY_BULLET, 
+            blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
+        .Collision(0, GRAZE_FUNCTION, 
+            blockA=enum.EMPTY_BULLET, blockB=PLR_GRAZE_HURTBOX, activateGroup=True)
+        .Collision(0, DESPAWN_FUNCTION, 
+            blockA=enum.EMPTY_BULLET, blockB=BOMB_HITBOX, activateGroup=True)
+        .Collision(0, enum.EMPTY_BULLET, 
+            blockA=enum.EMPTY_BULLET, blockB=PLR_HURTBOX, activateGroup=True)
+    )
     
-    def add_collision_trigger_remaps(bullet: lib.BulletPool):
-        min, max = bullet.min_group, bullet.max_group
+    placeholder = unknown_g() # never called, just fulfills comp param requirement
+    def add_collision_trigger_remaps(bullet: lib.BulletPool, name: str):
+        # Called on level startup
+        global_col = Component(f"[{name}]: Bullet Collision remap wrappers", 17, editorLayer=4) \
+            .assert_spawn_order(False)
+        # Each trigger in here is called individually, grouped for convenience/logging
+        plr_hit_col = Component(f"[{name}]: PlrHit Collisions", placeholder, editorLayer=4) \
+            .assert_spawn_order(False)
         
-        for bullet_hitbox in range(min, max + 1):
-            spawn(global_col, cols.groups[0], False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
-            
+        for bullet_hitbox in range(bullet.min_group, bullet.max_group+ 1):
+            # permanently turns on all collisions for each bullet (level calls it on startup)
+            global_col.Spawn(0, cols.groups[0], False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             # Give each bullet a spawn trigger that activates its own collisions
-            spawn(plr_hit_col, PLR_HIT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+            plr_hit_col.Spawn(0, PLR_HURT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             plr_hit_col.group_last_trigger(bullet_hitbox)
     
-    add_collision_trigger_remaps(lib.bullet1)
-    add_collision_trigger_remaps(lib.bullet2)
-    add_collision_trigger_remaps(lib.bullet3)
-    add_collision_trigger_remaps(lib.bullet4)
+    add_collision_trigger_remaps(lib.bullet1, "B1")
+    add_collision_trigger_remaps(lib.bullet2, "B2")
+    add_collision_trigger_remaps(lib.bullet3, "B3")
+    add_collision_trigger_remaps(lib.bullet4, "B4")
     
-    enemy_col = Component("Enemy Player Collisions", unknown_g(), editorLayer=7) \
+    (Component("Enemy-dmg-Player Collisions", 17, editorLayer=7)
         .assert_spawn_order(False)
-    
-    enemy_col.Collision(0, PLR_HIT_FUNCTION,
-        blockA=ENEMY_HITBOX, blockB=PLR_HURTBOX, activateGroup=True)
-    
-    plr_bullet_col = Component("Player's Bullet Collisions", unknown_g(), editorLayer=7)\
-        .assert_spawn_order(False)
-    
-    def add_plr_bullet_collision_remaps(bullet: lib.BulletPool, despawn_function: int):
-        min, max = bullet.min_group, bullet.max_group
-        
-        for bullet_hitbox in range(min, max + 1):
-            # Note: uses generic bullet despawn function instead of player or shottype-specific
-            spawn(plr_bullet_col, despawn_function, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
-    
-    add_plr_bullet_collision_remaps(lib.reimuA_level1, DESPAWN_FUNCTION)
-    
+        # WARNING: its using empties without remaps
+        # (since not remapping PLR_HIT_FUNCTION and therefore not remapping DESPAWN_FUNCTION)
+        .Collision(0, PLR_HURT_FUNCTION,
+            blockA=ENEMY_HITBOX, blockB=PLR_HURTBOX, activateGroup=True)
+        .Collision(0, GRAZE_FUNCTION,
+            blockA=ENEMY_HITBOX, blockB=PLR_GRAZE_HURTBOX, activateGroup=True)
+    )
 
-collision1 = (Component("Collision 1", unknown_g(), editorLayer=6)
+
+@calltracker
+def add_enemy_collisions():
+    """Does not include enemy damaging the player"""
+    if add_enemy_collisions.has_been_called:
+        raise RuntimeError("Enemy collision has already been added")
+    
+    def add(enemies: list[int], bullet: lib.BulletPool, enemyName: str, bulletName: str):
+        base_col = (Component(f"{enemyName} Collision for {bulletName} (un-mapped)", unknown_g(), editorLayer=6)
+            .assert_spawn_order(False)
+            .Collision(0, plr_bullet_despawn.groups[0], 
+                blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
+        )
+        
+        global_col = Component(f"{enemyName} Collision remap wrappers for {bulletName}", 17, editorLayer=4) \
+        
+        for enemy in enemies:
+            for b in range(bullet.min_group, bullet.max_group + 1):
+                global_col.Spawn(0, base_col.groups[0], False, 
+                    remap=f"{enum.EMPTY_BULLET}.{b}.{enum.EMPTY_TARGET_GROUP}.{enemy}")
+    
+    add(list(range(200, 210+1)), lib.reimuA_level1, "PlaceholderEnemies", "ReimuA_L1")
+
+despawn1 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
     .Scale(0, enum.EMPTY_BULLET, 
-        factor=0.25, hold=0, t=1, type=enum.Easing.ELASTIC_IN_OUT, rate=1)
+        factor=0.25, hold=0, t=1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.2)
     .Alpha(0, enum.EMPTY_BULLET, t=1, opacity=0)
     .Pulse(0, enum.EMPTY_BULLET, lib.rgb(0,0,0), t=1)
     .Alpha(1, enum.EMPTY_BULLET, t=0, opacity=100)
     .Toggle(1, enum.EMPTY_BULLET, False)
 )
 
-# collision2 = (Component("Collision 2", unknown_g(), editorLayer=6)
-#     .assert_spawn_order(True)
-#     .Scale(0, enum.EMPTY_BULLET, t=1, factor=0.25)
-#     .Alpha(0, enum.EMPTY_BULLET, t=1, opacity=0)
-#     .Scale(1, enum.EMPTY_BULLET, t=0, factor=0.25, divide=True)
-#     .Alpha(1, enum.EMPTY_BULLET, t=0, opacity=100)
-# )
+
+despawn2 = (Component("EnemyBullet Despawn 2", unknown_g(), editorLayer=6)
+    .assert_spawn_order(True)\
+    # Bullet despawn
+    .Scale(0, enum.EMPTY_BULLET,
+        factor=0.25, hold=0, t=0.1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
+    .Alpha(0, enum.EMPTY_BULLET, t=0.1, opacity=0)
+    .Pulse(0, enum.EMPTY_BULLET, lib.rgb(0,50,255), t=0.2, exclusive=True)
+    .Alpha(0.2, enum.EMPTY_BULLET, t=0, opacity=100)
+    .Toggle(0.2, enum.EMPTY_BULLET, False)
+)
+
+plr_bullet_despawn = (Component("PlrBullet Despawn List", unknown_g(), editorLayer=6)
+    .assert_spawn_order(False)
+    # To decrease enemy health & despawn the player bullet
+    .Pickup(0, item_id=enum.EMPTY_TARGET_GROUP, count=-1, override=False)
+    .Pulse(0, enum.EMPTY_TARGET_GROUP, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
+    .Spawn(0, despawn2.groups[0], True) # toggle this on/off same tick w/ unique group
+)
 
 
-despawn_function = Component("Despawn Function List", DESPAWN_FUNCTION, editorLayer=6)
+enemy_bullet_despawn = Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, editorLayer=6)
 
-(despawn_function
+(enemy_bullet_despawn
     .assert_spawn_order(False)
     # Note: if a collisionX component seems to be be spawning delayed, its a GD bug. reload level.
-    .Spawn(0, collision1.groups[0], True) # toggle this on/off same tick w/ unique group
+    .Spawn(0, despawn1.groups[0], True) # toggle this on/off same tick w/ unique group
+    # .group_last_trigger
     # .Spawn(0, collision2.groups[0], True)
 )

@@ -11,6 +11,7 @@ Philosophy: Tests should expose logic bugs and verify validation.
 - Skip trivial tests that just verify property assignment
 """
 
+import warnings
 import pytest
 from pytest import ExceptionInfo
 from touhou_scs.component import Component
@@ -24,6 +25,12 @@ def assert_error(exc_info: ExceptionInfo[BaseException], *patterns: str) -> None
         p = pattern.lower().replace(" ", "")
         assert p in msg_clean, f"Expected '{pattern}' in: {str(exc_info.value)}"
 
+def assert_warning(warning_list: list[warnings.WarningMessage], *patterns: str) -> None:
+    """Assert warning list contains all patterns."""
+    combined_msgs = " ".join(str(w.message).lower().replace(" ", "") for w in warning_list)
+    for pattern in patterns:
+        p = pattern.lower().replace(" ", "")
+        assert p in combined_msgs, f"Expected '{pattern}' in warnings."
 
 # ============================================================================
 # SPAWN TRIGGER - Target Group Validation
@@ -301,13 +308,19 @@ class TestScaleFactorValidation:
     def test_scale_factor_barely_above_one_valid(self):
         """Scale factor just above 1.0 is valid"""
         comp = Component("Test", 100)
-        comp.Scale(0, target=50, factor=1.0001, t=1.0)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            comp.Scale(0, target=50, factor=1.0001, t=1.0)
+            assert_warning(w, "hold", "0", "not in reverse")
         assert len(comp.triggers) == 1
     
     def test_scale_factor_barely_below_one_valid(self):
         """Scale factor just below 1.0 is valid"""
         comp = Component("Test", 100)
-        comp.Scale(0, target=50, factor=0.9999, t=1.0)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            comp.Scale(0, target=50, factor=0.9999, t=1.0)
+            assert_warning(w, "hold", "0", "not in reverse")
         assert len(comp.triggers) == 1
     
     def test_scale_hold_negative_rejected(self):
@@ -1075,9 +1088,9 @@ class TestMethodChainingReturnsSelf:
 # COMPONENT TARGET ACCEPTS COMPONENT OBJECTS
 # ============================================================================
 
-class TestComponentAsTarget:
-    """Test that methods accept Component objects as targets"""
+class TestGeneralComponentFeatures:
     
+    # Test that methods accept Component objects as targets
     def test_spawn_accepts_component(self):
         """Spawn can target a Component directly"""
         target_comp = Component("Target", 150)
@@ -1093,3 +1106,13 @@ class TestComponentAsTarget:
         comp.Toggle(0, target_comp, activateGroup=True)
         trigger = comp.triggers[0]
         assert trigger[enums.Properties.TARGET] == 150
+    
+    def test_component_without_spawn_order_warning(self):
+        """Component without requireSpawnOrder gives warning on export"""
+        comp = Component("Test", 100)
+        comp.Toggle(0, 50, activateGroup=True)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            lib.save_all(filename="testing")
+            assert_warning(w, "spawn order")

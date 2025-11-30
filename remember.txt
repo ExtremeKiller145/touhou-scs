@@ -31,21 +31,22 @@ Endboss: ??? (formerly called Nameless Entity)
 
 TODO:
 
+- Add basic Bombing (keybind + texture)
+
+- Add Item pickups (power, bomb, score)
+
+- Add proper enemy health/death system
+
 - Replace all number range restrictions with the cleaner (min < x < max) format
 
-- Optimization: Use Keyframe Anim's time-mod to possibly re-use keyframe components. This will depend on t/hold timing ratios.
-
-- Optimization: Make disableAllBullets component use Multitarget instead of per-bullet (to save on object count)
-
-- Make spawn trigger warn if spawning a component but not matching its assertSpawnOrder
+- Optimization: Use Keyframe Anim's time-mod or scale-mod to possibly re-use keyframe components. This will depend on t/hold timing or scaling ratios.
 
 - Formerly add and test enemy collision components in misc
 
 - Investigate why group field not being replaced for target groups 401 & 395 in main.js
 (theory: intentionally left out bc those fields should never have non-solid groups?)
 
-
-Better Trigger spread (not needed for a while)
+- Better Trigger spread (not needed for a while)
 
 
 Within lib.py:
