@@ -17,6 +17,7 @@ from pytest import ExceptionInfo
 from touhou_scs.component import Component
 from touhou_scs import enums, lib, utils
 
+P = enums.Properties
 
 def assert_error(exc_info: ExceptionInfo[BaseException], *patterns: str) -> None:
     """Assert exception message contains all patterns."""
@@ -58,7 +59,7 @@ class TestSpawnTargetValidation:
         comp = Component("Test", 100)
         comp.Spawn(0, 10, spawnOrdered=False)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.TARGET] == 10
+        assert trigger[P.TARGET] == 10
     
     def test_spawn_target_at_counter_valid(self):
         """Target at unknown_g.counter boundary is valid"""
@@ -66,7 +67,7 @@ class TestSpawnTargetValidation:
         max_valid = utils.unknown_g.counter
         comp.Spawn(0, max_valid, spawnOrdered=False)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.TARGET] == max_valid
+        assert trigger[P.TARGET] == max_valid
     
     def test_spawn_target_above_counter_rejected(self):
         """Target above unknown_g.counter is rejected"""
@@ -98,14 +99,14 @@ class TestSpawnDelayValidation:
         comp = Component("Test", 100)
         comp.Spawn(0, 50, spawnOrdered=False, delay=0)
         trigger = comp.triggers[0]
-        assert enums.Properties.SPAWN_DELAY not in trigger
+        assert P.SPAWN_DELAY not in trigger
     
     def test_spawn_positive_delay_stored(self):
         """Positive delay is stored"""
         comp = Component("Test", 100)
         comp.Spawn(0, 50, spawnOrdered=False, delay=0.5)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.SPAWN_DELAY] == 0.5
+        assert trigger[P.SPAWN_DELAY] == 0.5
 
 
 class TestSpawnRemapValidation:
@@ -116,7 +117,7 @@ class TestSpawnRemapValidation:
         comp = Component("Test", 100)
         comp.Spawn(0, 50, spawnOrdered=False, remap="")
         trigger = comp.triggers[0]
-        assert enums.Properties.REMAP_STRING not in trigger
+        assert P.REMAP_STRING not in trigger
     
     def test_spawn_remap_odd_pairs_rejected(self):
         """Odd number of remap values is rejected"""
@@ -159,14 +160,14 @@ class TestMoveEasingValidation:
         comp = Component("Test", 100)
         comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, type=0)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.EASING] == 0
+        assert trigger[P.EASING] == 0
     
     def test_easing_type_18_valid(self):
         """Easing type 18 (max) is valid"""
         comp = Component("Test", 100)
         comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, type=18)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.EASING] == 18
+        assert trigger[P.EASING] == 18
     
     def test_easing_rate_0_10_rejected(self):
         """Easing rate at 0.10 is rejected (must be > 0.10)"""
@@ -194,14 +195,14 @@ class TestMoveEasingValidation:
         comp = Component("Test", 100)
         comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, rate=20.0)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.EASING_RATE] == 20.0
+        assert trigger[P.EASING_RATE] == 20.0
     
     def test_easing_rate_just_above_0_10_valid(self):
         """Easing rate just above 0.10 is valid"""
         comp = Component("Test", 100)
         comp.MoveTowards(0, target=50, targetDir=60, t=1.0, dist=100, rate=0.11)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.EASING_RATE] == 0.11
+        assert trigger[P.EASING_RATE] == 0.11
     
     def test_easing_type_float_non_integer_rejected(self):
         """Easing type as non-integer float is rejected"""
@@ -226,14 +227,14 @@ class TestMoveDurationValidation:
         comp = Component("Test", 100)
         comp.MoveTowards(0, target=50, targetDir=60, t=0, dist=100)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.MOVE_SILENT] is True
+        assert trigger[P.MOVE_SILENT] is True
     
     def test_duration_positive_no_silent(self):
         """Positive duration doesn't set MOVE_SILENT flag"""
         comp = Component("Test", 100)
         comp.MoveTowards(0, target=50, targetDir=60, t=0.5, dist=100)
         trigger = comp.triggers[0]
-        assert enums.Properties.MOVE_SILENT not in trigger
+        assert P.MOVE_SILENT not in trigger
 
 
 # ============================================================================
@@ -262,21 +263,21 @@ class TestAlphaOpacityValidation:
         comp = Component("Test", 100)
         comp.Alpha(0, target=50, opacity=0)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.OPACITY] == 0.0
+        assert trigger[P.OPACITY] == 0.0
     
     def test_opacity_100_valid(self):
         """Opacity 100 (fully opaque) is valid"""
         comp = Component("Test", 100)
         comp.Alpha(0, target=50, opacity=100)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.OPACITY] == 1.0
+        assert trigger[P.OPACITY] == 1.0
     
     def test_opacity_converts_to_decimal(self):
         """Opacity 50 converts to 0.5"""
         comp = Component("Test", 100)
         comp.Alpha(0, target=50, opacity=50)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.OPACITY] == 0.5
+        assert trigger[P.OPACITY] == 0.5
 
 
 # ============================================================================
@@ -364,14 +365,14 @@ class TestCountItemIdValidation:
         comp = Component("Test", 100)
         comp.Count(0, 10, item_id=1, count=100, activateGroup=True)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.ITEM_ID] == 1
+        assert trigger[P.ITEM_ID] == 1
     
     def test_count_item_id_9999_valid(self):
         """Item ID 9999 (upper boundary) is valid"""
         comp = Component("Test", 100)
         comp.Count(0, 10, item_id=9999, count=100, activateGroup=True)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.ITEM_ID] == 9999
+        assert trigger[P.ITEM_ID] == 9999
 
 
 # ============================================================================
@@ -414,14 +415,14 @@ class TestPickupValidation:
         comp = Component("Test", 100)
         comp.Pickup(0, item_id=5, count=-50, override=False)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.PICKUP_COUNT] == -50
+        assert trigger[P.PICKUP_COUNT] == -50
     
     def test_pickup_no_target_property(self):
         """Pickup trigger should not have TARGET property"""
         comp = Component("Test", 100)
         comp.Pickup(0, item_id=5, count=50, override=False)
         trigger = comp.triggers[0]
-        assert enums.Properties.TARGET not in trigger
+        assert P.TARGET not in trigger
 
 
 # ============================================================================
@@ -478,21 +479,21 @@ class TestPickupModifyValidation:
         comp = Component("Test", 100)
         comp.PickupModify(0, item_id=5, factor=1.5, multiply=True)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.PICKUP_MULTIPLY_DIVIDE] == 1
+        assert trigger[P.PICKUP_MULTIPLY_DIVIDE] == 1
     
     def test_pickup_modify_divide_mode_value(self):
         """Divide mode sets PICKUP_MULTIPLY_DIVIDE to 2"""
         comp = Component("Test", 100)
         comp.PickupModify(0, item_id=5, factor=2.0, divide=True)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.PICKUP_MULTIPLY_DIVIDE] == 2
+        assert trigger[P.PICKUP_MULTIPLY_DIVIDE] == 2
     
     def test_pickup_modify_no_target_property(self):
         """PickupModify trigger should not have TARGET property"""
         comp = Component("Test", 100)
         comp.PickupModify(0, item_id=5, factor=1.5, multiply=True)
         trigger = comp.triggers[0]
-        assert enums.Properties.TARGET not in trigger
+        assert P.TARGET not in trigger
 
 
 # ============================================================================
@@ -521,15 +522,15 @@ class TestPointToGroupValidation:
         comp = Component("Test", 100)
         comp.PointToGroup(0, target=50, targetDir=60, dynamic=True)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.DYNAMIC] is True
+        assert trigger[P.DYNAMIC] is True
     
     def test_point_to_group_static_with_easing_valid(self):
         """Static mode with easing is valid"""
         comp = Component("Test", 100)
         comp.PointToGroup(0, target=50, targetDir=60, dynamic=False, type=3, rate=1.5)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.EASING] == 3
-        assert trigger[enums.Properties.EASING_RATE] == 1.5
+        assert trigger[P.EASING] == 3
+        assert trigger[P.EASING_RATE] == 1.5
 
 
 class TestRotateValidation:
@@ -540,15 +541,15 @@ class TestRotateValidation:
         comp = Component("Test", 100)
         comp.Rotate(0, target=50, angle=90)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.ROTATE_CENTER] == 50
+        assert trigger[P.ROTATE_CENTER] == 50
     
     def test_rotate_center_can_differ_from_target(self):
         """Center can be different from target"""
         comp = Component("Test", 100)
         comp.Rotate(0, target=50, angle=90, center=60)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.TARGET] == 50
-        assert trigger[enums.Properties.ROTATE_CENTER] == 60
+        assert trigger[P.TARGET] == 50
+        assert trigger[P.ROTATE_CENTER] == 60
     
     def test_rotate_restricted_center_rejected(self):
         """Restricted center group is rejected"""
@@ -571,7 +572,7 @@ class TestGroupContextManagement:
         comp.start_group_context(200)
         comp.Toggle(0, 50, activateGroup=True)
         trigger = comp.triggers[0]
-        assert 200 in trigger[enums.Properties.GROUPS]
+        assert 200 in trigger[P.GROUPS]
     
     def test_end_context_removes_context_groups(self):
         """Triggers after end_group_context exclude context groups"""
@@ -581,8 +582,8 @@ class TestGroupContextManagement:
         comp.end_group_context()
         comp.Toggle(0.1, 51, activateGroup=True)
         
-        assert 200 in comp.triggers[0][enums.Properties.GROUPS]
-        assert 200 not in comp.triggers[1][enums.Properties.GROUPS]
+        assert 200 in comp.triggers[0][P.GROUPS]
+        assert 200 not in comp.triggers[1][P.GROUPS]
     
     def test_nested_context_rejected(self):
         """Starting context while one is active is rejected"""
@@ -605,7 +606,7 @@ class TestGroupContextManagement:
         comp.start_group_context(200, 201, 202)
         comp.Toggle(0, 50, activateGroup=True)
         trigger = comp.triggers[0]
-        assert all(g in trigger[enums.Properties.GROUPS] for g in [200, 201, 202])
+        assert all(g in trigger[P.GROUPS] for g in [200, 201, 202])
     
     def test_context_with_list_groups(self):
         """Context accepts list of groups"""
@@ -613,8 +614,8 @@ class TestGroupContextManagement:
         comp.start_group_context([200, 201])
         comp.Toggle(0, 50, activateGroup=True)
         trigger = comp.triggers[0]
-        assert 200 in trigger[enums.Properties.GROUPS]
-        assert 201 in trigger[enums.Properties.GROUPS]
+        assert 200 in trigger[P.GROUPS]
+        assert 201 in trigger[P.GROUPS]
     
     def test_context_empty_rejected(self):
         """Starting context with no groups is rejected"""
@@ -634,8 +635,8 @@ class TestGroupLastTrigger:
         comp.Toggle(0.1, 51, activateGroup=True)
         comp.group_last_trigger(300)
         
-        assert 300 not in comp.triggers[0][enums.Properties.GROUPS]
-        assert 300 in comp.triggers[1][enums.Properties.GROUPS]
+        assert 300 not in comp.triggers[0][P.GROUPS]
+        assert 300 in comp.triggers[1][P.GROUPS]
     
     def test_group_last_trigger_no_triggers_rejected(self):
         """Grouping when no triggers exist is rejected"""
@@ -1097,7 +1098,7 @@ class TestGeneralComponentFeatures:
         comp = Component("Test", 100)
         comp.Spawn(0, target_comp, spawnOrdered=False)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.TARGET] == 150
+        assert trigger[P.TARGET] == 150
     
     def test_toggle_accepts_component(self):
         """Toggle can target a Component directly"""
@@ -1105,7 +1106,7 @@ class TestGeneralComponentFeatures:
         comp = Component("Test", 100)
         comp.Toggle(0, target_comp, activateGroup=True)
         trigger = comp.triggers[0]
-        assert trigger[enums.Properties.TARGET] == 150
+        assert trigger[P.TARGET] == 150
     
     def test_component_without_spawn_order_warning(self):
         """Component without requireSpawnOrder gives warning on export"""
@@ -1116,3 +1117,93 @@ class TestGeneralComponentFeatures:
             warnings.simplefilter("always")
             lib.save_all(filename="testing")
             assert_warning(w, "spawn order")
+
+
+# ============================================================================
+# GET_TRIGGERS & HAS_TRIGGER_PROPERTIES
+# ============================================================================
+
+class TestGetTriggersMethod:
+    """Test Component.get_triggers() and has_trigger_properties()"""
+    
+    def test_get_triggers_single_property(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        comp.Pickup(0, item_id=15, count=100, override=False)
+        comp.Count(0, 200, item_id=12, count=10, activateGroup=True)
+        
+        result = comp.get_triggers({P.ITEM_ID: 12})
+        assert len(result) == 2
+        assert all(t[P.ITEM_ID] == 12 for t in result)
+    
+    def test_get_triggers_multiple_properties(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        comp.Pickup(0, item_id=12, count=100, override=False)
+        
+        result = comp.get_triggers({P.ITEM_ID: 12, P.PICKUP_COUNT: 50})
+        assert len(result) == 1
+    
+    def test_get_triggers_wildcard_any(self):
+        from typing import Any
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=11, count=123, override=True)
+        comp.PickupModify(0, item_id=11, factor=1.45, multiply=True)
+        
+        result = comp.get_triggers({P.PICKUP_MULTIPLY_DIVIDE: Any})
+        assert len(result) == 2
+    
+    def test_get_triggers_by_object_id(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        comp.Toggle(0, 300, activateGroup=True)
+        
+        result = comp.get_triggers({P.OBJ_ID: enums.ObjectID.PICKUP})
+        assert len(result) == 1
+    
+    def test_get_triggers_no_match(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        assert len(comp.get_triggers({P.ITEM_ID: 999})) == 0
+    
+    def test_get_triggers_returns_references(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        assert comp.get_triggers({P.ITEM_ID: 12})[0] is comp.triggers[0]
+
+
+class TestHasTriggerPropertiesMethod:
+    
+    def test_has_trigger_properties_match(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        
+        assert comp.has_trigger_properties({P.ITEM_ID: 12}) is True
+        assert comp.has_trigger_properties({P.ITEM_ID: 999}) is False
+    
+    def test_has_trigger_properties_multiple(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        
+        assert comp.has_trigger_properties({P.ITEM_ID: 12, P.PICKUP_COUNT: 50}) is True
+        assert comp.has_trigger_properties({P.ITEM_ID: 12, P.PICKUP_COUNT: 999}) is False
+    
+    def test_has_trigger_properties_wildcard(self):
+        from typing import Any
+        comp = Component("Test", 100, 5)
+        comp.PickupModify(0, item_id=11, factor=1.45, multiply=True)
+        
+        assert comp.has_trigger_properties({P.PICKUP_MULTIPLY_DIVIDE: Any}) is True
+    
+    def test_has_trigger_properties_empty_dict_rejected(self):
+        comp = Component("Test", 100, 5)
+        with pytest.raises(ValueError) as exc_info:
+            comp.has_trigger_properties({})
+        assert_error(exc_info, "empty")
+    
+    def test_consistency_with_get_triggers(self):
+        comp = Component("Test", 100, 5)
+        comp.Pickup(0, item_id=12, count=50, override=True)
+        
+        query = {P.ITEM_ID: 12}
+        assert comp.has_trigger_properties(query) == (len(comp.get_triggers(query)) > 0)

@@ -39,7 +39,6 @@ def validate_params(*,
 ) -> None:
     """Validates common trigger parameters."""
     
-    # Flatten single values to lists
     if isinstance(positive, (int, float)):
         positive = [positive]
     if isinstance(non_negative, (int, float)):
@@ -95,19 +94,21 @@ class Component:
         return self._timed
     
     def get_triggers(self, trigger: dict[str, Any]) -> list[Trigger]:
-        """Returns all triggers matching the given trigger dict (not implemented yet)"""
-        raise NotImplementedError()
-    
-    def has_trigger_properties(self, trigger: dict[str, Any]):
-        if len(trigger) == 0: raise ValueError("has_trigger_properties: empty trigger dict given")
+        matches: list[Trigger] = []
         for t in self.triggers:
             num_matches = 0
             for key, value in trigger.items():
-                if t.get(key) is None: continue
+                if value is None:
+                    raise ValueError("get_triggers: trigger property value cannot be None")
                 if t.get(key) == value or value is Any:
                     num_matches += 1
-            if num_matches == len(trigger): return True
-        return False
+            if num_matches == len(trigger): matches.append(t)
+        return matches
+    
+    def has_trigger_properties(self, trigger: dict[str, Any]):
+        if len(trigger) == 0: 
+            raise ValueError("has_trigger_properties: empty trigger dict given")
+        return bool(self.get_triggers(trigger))
     
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
         if _RESTRICTED_LOOKUP.get(target):
