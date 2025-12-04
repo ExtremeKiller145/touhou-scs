@@ -10,10 +10,11 @@ if __name__ != "__main__":
     exit()
 
 c1 = lib.circle1
+emitter = 30
+emitter2 = 200
 
 # First bullet component - fades in, points to target, moves with pulse
 testRadialComp = Component("TestRadial", unknown_g(), 5)
-emitter = 30
 (testRadialComp
     .assert_spawn_order(True)
     .GotoGroup(0, e.EMPTY_BULLET, emitter, t=0)
@@ -32,7 +33,6 @@ emitter = 30
 )
 
 # Second bullet component - larger scale, different colors, tracks player
-emitter2 = 200
 test2 = Component("TestRadial2", unknown_g(), 5)
 (test2
     .assert_spawn_order(True)
@@ -54,23 +54,6 @@ test2 = Component("TestRadial2", unknown_g(), 5)
     .PointToGroup(2.4, e.EMPTY_BULLET, e.PLR, t=0.3)
 )
 
-# Main caller component that creates the patterns
-callerComponent = Component("CallerComponent", group(36), 5)
-(callerComponent
-    .assert_spawn_order(True)
-    .GotoGroup(0, c1.all, emitter, t=0)
-    .MoveBy(0.2, emitter, dx=-150, dy=30, t=10, type=e.Easing.EASE_IN, rate=1.5)
-    .MoveBy(0.2, c1.all, dx=-150, dy=30, t=10, type=e.Easing.EASE_IN, rate=1.5)
-)
-
-# Create arc patterns with first bullet type
-(callerComponent
-    .instant.Arc(0, testRadialComp, c1, lib.bullet1,
-        numBullets=127, spacing=1, centerAt=0)
-    .instant.Arc(2, testRadialComp, c1, lib.bullet2,
-        numBullets=10, spacing=14, centerAt=0)
-)
-
 test_line = (Component("TestLine", unknown_g(), 5)
     .assert_spawn_order(True)
     .GotoGroup(0, e.EMPTY_BULLET, emitter2)
@@ -82,8 +65,25 @@ test_line = (Component("TestLine", unknown_g(), 5)
     .Alpha(e.TICK, e.EMPTY_BULLET, t=0.5, opacity=100)
 )
 
-# Create radial pattern with second bullet type
-(callerComponent
+# Main caller component that creates the patterns
+main = Component("CallerComponent", group(36), 5)
+(main
+    .assert_spawn_order(True)
+    .GotoGroup(0, c1.all, emitter, t=0)
+    .MoveBy(0.2, emitter, dx=-150, dy=30, t=10, type=e.Easing.EASE_IN, rate=1.5)
+    .MoveBy(0.2, c1.all, dx=-150, dy=30, t=10, type=e.Easing.EASE_IN, rate=1.5)
+)
+
+# [IMPORTANT] !!! Test why this causes gaps in enemy1 patterns
+# (main
+#     .instant.Arc(0, testRadialComp, c1, lib.bullet1,
+#         numBullets=127, spacing=1, centerAt=0)
+#     .instant.Arc(2, testRadialComp, c1, lib.bullet2,
+#         numBullets=10, spacing=14, centerAt=0)
+# )
+
+enemy1 = (Component("Enemy1", unknown_g(), 5)
+    .assert_spawn_order(True)
     .GotoGroup(0.9, c1.all, emitter2, t=0)
     .MoveBy(0.8, emitter2, dx=80, dy=-20, t=8, type=e.Easing.BOUNCE_IN_OUT, rate=1)
     .instant.Radial(1, test2, c1, lib.bullet4,
@@ -92,11 +92,33 @@ test_line = (Component("TestLine", unknown_g(), 5)
         numBullets=24, waves=10, interval=0.3, centerAt=10)
     .instant.Line(1, test_line, e.PLR, lib.bullet1,
         numBullets=15, fastestTime=1, slowestTime=4, dist=400)
-    .instant.Line(2, test_line, e.PLR, lib.bullet1,
-        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
     .instant.Line(3, test_line, e.PLR, lib.bullet1,
         numBullets=15, fastestTime=1, slowestTime=4, dist=400)
+    .instant.Line(5, test_line, e.PLR, lib.bullet1,
+        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
 )
+
+despawner = (Component("Despawner", unknown_g(), 7)
+    .assert_spawn_order(False)
+    .Alpha(0, e.EMPTY_TARGET_GROUP, t=1, opacity=0)
+    .Pulse(0, e.EMPTY_TARGET_GROUP, HSB(0, 0, -20), fadeIn=0.1, t=0.3, fadeOut=0.6, exclusive=True)
+    .Scale(0, e.EMPTY_TARGET_GROUP, factor=0.1, t=0.5, hold=3)
+    .Stop(0, e.EMPTY1)
+)
+
+despawnSetup = (Component("Despawn Setup", unknown_g(), 7)
+    .assert_spawn_order(False)
+    .Pickup(0, item_id=e.EMPTY_TARGET_GROUP, count=30, override=True)
+    .Count(0, despawner.groups[0], item_id=e.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
+)
+
+enemyOff = unknown_g()
+
+(main
+    .Spawn(0.5, enemy1.groups[0], True)
+    .group_last_trigger(enemyOff)
+    .Spawn(0, despawnSetup.groups[0], False, 
+        remap=f"{e.EMPTY_TARGET_GROUP}.{emitter2}.{e.EMPTY1}.{enemyOff}"))
 
 add_enemy_collisions()
 add_disable_all_bullets()

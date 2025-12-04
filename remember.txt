@@ -37,6 +37,10 @@ TODO:
 
 - Add proper enemy health/death system
 
+- In some commit, change 'editorLayer' -> 'layer', '.callerGroup' -> '.caller', and other similar simplifications
+
+- Investigate main.py bug (the uncommented code)
+
 - Replace all number range restrictions with the cleaner (min < x < max) format
 
 - Optimization: Use Keyframe Anim's time-mod or scale-mod to possibly re-use keyframe components. This will depend on t/hold timing or scaling ratios.

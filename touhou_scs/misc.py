@@ -115,6 +115,7 @@ def add_enemy_collisions():
         )
         
         global_col = Component(f"{enemyName} Collision remap wrappers for {bulletName}", 17, editorLayer=4) \
+            .assert_spawn_order(False)
         
         for enemy in enemies:
             for b in range(bullet.min_group, bullet.max_group + 1):
