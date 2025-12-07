@@ -143,103 +143,161 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     """
     Validate spawn trigger chains to prevent spawn limit bug.
     
-    Case 1: Remapped spawn -> multiple spawns -> spawn trigger (same tick)
-    Case 2: Multiple unmapped spawns -> spawn trigger (same tick)
+    A spawns B spawns C. We check if B's spawn triggers cause C to be spawn-limited.
+    
+    Case 1 (Unmapped): If B has 2+ simultaneous unmapped triggers targeting C,
+                       and C has spawn triggers, C gets limited to 1 execution.
+                       If C has reset_remap, ALL of B's triggers are treated as unmapped.
+    
+    Case 2 (Remapped): If A has a remapped spawn trigger, and B has 2+ simultaneous
+                       triggers targeting C, and C has spawn triggers, C gets limited.
+                       Exception: If all-but-one of B's simultaneous triggers have
+                       reset_remap, they ignore A's remap and don't get limited.
     """
     ppt = enum.Properties
+    EXEC_TIME_TOLERANCE = enum.PLR_SPEED / 240  # ~1.298 studs (one tick)
     
-    def _group_triggers_by_same_tick(triggers: list[Trigger], comp: ComponentProtocol) -> list[list[Trigger]]:
-        if not comp.requireSpawnOrder: return [triggers]
-        
-        x_groups: dict[float, list[Trigger]] = {}
-        for trigger in triggers:
-            x = float(trigger[ppt.X])
-            if x not in x_groups:
-                x_groups[x] = []
-            x_groups[x].append(trigger)
-        return list(x_groups.values())
+    # Step 1: Build group -> triggers mapping, track spawnOrdered per group
+    group_to_triggers: dict[int, list[Trigger]] = {}
+    group_spawn_ordered: dict[int, bool] = {}
     
+    for comp in components:
+        group = comp.groups[0]
+        
+        if comp.requireSpawnOrder is None:
+            warn(f"Component {comp.name} has no spawn order set; defaulting to False")
+            comp.assert_spawn_order(False)
+        spawn_ordered = bool(comp.requireSpawnOrder)
+        
+        if group not in group_spawn_ordered:
+            group_spawn_ordered[group] = spawn_ordered
+            group_to_triggers[group] = []
+        elif group_spawn_ordered[group] != spawn_ordered:
+            raise ValueError(
+                f"Group {group} has inconsistent spawnOrdered settings across components"
+            )
+        
+        group_to_triggers[group].extend(comp.triggers)
     
-    def _check_spawn_limit_violation(
-        same_tick_group: list[Trigger],
-        group_to_triggers: dict[int, list[tuple[ComponentProtocol, Trigger]]],
-        comp_name: str,
-        case_description: str
-    ) -> None:
-        if len(same_tick_group) < 2: return
+    # Step 2: Calculate execution time for spawn triggers
+    def get_exec_time(trigger: Trigger, group: int) -> float:
+        spawn_ordered = group_spawn_ordered.get(group, False)
+        x_pos = float(trigger.get(ppt.X, 0)) if spawn_ordered else 0.0
+        delay = float(trigger.get(ppt.SPAWN_DELAY, 0))
+        return x_pos + util.time_to_dist(delay)
+    
+    # Step 3: Group spawn triggers by (group, exec_time within tolerance)
+    def group_by_exec_time(triggers: list[Trigger], group: int) -> list[list[Trigger]]:
+        spawn_triggers = [t for t in triggers if t[ppt.OBJ_ID] == enum.ObjectID.SPAWN]
+        if not spawn_triggers:
+            return []
         
-        target_count: dict[int, int] = {}
-        for trigger in same_tick_group:
-            target = int(trigger[ppt.TARGET])
-            target_count[target] = target_count.get(target, 0) + 1
+        # Sort by exec time
+        timed = [(t, get_exec_time(t, group)) for t in spawn_triggers]
+        timed.sort(key=lambda x: x[1])
         
-        for target, count in target_count.items():
-            if count >= 2:
-                has_spawn = any(
-                    t[ppt.OBJ_ID] == enum.ObjectID.SPAWN
-                    for _, t in group_to_triggers.get(target, [])
+        groups: list[list[Trigger]] = []
+        current_group: list[Trigger] = [timed[0][0]]
+        current_time = timed[0][1]
+        
+        for trigger, exec_time in timed[1:]:
+            if abs(exec_time - current_time) <= EXEC_TIME_TOLERANCE:
+                current_group.append(trigger)
+            else:
+                groups.append(current_group)
+                current_group = [trigger]
+                current_time = exec_time
+        
+        groups.append(current_group)
+        return [g for g in groups if len(g) >= 2]  # Only care about 2+ simultaneous
+    
+    # Step 4: Find what groups call this group (A) and what this group calls (C)
+    def find_callers(target_group: int) -> list[tuple[int, Trigger]]:
+        """Find all (group, trigger) pairs where trigger spawns target_group."""
+        callers: list[tuple[int, Trigger]] = []
+        for group, triggers in group_to_triggers.items():
+            for trigger in triggers:
+                if trigger[ppt.OBJ_ID] != enum.ObjectID.SPAWN:
+                    continue
+                if int(trigger.get(ppt.TARGET, 0)) == target_group:
+                    callers.append((group, trigger))
+        return callers
+    
+    def group_has_spawn_triggers(group: int) -> bool:
+        return any(
+            t[ppt.OBJ_ID] == enum.ObjectID.SPAWN
+            for t in group_to_triggers.get(group, [])
+        )
+    
+    def c_has_reset_remap(target_group: int) -> bool:
+        """Check if any spawn trigger in target group has reset_remap."""
+        return any(
+            t[ppt.OBJ_ID] == enum.ObjectID.SPAWN and t.get(ppt.RESET_REMAP, False)
+            for t in group_to_triggers.get(target_group, [])
+        )
+    
+    # Step 5: Run checks for each group B
+    for b_group, b_triggers in group_to_triggers.items():
+        simultaneous_groups = group_by_exec_time(b_triggers, b_group)
+        
+        for sim_triggers in simultaneous_groups:
+            # Group by target (C)
+            by_target: dict[int, list[Trigger]] = {}
+            for trigger in sim_triggers:
+                target = int(trigger.get(ppt.TARGET, 0))
+                if target not in by_target:
+                    by_target[target] = []
+                by_target[target].append(trigger)
+            
+            for c_group, triggers_to_c in by_target.items():
+                if len(triggers_to_c) < 2: continue
+                if not group_has_spawn_triggers(c_group): continue
+                
+                # Check if C has reset_remap (treats all B triggers as unmapped)
+                c_resets = c_has_reset_remap(c_group)
+                
+                unmapped_count = sum(
+                    1 for t in triggers_to_c if not t.get(ppt.REMAP_STRING, "")
                 )
                 
-                if has_spawn:
+                # Case 1: Check unmapped spawns
+                if c_resets:
                     raise RuntimeError(
-                        f"Spawn limit violation in {comp_name}:\n"
-                        f"{case_description}: {count} spawn triggers target group {target} in same tick.\n"
-                        f"Group {target} contains spawn trigger(s), causing spawn limit bug.\n"
-                        f"Expected {count} executions, but will be limited to 1."
+                        f"Spawn limit violation (Case 1 - C has reset_remap):\n"
+                        f"Group {b_group} has {len(triggers_to_c)} simultaneous triggers targeting group {c_group}.\n"
+                        f"Group {c_group} has reset_remap, treating all as unmapped.\n"
+                        f"Group {c_group} contains spawn trigger(s), causing spawn limit bug."
                     )
-
-    
-    # Build lookup: caller_group -> list of (component, trigger) pairs in that group
-    group_to_triggers: dict[int, list[tuple[ComponentProtocol, Trigger]]] = {}
-    for comp in components:
-        if comp.groups[0] not in group_to_triggers:
-            group_to_triggers[comp.groups[0]] = []
-        for trigger in comp.triggers:
-            group_to_triggers[comp.groups[0]].append((comp, trigger))
-    
-    # Case 2: Multiple unmapped spawns targeting same spawn trigger in same tick
-    for comp in components:
-        unmapped_spawns = [
-            t for t in comp.triggers 
-            if (t[ppt.OBJ_ID] == enum.ObjectID.SPAWN and 
-                not t.get(ppt.REMAP_STRING, "") and t.get(ppt.SPAWN_DELAY, 0) == 0)
-        ]
-        
-        if len(unmapped_spawns) >= 2:
-            same_tick_groups = _group_triggers_by_same_tick(unmapped_spawns, comp)
-            for same_tick_group in same_tick_groups:
-                _check_spawn_limit_violation(
-                    same_tick_group, group_to_triggers, comp.name, "Case 2 (unmapped)"
+                elif unmapped_count >= 2:
+                    raise RuntimeError(
+                        f"Spawn limit violation (Case 1 - unmapped):\n"
+                        f"Group {b_group} has {unmapped_count} simultaneous unmapped triggers targeting group {c_group}.\n"
+                        f"Group {c_group} contains spawn trigger(s), causing spawn limit bug."
+                    )
+                
+                # Case 2: Check if A has remap
+                callers = find_callers(b_group)
+                a_has_remap = any(
+                    caller_trigger.get(ppt.REMAP_STRING, "")
+                    for _, caller_trigger in callers
                 )
-    
-    # Case 1: Remapped spawn activating multiple spawns in same tick
-    for layer1_comp in components:
-        for layer1_trigger in layer1_comp.triggers:
-            if layer1_trigger[ppt.OBJ_ID] != enum.ObjectID.SPAWN: continue
-            
-            remap_string = str(layer1_trigger.get(ppt.REMAP_STRING, ""))
-            if not remap_string: continue
-            
-            # Collect layer 2 spawn triggers from remapped targets
-            remap_dict, _ = util.translate_remap_string(remap_string)
-            remapped_targets = set(remap_dict.values())
-            
-            layer2_spawns: list[tuple[ComponentProtocol, Trigger]] = []
-            for remapped_target in remapped_targets:
-                for comp, trigger in group_to_triggers.get(remapped_target, []):
-                    spawn_delay = trigger.get(ppt.SPAWN_DELAY, 0)
-                    if (trigger[ppt.OBJ_ID] == enum.ObjectID.SPAWN and 
-                        (spawn_delay == 0 or spawn_delay == 0.0)):
-                        layer2_spawns.append((comp, trigger))
-            
-            if len(layer2_spawns) < 2: continue
-            
-            # All remapped groups are activated simultaneously, so check all layer 2 spawns together
-            layer2_triggers = [trigger for _, trigger in layer2_spawns]
-            _check_spawn_limit_violation(
-                layer2_triggers, group_to_triggers,
-                layer1_comp.name, "Case 1 (remapped)"
-            )
+                
+                if not a_has_remap: continue
+                
+                non_reset_count = sum(
+                    1 for t in triggers_to_c
+                    if not t.get(ppt.RESET_REMAP, False)
+                )
+                
+                if non_reset_count < 2: continue
+                
+                raise RuntimeError(
+                    f"Spawn limit violation (Case 2 - A has remap):\n"
+                    f"A caller of group {b_group} has a remapped spawn trigger.\n"
+                    f"Group {b_group} has {len(triggers_to_c)} simultaneous triggers targeting group {c_group}.\n"
+                    f"Only {len(triggers_to_c) - non_reset_count} have reset_remap (need all-but-one).\n"
+                    f"Group {c_group} contains spawn trigger(s), causing spawn limit bug."
+                )
 
 def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_area: TriggerArea):
     if len(triggers) < 1:
@@ -386,10 +444,6 @@ def save_all(*,
     ppt = enum.Properties # shorthand
     
     for comp in all_components:
-        if comp.requireSpawnOrder is None:
-            warn(f"Component '{comp.name}' has no spawn order requirement set; defaulting to False")
-            comp.assert_spawn_order(False)
-        
         if len(comp.triggers) == 0:
             warn(f"Component {comp.name} has no triggers")
             continue

@@ -1,3 +1,4 @@
+
 # pyright: reportTypedDictNotRequiredAccess=false
 # pyright: reportArgumentType=false
 # pyright: reportPrivateUsage=false
@@ -14,8 +15,9 @@ Philosophy: Tests should expose logic bugs and verify validation.
 import warnings
 import pytest
 from pytest import ExceptionInfo
-from touhou_scs.component import Component
+from touhou_scs.component import Component, Multitarget
 from touhou_scs import enums, lib, utils
+from typing import Any
 
 P = enums.Properties
 
@@ -1110,6 +1112,7 @@ class TestGeneralComponentFeatures:
     
     def test_component_without_spawn_order_warning(self):
         """Component without requireSpawnOrder gives warning on export"""
+        lib.all_components.clear()
         comp = Component("Test", 100)
         comp.Toggle(0, 50, activateGroup=True)
         
@@ -1145,7 +1148,6 @@ class TestGetTriggersMethod:
         assert len(result) == 1
     
     def test_get_triggers_wildcard_any(self):
-        from typing import Any
         comp = Component("Test", 100, 5)
         comp.Pickup(0, item_id=11, count=123, override=True)
         comp.PickupModify(0, item_id=11, factor=1.45, multiply=True)
@@ -1189,7 +1191,6 @@ class TestHasTriggerPropertiesMethod:
         assert comp.has_trigger_properties({P.ITEM_ID: 12, P.PICKUP_COUNT: 999}) is False
     
     def test_has_trigger_properties_wildcard(self):
-        from typing import Any
         comp = Component("Test", 100, 5)
         comp.PickupModify(0, item_id=11, factor=1.45, multiply=True)
         
@@ -1207,3 +1208,398 @@ class TestHasTriggerPropertiesMethod:
         
         query = {P.ITEM_ID: 12}
         assert comp.has_trigger_properties(query) == (len(comp.get_triggers(query)) > 0)
+
+
+# ============================================================================
+# SPAWN LIMIT ENFORCEMENT (_enforce_spawn_limit)
+# ============================================================================
+
+class TestSpawnLimitEnforcement:
+    def test_case1_two_unmapped_spawns_same_tick_with_spawn_trigger_rejected(self):
+        """
+        Case 1: Multiple unmapped spawns targeting same group with spawn trigger.
+        
+        This is the most common spawn limit bug - when you spawn the same component
+        multiple times in the same tick, and that component contains spawn triggers.
+        GD will only execute the first spawn, silently dropping the rest.
+        """
+        lib.all_components.clear()
+        
+        target_comp = Component("Target", 200)
+        target_comp.assert_spawn_order(True)
+        target_comp.Spawn(0, 300, spawnOrdered=True)  # Contains spawn trigger
+        
+        caller = Component("Caller", 100, 5)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0, 200, spawnOrdered=True)  # Two spawns at X=0
+        caller.Spawn(0, 200, spawnOrdered=True)  # targeting same group
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            lib._enforce_spawn_limit([caller, target_comp])
+        
+        assert_error(exc_info, "spawn limit violation", "case 1", "unmapped", 
+                     "2 simultaneous", "group 200")
+    
+    def test_case1_different_ticks_allowed(self):
+        """
+        Spawns at different X coordinates (different ticks) should be allowed.
+        This tests that spawn_order grouping works correctly.
+        """
+        lib.all_components.clear()
+        
+        target_comp = Component("Target", 200)
+        target_comp.assert_spawn_order(True)
+        target_comp.Spawn(0, 300, spawnOrdered=True)
+        
+        caller = Component("Caller", 100)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0, 200, spawnOrdered=True)    # X=0
+        caller.Spawn(0.5, 200, spawnOrdered=True)  # X=0.5 (different tick)
+        
+        # Should not raise
+        lib._enforce_spawn_limit([caller, target_comp])
+    
+    def test_case1_no_spawn_order_treats_all_as_same_tick(self):
+        """
+        Without spawn_order, all triggers are considered same tick.
+        This tests the requireSpawnOrder=False path.
+        """
+        lib.all_components.clear()
+        
+        target_comp = Component("Target", 200)
+        target_comp.assert_spawn_order(True)
+        target_comp.Spawn(0, 300, spawnOrdered=True)
+        
+        caller = Component("Caller", 100)
+        
+        caller.assert_spawn_order(False) # Explicitly set to False to test that path
+        caller.Spawn(0, 200, spawnOrdered=True)
+        caller.Spawn(99, 200, spawnOrdered=True)  # Different X, but no spawn_order
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            lib._enforce_spawn_limit([caller, target_comp])
+        
+        assert_error(exc_info, "case 1")
+    
+    def test_case1_different_targets_allowed(self):
+        """Multiple spawns to different groups should be allowed."""
+        lib.all_components.clear()
+        
+        target1 = Component("Target1", 200)
+        target1.assert_spawn_order(True)
+        target1.Spawn(0, 300, spawnOrdered=True)
+        
+        target2 = Component("Target2", 201)
+        target2.assert_spawn_order(True)
+        target2.Spawn(0, 301, spawnOrdered=True)
+        
+        caller = Component("Caller", 100)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0, 200, spawnOrdered=True)  # Different targets
+        caller.Spawn(0, 201, spawnOrdered=True)
+        
+        # Should not raise
+        lib._enforce_spawn_limit([caller, target1, target2])
+    
+    def test_case1_spawn_delay_excludes_from_check(self):
+        """Spawns with delay > 0 should not be checked (they execute at different times)."""
+        lib.all_components.clear()
+        
+        target_comp = Component("Target", 200)
+        target_comp.assert_spawn_order(True)
+        target_comp.Spawn(0, 300, spawnOrdered=True)
+        
+        caller = Component("Caller", 100)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0, 200, spawnOrdered=True, delay=0)    # Immediate
+        caller.Spawn(0, 200, spawnOrdered=True, delay=0.1)  # Delayed, excluded
+        
+        # Should not raise (only 1 immediate spawn)
+        lib._enforce_spawn_limit([caller, target_comp])
+    
+    def test_case1_target_without_spawn_allowed(self):
+        """Multiple spawns targeting group without spawn triggers should be allowed."""
+        lib.all_components.clear()
+        
+        target_comp = Component("Target", 200)
+        target_comp.assert_spawn_order(True)
+        target_comp.Toggle(0, 300, activateGroup=True)  # Not a spawn trigger
+        
+        caller = Component("Caller", 100)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0, 200, spawnOrdered=True)
+        caller.Spawn(0, 200, spawnOrdered=True)
+        
+        # Should not raise (target has no spawn triggers)
+        lib._enforce_spawn_limit([caller, target_comp])
+    
+    def test_case2_remapped_spawn_to_multiple_spawns_rejected(self):
+        """
+        Case 2: A has remapped spawn, B has multiple simultaneous triggers to C.
+        
+        When A has a remap, and B has 2+ simultaneous triggers targeting C (which has spawns),
+        C gets spawn limited unless B's triggers have reset_remap.
+        
+        B's triggers must have remaps themselves (otherwise Case 1 catches it).
+        """
+        lib.all_components.clear()
+        
+        # Layer C: Final target that contains spawn triggers
+        layer_c = Component("LayerC", 400)
+        layer_c.assert_spawn_order(True)
+        layer_c.Spawn(0, 500, spawnOrdered=True)
+        
+        # Layer B: Component with multiple spawns to same target (C)
+        # Both have remaps so Case 1 doesn't apply (only 1 unmapped allowed)
+        layer_b = Component("LayerB", 200)
+        layer_b.assert_spawn_order(True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="999.400")  # Has remap
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="998.400")  # Has remap
+        
+        # Layer A: Has remapped spawn trigger to B
+        layer_a = Component("LayerA", 100)
+        layer_a.assert_spawn_order(True)
+        layer_a.Spawn(0, 200, spawnOrdered=True, remap="997.200")
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            lib._enforce_spawn_limit([layer_a, layer_b, layer_c])
+        
+        assert_error(exc_info, "spawn limit violation", "case 2", "remap")
+    
+    def test_case2_single_spawn_in_b_allowed(self):
+        """Case 2 should not trigger if B only has 1 spawn trigger."""
+        lib.all_components.clear()
+        
+        layer_c = Component("LayerC", 400)
+        layer_c.assert_spawn_order(True)
+        layer_c.Spawn(0, 500, spawnOrdered=True)
+        
+        layer_b = Component("LayerB", 200)
+        layer_b.assert_spawn_order(True)
+        layer_b.Spawn(0, 400, spawnOrdered=True)  # Only 1 spawn
+        
+        layer_a = Component("LayerA", 100)
+        layer_a.assert_spawn_order(True)
+        layer_a.Spawn(0, 200, spawnOrdered=True, remap="999.200")
+        
+        # Should not raise (B has only 1 simultaneous spawn)
+        lib._enforce_spawn_limit([layer_a, layer_b, layer_c])
+    
+    def test_case2_no_remap_in_a_allowed(self):
+        """Case 2 should not trigger if A has no remap."""
+        lib.all_components.clear()
+        
+        layer_c = Component("LayerC", 400)
+        layer_c.assert_spawn_order(True)
+        layer_c.Spawn(0, 500, spawnOrdered=True)
+        
+        # B has 2 simultaneous spawns but they have remaps
+        layer_b = Component("LayerB", 200)
+        layer_b.assert_spawn_order(True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="999.400")
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="998.400")
+        
+        # A has NO remap - so Case 2 shouldn't apply
+        layer_a = Component("LayerA", 100)
+        layer_a.assert_spawn_order(True)
+        layer_a.Spawn(0, 200, spawnOrdered=True)  # No remap
+        
+        # Should not raise (A has no remap, and B's triggers are remapped so Case 1 doesn't apply either)
+        lib._enforce_spawn_limit([layer_a, layer_b, layer_c])
+    
+    def test_case1_c_has_reset_remap_treats_all_as_unmapped(self):
+        """
+        Case 1 special: If C has reset_remap, ALL of B's triggers are treated as unmapped.
+        
+        Even if B's triggers have remaps, C's reset_remap makes them act unmapped.
+        """
+        lib.all_components.clear()
+        
+        # C has a spawn trigger with reset_remap=True
+        layer_c = Component("LayerC", 400)
+        layer_c.assert_spawn_order(True)
+        layer_c.Spawn(0, 500, spawnOrdered=True, reset_remap=True)
+        
+        # B has 2 simultaneous spawns WITH remaps (normally Case 1 wouldn't apply)
+        layer_b = Component("LayerB", 200)
+        layer_b.assert_spawn_order(True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="999.400")
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="998.400")
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            lib._enforce_spawn_limit([layer_b, layer_c])
+        
+        assert_error(exc_info, "case 1", "reset_remap")
+    
+    def test_case2_b_has_reset_remap_escapes_violation(self):
+        """
+        Case 2 escape: If B's triggers have reset_remap, they ignore A's remap.
+        
+        We can tolerate 1 trigger without reset_remap (limiting 1 to 1 is fine).
+        """
+        lib.all_components.clear()
+        
+        layer_c = Component("LayerC", 400)
+        layer_c.assert_spawn_order(True)
+        layer_c.Spawn(0, 500, spawnOrdered=True)
+        
+        # B has 2 spawns, but BOTH have reset_remap - they ignore A's remap
+        layer_b = Component("LayerB", 200)
+        layer_b.assert_spawn_order(True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="999.400", reset_remap=True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="998.400", reset_remap=True)
+        
+        layer_a = Component("LayerA", 100)
+        layer_a.assert_spawn_order(True)
+        layer_a.Spawn(0, 200, spawnOrdered=True, remap="997.200")
+        
+        # Should not raise - all B triggers have reset_remap
+        lib._enforce_spawn_limit([layer_a, layer_b, layer_c])
+    
+    def test_case2_b_has_one_without_reset_remap_allowed(self):
+        """
+        Case 2 escape: We tolerate exactly 1 trigger without reset_remap.
+        
+        Limiting 1 to 1 is the same as not limiting at all.
+        """
+        lib.all_components.clear()
+        
+        layer_c = Component("LayerC", 400)
+        layer_c.assert_spawn_order(True)
+        layer_c.Spawn(0, 500, spawnOrdered=True)
+        
+        # B has 2 spawns, only 1 has reset_remap
+        layer_b = Component("LayerB", 200)
+        layer_b.assert_spawn_order(True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="999.400", reset_remap=True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="998.400")
+        
+        layer_a = Component("LayerA", 100)
+        layer_a.assert_spawn_order(True)
+        layer_a.Spawn(0, 200, spawnOrdered=True, remap="997.200")
+        
+        # Should not raise - only 1 trigger lacks reset_remap
+        lib._enforce_spawn_limit([layer_a, layer_b, layer_c])
+    
+    def test_case2_b_has_two_without_reset_remap_rejected(self):
+        """
+        Case 2: If 2+ triggers in B don't have reset_remap, violation occurs.
+        """
+        lib.all_components.clear()
+        
+        layer_c = Component("LayerC", 400)
+        layer_c.assert_spawn_order(True)
+        layer_c.Spawn(0, 500, spawnOrdered=True)
+        
+        # B has 3 spawns, only 1 has reset_remap (2 without = violation)
+        layer_b = Component("LayerB", 200)
+        layer_b.assert_spawn_order(True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="999.400", reset_remap=True)
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="998.400")
+        layer_b.Spawn(0, 400, spawnOrdered=True, remap="997.400")
+        
+        layer_a = Component("LayerA", 100)
+        layer_a.assert_spawn_order(True)
+        layer_a.Spawn(0, 200, spawnOrdered=True, remap="996.200")
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            lib._enforce_spawn_limit([layer_a, layer_b, layer_c])
+        
+        assert_error(exc_info, "case 2", "reset_remap")
+    
+    def test_integration_with_save_all_default_enabled(self):
+        """Test that save_all() calls _enforce_spawn_limit by default"""
+        lib.all_components.clear()
+        
+        target = Component("Target", 200)
+        target.assert_spawn_order(True)
+        target.Spawn(0, 300, spawnOrdered=True)
+        
+        caller = Component("Caller", 100)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0, 200, spawnOrdered=True)
+        caller.Spawn(0, 200, spawnOrdered=True)
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            lib.save_all(filename="testing")
+        
+        assert_error(exc_info, "spawn limit")    
+    
+    def test_multitarget_with_spawn_triggers_warns(self):
+        """
+        Multitarget should warn if the component contains spawn triggers.
+        
+        Why: Multitarget creates binary spawn trees, which would multiply
+        spawn triggers exponentially, causing spawn limit violations.
+        """
+        lib.all_components.clear()
+        
+        comp = Component("WithSpawn", 100)
+        comp.Spawn(0, 200, spawnOrdered=True)
+        comp.Toggle(0, 300, activateGroup=True)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            
+            Multitarget._get_binary_components(3, comp)
+        
+        assert_warning(w, "spawn limit", "WithSpawn", "multitarget", "spawn triggers")
+
+
+# ============================================================================
+# TOLERANCE BOUNDARY TESTS (Validates correct grouping behavior)
+# ============================================================================
+
+class TestToleranceBoundaryEdgeCases:
+    """Tests that closely timed triggers are grouped or separated correctly"""
+    
+    def test_triggers_beyond_tolerance_are_separated(self):
+        """
+        Triggers beyond tolerance should be in separate groups (no violation).
+        
+        Setup: B has 3 spawns at time 0.0s, ~0.004s, ~0.008s
+        Expected: Only first two are grouped (~0.004s converts to ~1.25 studs, within ~1.3 tolerance)z ;
+            Third is separate (~0.008s converts to ~2.49 studs, beyond tolerance)
+            Only 2 simultaneous spawns → violation
+        """
+        lib.all_components.clear()
+        
+        target = Component("Target", 300)
+        target.assert_spawn_order(True)
+        target.Spawn(0, 400, spawnOrdered=True)
+        
+        caller = Component("Caller", 200)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0.0, 300, spawnOrdered=True)
+        caller.Spawn(0.004, 300, spawnOrdered=True)  # ~1.25 studs, within tolerance
+        caller.Spawn(0.008, 300, spawnOrdered=True)  # ~2.49 studs, beyond tolerance
+        
+        # Should raise - first two are grouped together (2 simultaneous)
+        with pytest.raises(RuntimeError) as exc_info:
+            lib._enforce_spawn_limit([caller, target])
+        
+        assert_error(exc_info, "case 1", "2 simultaneous")
+    
+    def test_triggers_within_tolerance_are_grouped(self):
+        """
+        Triggers within tolerance should be grouped together (violation).
+        
+        Setup: B has 2 spawns at time 0.0s and ~0.004s (converts to ~1.25 studs, within ~1.3 tolerance)
+        Expected: Both grouped together → 2 simultaneous → violation
+        """
+        lib.all_components.clear()
+        
+        target = Component("Target", 300)
+        target.assert_spawn_order(True)
+        target.Spawn(0, 400, spawnOrdered=True)
+        
+        caller = Component("Caller", 200)
+        caller.assert_spawn_order(True)
+        caller.Spawn(0.0, 300, spawnOrdered=True)
+        caller.Spawn(0.004, 300, spawnOrdered=True)  # ~1.25 studs, within tolerance
+        
+        # Should raise - both grouped together
+        with pytest.raises(RuntimeError) as exc_info:
+            lib._enforce_spawn_limit([caller, target])
+        
+        assert_error(exc_info, "case 1", "2 simultaneous")

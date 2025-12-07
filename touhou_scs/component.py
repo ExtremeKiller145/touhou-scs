@@ -188,7 +188,7 @@ class Component:
     
     def Spawn(self, time: float,
         target: int | Component, spawnOrdered: bool, *,
-        remap: str | None = None, delay: float = 0 ):
+        remap: str | None = None, delay: float = 0, reset_remap: bool = False):
         """Spawn another component or group's triggers"""
         target = target.groups[0] if isinstance(target, Component) else target
         validate_params(targets=target, non_negative=delay)
@@ -198,6 +198,7 @@ class Component:
         if spawnOrdered: trigger[ppt.SPAWN_ORDERED] = True
         if delay > 0: trigger[ppt.SPAWN_DELAY] = delay
         if remap: _, trigger[ppt.REMAP_STRING] = util.translate_remap_string(remap)
+        if reset_remap: trigger[ppt.RESET_REMAP] = True
         
         self.triggers.append(trigger)
         return self
