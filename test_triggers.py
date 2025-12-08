@@ -712,7 +712,7 @@ class TestInstantPatternSpawnOrderRequirement:
         comp = Component("Test", 100)
         with pytest.raises(ValueError) as exc:
             comp.instant.Line(
-                time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
+                time=0, comp=comp, emitter=50 ,targetDir=90, bullet=lib.bullet2,
                 numBullets=5, fastestTime=0.5, slowestTime=2.0, dist=100
             )
         assert_error(exc, "must require spawn order")
@@ -898,11 +898,12 @@ class TestInstantLineValidation:
         """fastestTime must be positive"""
         comp = Component("Test", 100).assert_spawn_order(True)
         comp.Toggle(0, enums.EMPTY_BULLET, activateGroup=True)
+        comp.Toggle(0, enums.EMPTY_EMITTER, activateGroup=True)
         
         caller = Component("Caller", 200)
         with pytest.raises(ValueError) as exc: 
             caller.instant.Line(
-                time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
+                time=0, comp=comp, emitter=50, targetDir=90, bullet=lib.bullet2,
                 numBullets=5, fastestTime=0, slowestTime=2.0, dist=100
             )
         assert_error(exc, "positive", "0")
@@ -911,11 +912,12 @@ class TestInstantLineValidation:
         """slowestTime must be greater than fastestTime"""
         comp = Component("Test", 100).assert_spawn_order(True)
         comp.Toggle(0, enums.EMPTY_BULLET, activateGroup=True)
+        comp.Toggle(0, enums.EMPTY_EMITTER, activateGroup=True)
         
         caller = Component("Caller", 200)
         with pytest.raises(ValueError) as exc: 
             caller.instant.Line(
-                time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
+                time=0, comp=comp, emitter=50, targetDir=90, bullet=lib.bullet2,
                 numBullets=5, fastestTime=2.0, slowestTime=1.0, dist=100
             )
         assert_error(exc, "greater than", "2.0", "1.0")
@@ -924,11 +926,12 @@ class TestInstantLineValidation:
         """numBullets must be at least 3"""
         comp = Component("Test", 100).assert_spawn_order(True)
         comp.Toggle(0, enums.EMPTY_BULLET, activateGroup=True)
+        comp.Toggle(0, enums.EMPTY_EMITTER, activateGroup=True)
         
         caller = Component("Caller", 200)
         with pytest.raises(ValueError) as exc:
             caller.instant.Line(
-                time=0, comp=comp, targetDir=90, bullet=lib.bullet2,
+                time=0, comp=comp, emitter=50, targetDir=90, bullet=lib.bullet2,
                 numBullets=2, fastestTime=0.5, slowestTime=2.0, dist=100
             )
         assert_error(exc, "numBullets must be at least 3")
