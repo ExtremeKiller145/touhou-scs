@@ -73,7 +73,8 @@ def validate_params(*,
 class Component:
     def __init__(self, name: str, callerGroup: int, editorLayer: int = 4):
         self.name: str = name
-        self.groups: list[int] = [callerGroup]  # groups[0] is always the caller
+        self.caller: int = callerGroup
+        self.groups: list[int] = [callerGroup]
         self.editorLayer: int = editorLayer
         
         self.requireSpawnOrder: bool | None = None
@@ -169,7 +170,7 @@ class Component:
         if len(self.groups) > 1:
             raise RuntimeError(f"Component '{self.name}' already has an active group context. Call end_group_context() first.")
         
-        self.groups = [self.groups[0]] + additional_groups
+        self.groups = [self.caller] + additional_groups
         return self
     
     def end_group_context(self):
@@ -177,7 +178,7 @@ class Component:
         if len(self.groups) == 1:
             raise RuntimeError(f"Component '{self.name}' has no active group context to end")
         
-        self.groups = [self.groups[0]]
+        self.groups = [self.caller]
         return self
     
     # ===========================================================
@@ -190,7 +191,7 @@ class Component:
         target: int | Component, spawnOrdered: bool, *,
         remap: str | None = None, delay: float = 0, reset_remap: bool = False):
         """Spawn another component or group's triggers"""
-        target = target.groups[0] if isinstance(target, Component) else target
+        target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target, non_negative=delay)
         
         trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
@@ -210,7 +211,7 @@ class Component:
         
         (collision triggers might be different)
         """
-        target = target.groups[0] if isinstance(target, Component) else target
+        target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
@@ -364,7 +365,7 @@ class Component:
         scale_settings = ScaleSettings(factor, hold, t, type, rate, reverse)
         
         if scale_settings in scale_keyframes:
-            keyframe_group = scale_keyframes[scale_settings].groups[0]
+            keyframe_group = scale_keyframes[scale_settings].caller
         else:
             name = f"Keyframe Scale<{factor}>,T<{t}>,Reverse<{reverse}>"
             new_keyframe_group = Component(name, util.unknown_g(), 6) \
@@ -375,9 +376,9 @@ class Component:
                 new_keyframe_group.triggers.append({ #type: ignore
                     ppt.OBJ_ID: enum.ObjectID.KEYFRAME_OBJ,
                     ppt.X: 0.0, ppt.Y: 0.0,
-                    ppt.GROUPS: [new_keyframe_group.groups[0]],
+                    ppt.GROUPS: [new_keyframe_group.caller],
                     ppt.KEYFRAME_OBJ_MODE: 0,  # time mode
-                    ppt.KEYFRAME_ID: new_keyframe_group.groups[0],
+                    ppt.KEYFRAME_ID: new_keyframe_group.caller,
                     ppt.CLOSE_LOOP: close_loop,
                     ppt.SCALE: scale,
                     ppt.DURATION: duration,
@@ -396,7 +397,7 @@ class Component:
                 keyframe_obj(scale=factor, duration=hold, order=2)
                 keyframe_obj(scale=factor, duration=0, order=3, close_loop=True)
             
-            keyframe_group = new_keyframe_group.groups[0]
+            keyframe_group = new_keyframe_group.caller
             scale_keyframes[scale_settings] = new_keyframe_group
             
         trigger = self.create_trigger(enum.ObjectID.KEYFRAME_ANIM, util.time_to_dist(time), target)
@@ -612,8 +613,8 @@ class Multitarget:
                 
                 remap_callback(remap_pairs, remap)
             
-            remap.pair(enum.EMPTY_MULTITARGET, comp.groups[0])
-            caller.Spawn(time, mt_comp.groups[0], False, 
+            remap.pair(enum.EMPTY_MULTITARGET, comp.caller)
+            caller.Spawn(time, mt_comp.caller, False,
                 remap=remap.build(), reset_remap=False)
 
 
@@ -848,7 +849,7 @@ class TimedPatterns:
         for i in range(0, numBullets):
             b, _ = bullet.next()
             self._component.Spawn(
-                time + (i * spacing), comp.groups[0], True, remap=f"{enum.EMPTY_BULLET}:{b}")
+                time + (i * spacing), comp.caller, True, remap=f"{enum.EMPTY_BULLET}:{b}")
             self._component.MoveTowards(
                 time + (i * spacing), b, targetDir, t=t, dist=dist, type=type, rate=rate
             )

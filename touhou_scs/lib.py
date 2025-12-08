@@ -182,9 +182,9 @@ class EnemyPool:
         off_switch = self._off_switches[self._current]
         
         (stage
-            .Spawn(time, attack.groups[0], True)
+            .Spawn(time, attack.caller, True)
             .group_last_trigger(off_switch)
-            .Spawn(time, self._despawn_setup.groups[0], False,
+            .Spawn(time, self._despawn_setup.caller, False,
                 remap=f"{enum.EMPTY_TARGET_GROUP}.{self._current}.{enum.EMPTY1}.{off_switch}")
             .Pickup(time - enum.TICK*2, item_id=self._current, count=hp, override=True)
         )
@@ -208,7 +208,7 @@ despawner = (Component("Despawner", unknown_g(), 7)
 
 despawnSetup = (Component("Despawn Setup", unknown_g(), 7)
     .assert_spawn_order(False)
-    .Count(0, despawner.groups[0], item_id=enum.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
+    .Count(0, despawner.caller, item_id=enum.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
 )
 
 enemy1 = EnemyPool(200, 211, despawnSetup)
@@ -240,7 +240,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     group_spawn_ordered: dict[int, bool] = {}
     
     for comp in components:
-        group = comp.groups[0]
+        group = comp.caller
         
         if comp.requireSpawnOrder is None:
             warn(f"Component {comp.name} has no spawn order set; defaulting to False")
@@ -455,7 +455,7 @@ def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
     shared_trigger_count = sum(len(comp.triggers) for comp in shared_components)
     
     for comp in all_components:
-        component_stats[comp.name] = (len(comp.triggers), comp.groups[0])
+        component_stats[comp.name] = (len(comp.triggers), comp.caller)
     
     usage_percent = (total_triggers / object_budget) * 100 if total_triggers > 0 else 0
     remaining_budget = object_budget - total_triggers

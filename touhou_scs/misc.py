@@ -80,7 +80,7 @@ def add_plr_collisions():
         
         for bullet_hitbox in range(bullet.min_group, bullet.max_group+ 1):
             # permanently turns on all collisions for each bullet (level calls it on startup)
-            global_col.Spawn(0, cols.groups[0], False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+            global_col.Spawn(0, cols.caller, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             # Give each bullet a spawn trigger that activates its own collisions
             plr_hit_col.Spawn(0, PLR_HURT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
             plr_hit_col.group_last_trigger(bullet_hitbox)
@@ -110,7 +110,7 @@ def add_enemy_collisions():
     def add(enemies: list[int], bullet: lib.BulletPool, enemyName: str, bulletName: str):
         base_col = (Component(f"{enemyName} Collision for {bulletName} (un-mapped)", unknown_g(), editorLayer=6)
             .assert_spawn_order(False)
-            .Collision(0, plr_bullet_despawn.groups[0], 
+            .Collision(0, plr_bullet_despawn.caller, 
                 blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
         )
         
@@ -119,7 +119,7 @@ def add_enemy_collisions():
         
         for enemy in enemies:
             for b in range(bullet.min_group, bullet.max_group + 1):
-                global_col.Spawn(0, base_col.groups[0], False, 
+                global_col.Spawn(0, base_col.caller, False, 
                     remap=f"{enum.EMPTY_BULLET}.{b}.{enum.EMPTY_TARGET_GROUP}.{enemy}")
     
     add(list(range(200, 210+1)), lib.reimuA_level1, "PlaceholderEnemies", "ReimuA_L1")
@@ -151,7 +151,7 @@ plr_bullet_despawn = (Component("PlrBullet Despawn List", unknown_g(), editorLay
     # To decrease enemy health & despawn the player bullet
     .Pickup(0, item_id=enum.EMPTY_TARGET_GROUP, count=-1, override=False)
     .Pulse(0, enum.EMPTY_TARGET_GROUP, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
-    .Spawn(0, despawn2.groups[0], True) # toggle this on/off same tick w/ unique group
+    .Spawn(0, despawn2.caller, True) # toggle this on/off same tick w/ unique group
 )
 
 
@@ -160,7 +160,7 @@ enemy_bullet_despawn = Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, e
 (enemy_bullet_despawn
     .assert_spawn_order(False)
     # Note: if a collisionX component seems to be be spawning delayed, its a GD bug. reload level.
-    .Spawn(0, despawn1.groups[0], True) # toggle this on/off same tick w/ unique group
+    .Spawn(0, despawn1.caller, True) # toggle this on/off same tick w/ unique group
     # .group_last_trigger
-    # .Spawn(0, collision2.groups[0], True)
+    # .Spawn(0, collision2.caller, True)
 )
