@@ -194,21 +194,27 @@ class EnemyPool:
 # less annoying way instead of making 'despawner' have spawn order
 toggler = (Component("Toggler", unknown_g(), 7)
     .assert_spawn_order(False)
-    .Toggle(0, enum.EMPTY_TARGET_GROUP, False)
+    .start_target_context(enum.EMPTY_TARGET_GROUP)
+        .Toggle(0, False)
+    .end_target_context()
 )
 
 despawner = (Component("Despawner", unknown_g(), 7)
     .assert_spawn_order(False)
-    .Alpha(0, enum.EMPTY_TARGET_GROUP, t=1, opacity=0)
-    .Pulse(0, enum.EMPTY_TARGET_GROUP, HSB(0, 0, -20), fadeIn=0.1, t=0.3, fadeOut=0.6, exclusive=True)
-    .Scale(0, enum.EMPTY_TARGET_GROUP, factor=0.1, t=0.5, hold=3)
+    .start_target_context(enum.EMPTY_TARGET_GROUP)
+        .Alpha(0, t=1, opacity=0)
+        .Pulse(0, HSB(0, 0, -20), fadeIn=0.1, t=0.3, fadeOut=0.6, exclusive=True)
+        .Scale(0, factor=0.1, t=0.5, hold=3)
+    .end_target_context()
     .Stop(0, enum.EMPTY1)
     .Spawn(0, toggler, False, delay=1)
 )
 
 despawnSetup = (Component("Despawn Setup", unknown_g(), 7)
     .assert_spawn_order(False)
-    .Count(0, despawner.caller, item_id=enum.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
+    .start_target_context(despawner.caller)
+        .Count(0, item_id=enum.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
+    .end_target_context()
 )
 
 enemy1 = EnemyPool(200, 211, despawnSetup)
@@ -537,11 +543,11 @@ def save_all(*,
                     f"CRITICAL ERROR: Reserved group 9999 detected in {comp.name}"
                 )
 
-            curr_x: float = float(trigger[ppt.X])  
-            if 0 < curr_x - prev_x < 1:
+            curr_x: float = float(trigger[ppt.X])
+            if 0 < curr_x - prev_x < 1.28:
                 raise RuntimeError(
-                    "CRITICAL ERROR: X position within 1 unit of previous trigger " +
-                    f"in {comp.name} - spawn order not preserved"
+                    f"CRITICAL ERROR: X position within 1.28 unit of previous trigger"
+                    f" in {comp.name} - spawn order not preserved"
                 )
             
             prev_x = curr_x

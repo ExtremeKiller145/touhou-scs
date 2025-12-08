@@ -54,11 +54,13 @@ def validate_params(*,
             raise ValueError(f"Values must be non-negative (>=0). Got: {values}")
     if targets is not None:
         for g in targets:
+            if g <= 0:
+                raise ValueError(f"Target Group '{g}' must be positive (>0).")
             if _RESTRICTED_LOOKUP.get(g):
-                raise ValueError(f"Group '{g}' is restricted.")
+                raise ValueError(f"Target Group '{g}' is restricted.")
             c = util.unknown_g.counter
             if not (0 < g <= (c)):
-                raise ValueError(f"Group '{g}' is out of valid range 0-{c}.")
+                raise ValueError(f"Target Group '{g}' is out of valid range 0-{c}.")
     if type is not None and (not (0 <= type <= 18) or not type.is_integer()):
         raise ValueError(f"Easing 'type' must be an int in range 0-18. Got: {type}")
     if rate is not None and not (0.10 < rate <= 20.0):
@@ -76,6 +78,7 @@ class Component:
         self.caller: int = callerGroup
         self.groups: list[int] = [callerGroup]
         self.editorLayer: int = editorLayer
+        self.target: int = -1
         
         self.requireSpawnOrder: bool | None = None
         self.triggers: list[Trigger] = []
@@ -181,6 +184,18 @@ class Component:
         self.groups = [self.caller]
         return self
     
+    def start_target_context(self, target: int):
+        """Start a target context: all subsequent triggers will use these targets."""
+        self.target = target
+        validate_params(targets=target)
+        return self
+    
+    def end_target_context(self):
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}' has no active target context to end")
+        self.target = -1
+        return self
+    
     # ===========================================================
     # 
     # TRIGGER METHODS
@@ -204,35 +219,38 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def Toggle(self, time: float, target: int | Component, activateGroup: bool):
+    def Toggle(self, time: float, activateGroup: bool):
         """
         Activating does not spawn the target, it only enables it.
         WARNING: A deactivated object cannot be reactivated by a different group
         
         (collision triggers might be different)
         """
-        target = target.caller if isinstance(target, Component) else target
-        validate_params(targets=target)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Toggle requires an active target context")
+        validate_params(targets=self.target)
         
-        trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), self.target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
         
         self.triggers.append(trigger)
         return self
     
-    def MoveTowards(self, time: float, target: int, targetDir: int, *,
+    def MoveTowards(self, time: float, targetDir: int, *,
         t: float, dist: int,
         type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Move target a set distance towards another group (direction mode)"""
-        validate_params(targets=[target, targetDir], non_negative=t, type=type, rate=rate)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': MoveTowards requires an active target context")
+        validate_params(targets=[self.target, targetDir], non_negative=t, type=type, rate=rate)
         
-        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
         
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_DIRECTION_MODE] = True
         trigger[ppt.MOVE_SMALL_STEP] = True
         trigger[ppt.MOVE_TARGET_DIR] = targetDir
-        trigger[ppt.MOVE_TARGET_CENTER] = target
+        trigger[ppt.MOVE_TARGET_CENTER] = self.target
         trigger[ppt.MOVE_DIRECTION_MODE_DISTANCE] = dist
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
@@ -243,12 +261,14 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def Pulse(self, time: float, target: int, 
+    def Pulse(self, time: float, 
         hsb: lib.HSB, *, exclusive: bool = False,
         fadeIn: float = 0, t: float = 0, fadeOut: float = 0):
-        validate_params(non_negative=[fadeIn, t, fadeOut], targets=target)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Pulse requires an active target context")
+        validate_params(non_negative=[fadeIn, t, fadeOut], targets=self.target)
         
-        trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), self.target)
 
         trigger[ppt.PULSE_HSV] = True
         trigger[ppt.PULSE_TARGET_TYPE] = True
@@ -262,12 +282,14 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def MoveBy(self, time: float, target: int, *,
+    def MoveBy(self, time: float, *,
         dx: float, dy: float,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        validate_params(targets=target, non_negative=t, type=type, rate=rate)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': MoveBy requires an active target context")
+        validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
         
-        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
         
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_X] = dx
@@ -281,13 +303,15 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def GotoGroup(self, time: float, target: int, location: int, *,
+    def GotoGroup(self, time: float, location: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        validate_params(targets=[target, location], non_negative=t, type=type, rate=rate)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': GotoGroup requires an active target context")
+        validate_params(targets=[self.target, location], non_negative=t, type=type, rate=rate)
         
-        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
         
-        trigger[ppt.MOVE_TARGET_CENTER] = target
+        trigger[ppt.MOVE_TARGET_CENTER] = self.target
         trigger[ppt.MOVE_TARGET_LOCATION] = location
         trigger[ppt.MOVE_TARGET_MODE] = True
         trigger[ppt.DURATION] = t
@@ -300,14 +324,16 @@ class Component:
         return self
     
     def Rotate(self, time: float, *,
-        target: int, angle: float,
+        angle: float,
         center: int | None = None,
         t: float = 0, type: int = 0, rate: float = 1.0):
         """Rotate target by angle (degrees, clockwise is positive)"""
-        if center is None: center = target
-        validate_params(targets=[target, center], non_negative=t, type=type, rate=rate)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Rotate requires an active target context")
+        if center is None: center = self.target
+        validate_params(targets=[self.target, center], non_negative=t, type=type, rate=rate)
         
-        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
         
         trigger[ppt.ROTATE_CENTER] = center
         trigger[ppt.ROTATE_ANGLE] = angle
@@ -319,15 +345,17 @@ class Component:
         return self
     
     def PointToGroup(self, time: float, 
-        target: int, targetDir: int, *,
+        targetDir: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Point target towards another group"""
-        validate_params(targets=target, non_negative=t, type=type, rate=rate)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': PointToGroup requires an active target context")
+        validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
         
-        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
         
         trigger[ppt.ROTATE_TARGET] = targetDir
-        trigger[ppt.ROTATE_CENTER] = target
+        trigger[ppt.ROTATE_CENTER] = self.target
         trigger[ppt.ROTATE_AIM_MODE] = True
         trigger[ppt.DURATION] = t
         trigger[ppt.EASING] = type
@@ -342,7 +370,7 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def Scale(self, time: float, target: int, *,
+    def Scale(self, time: float, *,
         factor: float, hold: float = 0, t: float = 0, 
         type: int = 0, rate: float = 1.0, reverse: bool = False):
         """
@@ -353,7 +381,9 @@ class Component:
         Reverse mode: Start at full size and scale down (doesnt use hold)
         Optional: t, hold, type, rate, reverse
         """
-        validate_params(targets=target, factor=factor, non_negative=[t, hold], type=type, rate=rate)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Scale requires an active target context")
+        validate_params(targets=self.target, factor=factor, non_negative=[t, hold], type=type, rate=rate)
         
         if hold and reverse:
             warn("Scale: 'hold' time is ignored in reverse mode: "
@@ -400,7 +430,7 @@ class Component:
             keyframe_group = new_keyframe_group.caller
             scale_keyframes[scale_settings] = new_keyframe_group
             
-        trigger = self.create_trigger(enum.ObjectID.KEYFRAME_ANIM, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.KEYFRAME_ANIM, util.time_to_dist(time), self.target)
         
         trigger[ppt.KEYMAP_ANIM_GID] = keyframe_group
         trigger[ppt.KEYMAP_ANIM_TIME_MOD] = 1.0
@@ -413,27 +443,31 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def Follow(self, time: float, target: int, targetDir: int, *, t: float = 0) -> Self:
+    def Follow(self, time: float, targetDir: int, *, t: float = 0) -> Self:
         """Make target follow another group's movement"""
         
         raise NotImplementedError("Follow trigger is not tested yet.")
-        # validate_params(targets=target, non_negative=t)
+        # if self.target == -1:
+        #     raise RuntimeError(f"Component '{self.name}': Follow requires an active target context")
+        # validate_params(targets=self.target, non_negative=t)
         
-        # trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), target)
+        # trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), self.target)
         
-        # trigger[ppt.FOLLOW_GROUP] = targetDir
+        # trigger[ppt.FOLLOW_TARGET] = targetDir
         # trigger[ppt.DURATION] = t
         
         # self.triggers.append(trigger)
         # return self
     
-    def Alpha(self, time: float, target: int, *, opacity: float, t: float = 0):
+    def Alpha(self, time: float, *, opacity: float, t: float = 0):
         """Change target's opacity from a range of 0-100 over time."""
-        validate_params(targets=target, non_negative=t)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Alpha requires an active target context")
+        validate_params(targets=self.target, non_negative=t)
         if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
         
-        trigger = self.create_trigger(enum.ObjectID.ALPHA, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.ALPHA, util.time_to_dist(time), self.target)
         
         trigger[ppt.OPACITY] = opacity / 100.0
         trigger[ppt.DURATION] = t
@@ -442,6 +476,7 @@ class Component:
         return self
     
     def _stop_trigger_common(self, time: float, target: int, option: int, useControlID: bool):
+        target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target)
         
         trigger = self.create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
@@ -466,11 +501,13 @@ class Component:
         self._stop_trigger_common(time, target, 2, useControlID)
         return self
     
-    def Collision(self, time: float, target: int, *, 
+    def Collision(self, time: float, *, 
         blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
-        validate_params(targets=target)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Collision requires an active target context")
+        validate_params(targets=self.target)
         
-        trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), self.target)
         
         trigger[ppt.BLOCK_A] = blockA
         trigger[ppt.BLOCK_B] = blockB
@@ -480,11 +517,13 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def Count(self, time: float, target: int, *, item_id: int, count: int, activateGroup: bool):
+    def Count(self, time: float, *, item_id: int, count: int, activateGroup: bool):
         """Activate target when item count is reached for item ID."""
-        validate_params(targets=target, item_id=item_id)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Count requires an active target context")
+        validate_params(targets=self.target, item_id=item_id)
         
-        trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), target)
+        trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), self.target)
         
         trigger[ppt.ITEM_ID] = item_id
         trigger[ppt.COUNT_TARGET] = count
@@ -783,10 +822,12 @@ class InstantPatterns:
         step = (slowestTime - fastestTime) / (numBullets - 1)
         for i, bullet_group in enumerate(bullet_groups):
             travel_time = fastestTime + step * i
+            self._component.start_target_context(bullet_group)
             self._component.MoveTowards(
-                time, bullet_group, targetDir, 
+                time, targetDir, 
                 t=travel_time, dist=dist, type=type, rate=rate 
             )
+            self._component.end_target_context()
         
         return self._component
     
@@ -850,9 +891,11 @@ class TimedPatterns:
             b, _ = bullet.next()
             self._component.Spawn(
                 time + (i * spacing), comp.caller, True, remap=f"{enum.EMPTY_BULLET}:{b}")
+            self._component.start_target_context(b)
             self._component.MoveTowards(
-                time + (i * spacing), b, targetDir, t=t, dist=dist, type=type, rate=rate
+                time + (i * spacing), targetDir, t=t, dist=dist, type=type, rate=rate
             )
+            self._component.end_target_context()
         return self._component
         
     # More pattern methods will be added here

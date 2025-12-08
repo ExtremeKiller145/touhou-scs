@@ -23,9 +23,12 @@ def add_disable_all_bullets():
     comp = Component("Disable All Bullets", 32, editorLayer=4) \
         .assert_spawn_order(False)
     
-    single = Component("Disable Single Bullet", unknown_g(), editorLayer=6) \
-        .assert_spawn_order(False) \
-        .Toggle(0, enum.EMPTY_BULLET, False)
+    single = (Component("Disable Single Bullet", unknown_g(), editorLayer=6)
+        .assert_spawn_order(False)
+        .start_target_context(enum.EMPTY_BULLET)
+            .Toggle(0, False)
+        .end_target_context()
+    )
 
     bullet_groups = (
         list(range(lib.bullet1.min_group, lib.bullet1.max_group + 1)) +
@@ -59,14 +62,18 @@ def add_plr_collisions():
     
     cols = (Component("Base Enemy's Bullet Collisions (un-mapped)", 18, editorLayer=6)
         .assert_spawn_order(False)
-        .Collision(0, enum.EMPTY_BULLET, 
-            blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
-        .Collision(0, GRAZE_FUNCTION, 
-            blockA=enum.EMPTY_BULLET, blockB=PLR_GRAZE_HURTBOX, activateGroup=True)
-        .Collision(0, DESPAWN_FUNCTION, 
-            blockA=enum.EMPTY_BULLET, blockB=BOMB_HITBOX, activateGroup=True)
-        .Collision(0, enum.EMPTY_BULLET, 
-            blockA=enum.EMPTY_BULLET, blockB=PLR_HURTBOX, activateGroup=True)
+        .start_target_context(enum.EMPTY_BULLET)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
+        .end_target_context()
+        .start_target_context(GRAZE_FUNCTION)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_GRAZE_HURTBOX, activateGroup=True)
+        .end_target_context()
+        .start_target_context(DESPAWN_FUNCTION)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=BOMB_HITBOX, activateGroup=True)
+        .end_target_context()
+        .start_target_context(enum.EMPTY_BULLET)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_HURTBOX, activateGroup=True)
+        .end_target_context()
     )
     
     placeholder = unknown_g() # never called, just fulfills comp param requirement
@@ -94,10 +101,12 @@ def add_plr_collisions():
         .assert_spawn_order(False)
         # WARNING: its using empties without remaps
         # (since not remapping PLR_HIT_FUNCTION and therefore not remapping DESPAWN_FUNCTION)
-        .Collision(0, PLR_HURT_FUNCTION,
-            blockA=ENEMY_HITBOX, blockB=PLR_HURTBOX, activateGroup=True)
-        .Collision(0, GRAZE_FUNCTION,
-            blockA=ENEMY_HITBOX, blockB=PLR_GRAZE_HURTBOX, activateGroup=True)
+        .start_target_context(PLR_HURT_FUNCTION)
+            .Collision(0, blockA=ENEMY_HITBOX, blockB=PLR_HURTBOX, activateGroup=True)
+        .end_target_context()
+        .start_target_context(GRAZE_FUNCTION)
+            .Collision(0, blockA=ENEMY_HITBOX, blockB=PLR_GRAZE_HURTBOX, activateGroup=True)
+        .end_target_context()
     )
 
 
@@ -110,8 +119,9 @@ def add_enemy_collisions():
     def add(enemies: list[int], bullet: lib.BulletPool, enemyName: str, bulletName: str):
         base_col = (Component(f"{enemyName} Collision for {bulletName} (un-mapped)", unknown_g(), editorLayer=6)
             .assert_spawn_order(False)
-            .Collision(0, plr_bullet_despawn.caller, 
-                blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
+            .start_target_context(plr_bullet_despawn.caller)
+                .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
+            .end_target_context()
         )
         
         global_col = Component(f"{enemyName} Collision remap wrappers for {bulletName}", 17, editorLayer=4) \
@@ -126,31 +136,35 @@ def add_enemy_collisions():
 
 despawn1 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
-    .Scale(0, enum.EMPTY_BULLET, 
-        factor=0.25, hold=0, t=1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.2)
-    .Alpha(0, enum.EMPTY_BULLET, t=1, opacity=0)
-    .Pulse(0, enum.EMPTY_BULLET, lib.rgb(0,0,0), t=1)
-    .Alpha(1, enum.EMPTY_BULLET, t=0, opacity=100)
-    .Toggle(1, enum.EMPTY_BULLET, False)
+    .start_target_context(enum.EMPTY_BULLET)
+        .Scale(0, factor=0.25, hold=0, t=1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.2)
+        .Alpha(0, t=1, opacity=0)
+        .Pulse(0, lib.rgb(0,0,0), t=1)
+        .Alpha(1, t=0, opacity=100)
+        .Toggle(1, False)
+    .end_target_context()
 )
 
 
 despawn2 = (Component("EnemyBullet Despawn 2", unknown_g(), editorLayer=6)
-    .assert_spawn_order(True)\
+    .assert_spawn_order(True)
     # Bullet despawn
-    .Scale(0, enum.EMPTY_BULLET,
-        factor=0.25, hold=0, t=0.1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
-    .Alpha(0, enum.EMPTY_BULLET, t=0.1, opacity=0)
-    .Pulse(0, enum.EMPTY_BULLET, lib.rgb(0,50,255), t=0.2, exclusive=True)
-    .Alpha(0.2, enum.EMPTY_BULLET, t=0, opacity=100)
-    .Toggle(0.2, enum.EMPTY_BULLET, False)
+    .start_target_context(enum.EMPTY_BULLET)
+        .Scale(0, factor=0.25, hold=0, t=0.1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
+        .Alpha(0, t=0.1, opacity=0)
+        .Pulse(0, lib.rgb(0,50,255), t=0.2, exclusive=True)
+        .Alpha(0.2, t=0, opacity=100)
+        .Toggle(0.2, False)
+    .end_target_context()
 )
 
 plr_bullet_despawn = (Component("PlrBullet Despawn List", unknown_g(), editorLayer=6)
     .assert_spawn_order(False)
     # To decrease enemy health & despawn the player bullet
     .Pickup(0, item_id=enum.EMPTY_TARGET_GROUP, count=-1, override=False)
-    .Pulse(0, enum.EMPTY_TARGET_GROUP, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
+    .start_target_context(enum.EMPTY_TARGET_GROUP)
+        .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
+    .end_target_context()
     .Spawn(0, despawn2.caller, True) # toggle this on/off same tick w/ unique group
 )
 
