@@ -583,7 +583,7 @@ class Multitarget:
                     .pair(enum.EMPTY_BULLET, i + 6001)
                     .pair(enum.EMPTY_TARGET_GROUP, i + 6002)
                     .pair(enum.EMPTY1, i + 6003)
-                    .pair(enum.EMPTY2, i + 6004))
+                    .pair(enum.EMPTY_EMITTER, i + 6004))
                 component.Spawn(0, enum.EMPTY_MULTITARGET, True, remap=rb.build())
             cls._binary_bases[power] = component
         
@@ -594,7 +594,7 @@ class Multitarget:
     @classmethod
     def spawn_with_remap(cls, caller: Component, time: float, num_targets: int, comp: Component,
         remap_callback: Callable[[dict[int, int], util.Remap], None]
-    ) -> None:
+    ) -> None: 
         """
         Spawn binary components with custom remap logic via callback.
         
@@ -613,7 +613,8 @@ class Multitarget:
                 remap_callback(remap_pairs, remap)
             
             remap.pair(enum.EMPTY_MULTITARGET, comp.groups[0])
-            caller.Spawn(time, mt_comp.groups[0], False, remap=remap.build())
+            caller.Spawn(time, mt_comp.groups[0], False, 
+                remap=remap.build(), reset_remap=False)
 
 
 # ===========================================================
@@ -688,6 +689,8 @@ class InstantPatterns:
                     # Convert 0-359 range to 1-360 for GuiderCircle indexing
                     angle_index = bulletPos if bulletPos > 0 else 360
                     remap.pair(target, gc.groups[angle_index])
+                elif source == enum.EMPTY_EMITTER:
+                    remap.pair(target, gc.center)
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
             
@@ -734,22 +737,23 @@ class InstantPatterns:
         
         return self._component
     
-    def Line(self, time: float, comp: Component, 
+    def Line(self, time: float, comp: Component, emitter: int, 
         targetDir: int, bullet: lib.BulletPool, *, 
         numBullets: int, fastestTime: float, slowestTime: float, dist: int,
         type: int = 0, rate: float = 1.0):
         """
         Line pattern - builds MoveTowards triggers at different speeds, forming a line.
         
+        Comp requires EMPTY_BULLET and EMPTY_MULTITARGET.
         Optional: type, rate
         """
         validate_params(positive=[fastestTime, slowestTime], type=type, rate=rate)
         IL = "Instant.Line:"
         
         util.enforce_component_targets(IL, comp,
-            requires={ enum.EMPTY_BULLET },
+            requires={ enum.EMPTY_BULLET, enum.EMPTY_EMITTER },
             excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
-                enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
+                enum.EMPTY1, enum.EMPTY2 }
         )
         
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
@@ -768,6 +772,8 @@ class InstantPatterns:
                     bullet_group, _ = bullet.next()
                     bullet_groups.append(bullet_group)
                     remap.pair(target, bullet_group)
+                elif source == enum.EMPTY_EMITTER:
+                    remap.pair(target, emitter)
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
         
@@ -826,7 +832,7 @@ class TimedPatterns:
         util.enforce_component_targets(TL, comp,
             requires={ enum.EMPTY_BULLET },
             excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
-                enum.EMPTY1, enum.EMPTY2, enum.EMPTY3 }
+                enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER }
         )
         
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):

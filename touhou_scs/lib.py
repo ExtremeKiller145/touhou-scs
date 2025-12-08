@@ -13,7 +13,8 @@ from typing import Any, Self
 
 from touhou_scs import enums as enum
 from touhou_scs import utils as util
-from touhou_scs.utils import warn
+from touhou_scs.component import Component
+from touhou_scs.utils import group, unknown_g, warn
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger, TriggerArea
 from dataclasses import dataclass
 
@@ -40,6 +41,35 @@ class Spell:
         self.components.append(component)
         return self
 
+
+# ============================================================================
+# USEFUL/NEEDED UTILS
+# ============================================================================
+
+@dataclass
+class HSB:
+    h: float
+    s: float
+    b: float
+
+def rgb(r: float, g: float, b: float) -> HSB:
+    """Convert RGB into HSB adjustments for converting red into desired color."""
+    # Normalize RGB to [0, 1]
+    r, g, b = r / 255, g / 255, b / 255
+    h, s, b = colorsys.rgb_to_hsv(r, g, b)
+
+    base_h, base_s, base_b = 0.0, 1.0, 1.0 # Base red in HSV is (0°, 1, 1)
+
+    hue_offset = (h * 360.0) - (base_h * 360.0)
+
+    # Wrap hue to -180..180
+    if hue_offset > 180: hue_offset -= 360
+    elif hue_offset < -180: hue_offset += 360
+
+    sat_offset = s - base_s
+    bright_offset = b - base_b
+
+    return HSB(hue_offset, sat_offset, bright_offset)
 
 # ============================================================================
 # IN-LEVEL GROUP ASSIGNMENTS
@@ -109,31 +139,79 @@ reimuA_level1 = BulletPool(110, 128, True)
 
 def get_all_components() -> list[ComponentProtocol]: return all_components
 
-@dataclass
-class HSB:
-    h: float
-    s: float
-    b: float
+class Stage:
+    stage1 = Component("Stage1", group(36), 9).assert_spawn_order(True)
+    stage2 = Component("Stage2", unknown_g(), 9).assert_spawn_order(True)
+    stage3 = Component("Stage3", unknown_g(), 9).assert_spawn_order(True)
+    stage4 = Component("Stage4", unknown_g(), 9).assert_spawn_order(True)
+    stage5 = Component("Stage5", unknown_g(), 9).assert_spawn_order(True)
+    stage6 = Component("Stage6", unknown_g(), 9).assert_spawn_order(True)
 
-def rgb(r: float, g: float, b: float) -> HSB:
-    """Convert RGB into HSB adjustments for converting red into desired color."""
-    # Normalize RGB to [0, 1]
-    r, g, b = r / 255, g / 255, b / 255
-    h, s, b = colorsys.rgb_to_hsv(r, g, b)
 
-    base_h, base_s, base_b = 0.0, 1.0, 1.0 # Base red in HSV is (0°, 1, 1)
+class EnemyPool:
+    def __init__(self, min_group: int, max_group: int, despawn_setup: Component):
+        self._min_group = min_group
+        self._max_group = max_group
+        self._despawn_setup = despawn_setup
+        
+        self._current = min_group
+        self.__firstcall = True
+        self._off_switches = {g: unknown_g() for g in range(min_group, max_group + 1)}
+    
+    def next(self) -> int:
+        """Cycle to next enemy group in pool"""
+        if self.__firstcall:
+            self.__firstcall = False
+            return self._current
+        
+        self._current += 1
+        if self._current > self._max_group:
+            self._current = self._min_group
+        return self._current
+    
+    def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int):
+        """
+        Spawn an enemy attack with automatic group cycling and HP/death handling.
+        
+        Attack component targets 'enum.EMPTY_TARGET_GROUP' instead of hardcoded enemy.
+        """
+        util.enforce_component_targets("Spawn Enemy", attack,
+            # requires={ enum.EMPTY_TARGET_GROUP },
+            excludes={ enum.EMPTY_BULLET, enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER, enum.EMPTY_MULTITARGET })
+        
+        off_switch = self._off_switches[self._current]
+        
+        (stage
+            .Spawn(time, attack.groups[0], True)
+            .group_last_trigger(off_switch)
+            .Spawn(time, self._despawn_setup.groups[0], False,
+                remap=f"{enum.EMPTY_TARGET_GROUP}.{self._current}.{enum.EMPTY1}.{off_switch}")
+            .Pickup(time - enum.TICK*2, item_id=self._current, count=hp, override=True)
+        )
 
-    hue_offset = (h * 360.0) - (base_h * 360.0)
 
-    # Wrap hue to -180..180
-    if hue_offset > 180: hue_offset -= 360
-    elif hue_offset < -180: hue_offset += 360
+#
+# less annoying way instead of making 'despawner' have spawn order
+toggler = (Component("Toggler", unknown_g(), 7)
+    .assert_spawn_order(False)
+    .Toggle(0, enum.EMPTY_TARGET_GROUP, False)
+)
 
-    sat_offset = s - base_s
-    bright_offset = b - base_b
+despawner = (Component("Despawner", unknown_g(), 7)
+    .assert_spawn_order(False)
+    .Alpha(0, enum.EMPTY_TARGET_GROUP, t=1, opacity=0)
+    .Pulse(0, enum.EMPTY_TARGET_GROUP, HSB(0, 0, -20), fadeIn=0.1, t=0.3, fadeOut=0.6, exclusive=True)
+    .Scale(0, enum.EMPTY_TARGET_GROUP, factor=0.1, t=0.5, hold=3)
+    .Stop(0, enum.EMPTY1)
+    .Spawn(0, toggler, False, delay=1)
+)
 
-    return HSB(hue_offset, sat_offset, bright_offset)
+despawnSetup = (Component("Despawn Setup", unknown_g(), 7)
+    .assert_spawn_order(False)
+    .Count(0, despawner.groups[0], item_id=enum.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
+)
 
+enemy1 = EnemyPool(200, 211, despawnSetup)
 
 # ============================================================================
 # EXPORT FUNCTIONS

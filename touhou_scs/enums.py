@@ -206,9 +206,9 @@ NORTH_GROUP: Final[int] = 26
 
 # Empty Groups for Remapping   (e.g. 21 => group)
 # Holder object for empty groups is directly placed on the physical player, layer 0
-EMPTY1: Final[int] = 21  
-EMPTY2: Final[int] = 23  
-EMPTY3: Final[int] = 24  
+EMPTY1: Final[int] = 21
+EMPTY2: Final[int] = 23
+EMPTY_EMITTER: Final[int] = 24
 EMPTY_BULLET: Final[int] = 10
 EMPTY_TARGET_GROUP: Final[int] = 20
 

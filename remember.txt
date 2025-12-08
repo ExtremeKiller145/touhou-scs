@@ -31,6 +31,8 @@ Endboss: ??? (formerly called Nameless Entity)
 
 TODO:
 
+- find out how to mke enemy attack comps use empties as sub-ins for hardcoding enemy groups (either that or js suck it up and make copy-paste attack comps) idk whats happening with multitarget and the comp_excludes
+
 - Add basic Bombing (keybind + texture)
 
 - Add Item pickups (power, bomb, score)
