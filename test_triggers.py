@@ -1158,17 +1158,17 @@ class TestMethodChainingReturnsSelf:
     
     def test_stop_returns_self(self):
         comp = Component("Test", 100)
-        result = comp.Stop(0, 50)
+        result = comp.Stop(0, target=50)
         assert result is comp
     
     def test_pause_returns_self(self):
         comp = Component("Test", 100)
-        result = comp.Pause(0, 50)
+        result = comp.Pause(0, target=50)
         assert result is comp
     
     def test_resume_returns_self(self):
         comp = Component("Test", 100)
-        result = comp.Resume(0, 50)
+        result = comp.Resume(0, target=50)
         assert result is comp
     
     def test_chain_preserves_trigger_count(self):
