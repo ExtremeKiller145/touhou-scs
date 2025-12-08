@@ -676,45 +676,73 @@ class TestGroupContextManagement:
         assert_error(exc, "must provide target or groups")
 
 
-class TestGroupLastTrigger:
-    """Test group_last_trigger method"""
+class TestTempContext:
+    """Test temp_context contextmanager"""
     
-    def test_group_last_trigger_adds_to_most_recent(self):
-        """group_last_trigger adds groups to the last trigger only"""
+    def test_temp_context_restores_target(self):
+        """temp_context restores target after exit"""
         comp = Component("Test", 100)
         comp.set_context(target=50)
         comp.Toggle(0, activateGroup=True)
-        comp.set_context(target=51)
-        comp.Toggle(0.1, activateGroup=True)
-        comp.group_last_trigger(300)
         
-        assert 300 not in comp.triggers[0][P.GROUPS]
+        with comp.temp_context(target=60):
+            comp.Toggle(0.1, activateGroup=True)
+        
+        assert comp.target == 50
+        assert comp.triggers[0][P.TARGET] == 50
+        assert comp.triggers[1][P.TARGET] == 60
+    
+    def test_temp_context_restores_groups(self):
+        """temp_context restores groups after exit"""
+        comp = Component("Test", 100)
+        comp.set_context(target=50, groups=200)
+        comp.Toggle(0, activateGroup=True)
+        
+        with comp.temp_context(groups=300):
+            comp.Toggle(0.1, activateGroup=True)
+        
+        assert comp.groups == [100, 200]
+        assert 200 in comp.triggers[0][P.GROUPS]
         assert 300 in comp.triggers[1][P.GROUPS]
+        assert 200 not in comp.triggers[1][P.GROUPS]
     
-    def test_group_last_trigger_no_triggers_rejected(self):
-        """Grouping when no triggers exist is rejected"""
+    def test_temp_context_restores_both(self):
+        """temp_context can temporarily change both target and groups"""
         comp = Component("Test", 100)
-        with pytest.raises(RuntimeError) as exc:
-            comp.group_last_trigger(300)
-        assert_error(exc, "no triggers")
+        comp.set_context(target=50, groups=200)
+        
+        with comp.temp_context(target=60, groups=300):
+            comp.Toggle(0, activateGroup=True)
+        
+        assert comp.target == 50
+        assert comp.groups == [100, 200]
     
-    def test_group_last_trigger_duplicate_rejected(self):
-        """Adding duplicate group to trigger is rejected"""
+    def test_temp_context_nesting(self):
+        """temp_context supports nesting"""
         comp = Component("Test", 100)
-        comp.set_context(target=50)
-        comp.Toggle(0, activateGroup=True)
-        comp.group_last_trigger(200)
-        with pytest.raises(ValueError, match="duplicate"):
-            comp.group_last_trigger(200)
+        comp.set_context(target=50, groups=200)
+        
+        with comp.temp_context(groups=300):
+            comp.Toggle(0, activateGroup=True)
+            with comp.temp_context(target=70):
+                comp.Toggle(0.1, activateGroup=True)
+            # After inner context: target=50, groups=300
+            assert comp.target == 50
+            assert comp.groups == [100, 300]
+        
+        # After outer context: fully restored
+        assert comp.target == 50
+        assert comp.groups == [100, 200]
     
-    def test_group_last_trigger_empty_rejected(self):
-        """Grouping with no groups is rejected"""
+    def test_temp_context_with_no_params(self):
+        """temp_context with no params is a no-op but still works"""
         comp = Component("Test", 100)
-        comp.set_context(target=50)
-        comp.Toggle(0, activateGroup=True)
+        comp.set_context(target=50, groups=200)
+        
         with pytest.raises(ValueError) as exc:
-            comp.group_last_trigger()
-        assert_error(exc, "No groups provided")
+            with comp.temp_context():
+                comp.Toggle(0, activateGroup=True)
+        assert_error(exc, "must provide target or groups")
 
 
 class TestFlattenGroups:

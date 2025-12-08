@@ -7,6 +7,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 """
 
 from __future__ import annotations
+from contextlib import contextmanager
 from typing import Any, Callable, NamedTuple, Self
 
 from touhou_scs import enums as enum, lib, utils as util
@@ -142,29 +143,18 @@ class Component:
             raise ValueError("Flatten Groups: No groups provided!")
         return result
     
-    def group_last_trigger(self, *new_groups: int | list[int]):
-        """Add groups to the most recently added trigger."""
-
-        if not self.triggers:
-            raise RuntimeError(f"Component '{self.name}' has no triggers to modify")
+    @contextmanager
+    def temp_context(self, target: int | None = None, groups: int | list[int] | None = None):
+        """Temporarily set_context, then restore previous state."""
+        old_target = self.target
+        old_groups = self.groups.copy()
         
-        additional_groups = self._flatten_groups(*new_groups)
-        if not additional_groups:
-            raise ValueError("group_last_trigger requires at least one group")
-        
-        old_groups = self.triggers[-1][ppt.GROUPS]
-        combined_groups = old_groups + additional_groups
-        
-        if len(combined_groups) != len(set(combined_groups)):
-            raise ValueError(
-                f"Trigger in component '{self.name}' has been assigned duplicate groups! \n"
-                f"Old groups: {old_groups} \n"
-                f"New groups: {additional_groups} \n"
-                f"Combined: {combined_groups}"
-            )
-        
-        self.triggers[-1][ppt.GROUPS] = combined_groups
-        return self
+        try:
+            self.set_context(target=target, groups=groups)
+            yield self
+        finally:
+            self.target = old_target
+            self.groups = old_groups
     
     def set_context(self, *,
         target: int | None = None, groups: int | list[int] | None = None):
@@ -172,13 +162,9 @@ class Component:
         if target is None and groups is None:
             raise ValueError("set_context: must provide target or groups")
         if target is not None:
-            if self.target != -1:
-                print(f"\nComponent '{self.name}': Overwriting existing target context\n")
             validate_params(targets=target)
             self.target = target
         if groups is not None:
-            if self.groups != [self.caller]:
-                print(f"\nComponent '{self.name}': Overwriting existing group context\n")
             self.groups = [self.caller] + self._flatten_groups(groups)
         
         return self
@@ -823,12 +809,11 @@ class InstantPatterns:
         step = (slowestTime - fastestTime) / (numBullets - 1)
         for i, bullet_group in enumerate(bullet_groups):
             travel_time = fastestTime + step * i
-            self._component.set_context(target=bullet_group)
-            self._component.MoveTowards(
-                time, targetDir, 
-                t=travel_time, dist=dist, type=type, rate=rate 
-            )
-            self._component.clear_context()
+            with self._component.temp_context(target=bullet_group):
+                self._component.MoveTowards(
+                    time, targetDir, 
+                    t=travel_time, dist=dist, type=type, rate=rate 
+                )
         
         return self._component
     
@@ -892,11 +877,10 @@ class TimedPatterns:
             b, _ = bullet.next()
             self._component.Spawn(
                 time + (i * spacing), comp.caller, True, remap=f"{enum.EMPTY_BULLET}:{b}")
-            self._component.set_context(target=b)
-            self._component.MoveTowards(
-                time + (i * spacing), targetDir, t=t, dist=dist, type=type, rate=rate
-            )
-            self._component.clear_context()
+            with self._component.temp_context(target=b):
+                self._component.MoveTowards(
+                    time + (i * spacing), targetDir, t=t, dist=dist, type=type, rate=rate
+                )
         return self._component
         
     # More pattern methods will be added here

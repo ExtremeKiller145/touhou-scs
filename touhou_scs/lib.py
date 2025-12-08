@@ -181,13 +181,13 @@ class EnemyPool:
         
         off_switch = self._off_switches[self._current]
         
-        (stage
-            .Spawn(time, attack.caller, True)
-            .group_last_trigger(off_switch)
-            .Spawn(time, self._despawn_setup.caller, False,
-                remap=f"{enum.EMPTY_TARGET_GROUP}.{self._current}.{enum.EMPTY1}.{off_switch}")
-            .Pickup(time - enum.TICK*2, item_id=self._current, count=hp, override=True)
-        )
+        with stage.temp_context(groups=off_switch):
+            stage.Spawn(time, attack.caller, True)
+        
+        stage.Spawn(time, self._despawn_setup.caller, False,
+            remap=f"{enum.EMPTY_TARGET_GROUP}.{self._current}.{enum.EMPTY1}.{off_switch}")
+        stage.Pickup(time - enum.TICK*2, item_id=self._current, count=hp, override=True)
+        
 
 
 #

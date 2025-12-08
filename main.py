@@ -68,23 +68,6 @@ test_line = (Component("TestLine", unknown_g(), 5)
     .clear_context()
 )
 
-# Main caller component that creates the patterns
-# main = Component("CallerComponent", group(36), 5)
-# (main
-#     .assert_spawn_order(True)
-#     .set_context(target=c1.all)
-#         .GotoGroup(0, emitter, t=0)
-#     .clear_context()
-#     .Spawn(0, Stage.stage1, True)
-#     .set_context(target=emitter)
-#         .MoveBy(0.2, dx=-150, dy=30, t=10, type=e.Easing.EASE_IN, rate=1.5)
-#     .clear_context()
-#     .set_context(target=c1.all)
-#         .MoveBy(0.2, dx=-150, dy=30, t=10, type=e.Easing.EASE_IN, rate=1.5)
-#     .clear_context()
-# )
-
-
 enemy1attack = (Component("Enemy1", unknown_g(), 5)
     .assert_spawn_order(True)
     .set_context(target=c1.all)
@@ -104,41 +87,7 @@ enemy1attack = (Component("Enemy1", unknown_g(), 5)
         numBullets=15, fastestTime=1, slowestTime=4, dist=400)
 )
 
-# enemy2attack = (Component("Enemy2", unknown_g(), 5)
-#     .assert_spawn_order(True)
-#     .set_context(target=c1.all)
-#         .GotoGroup(0.9, e.EMPTY_TARGET_GROUP, t=0)
-#     .clear_context()
-#     .set_context(target=e.EMPTY_TARGET_GROUP)
-#         .MoveBy(0.8, dx=-80, dy=40, t=6, type=e.Easing.EASE_OUT, rate=1.2)
-#     .clear_context()
-#     .instant.Arc(1, testRadialComp, c1, lib.bullet2,
-#         numBullets=32, spacing=2, centerAt=0)
-#     .timed.RadialWave(2, testRadialComp, c1, lib.bullet1,
-#         numBullets=15, waves=8, interval=0.4, centerAt=5)
-#     .instant.Radial(4, test2, c1, lib.bullet3,
-#         numBullets=24, centerAt=0)
-# )
-
-# enemy3attack = (Component("Enemy3", unknown_g(), 5)
-#     .assert_spawn_order(True)
-#     .set_context(target=c1.all)
-#         .GotoGroup(0.9, e.EMPTY_TARGET_GROUP, t=0)
-#     .clear_context()
-#     .set_context(target=e.EMPTY_TARGET_GROUP)
-#         .MoveBy(0.8, dx=0, dy=60, t=5, type=e.Easing.NONE, rate=1)
-#     .clear_context()
-#     .instant.Line(1, test_line, e.PLR, lib.bullet4,
-#         numBullets=20, fastestTime=0.8, slowestTime=3, dist=350)
-#     .instant.Radial(2.5, test2, c1, lib.bullet2,
-#         numBullets=12, centerAt=0)
-#     .instant.Line(4, test_line, e.PLR, lib.bullet1,
-#         numBullets=25, fastestTime=1.2, slowestTime=5, dist=450)
-# )
-
 enemy1.spawn_enemy(Stage.stage1, 0.5, enemy1attack, 20)
-# enemy1.spawn_enemy(Stage.stage1, 6, enemy2attack, 20)
-# enemy1.spawn_enemy(Stage.stage1, 9, enemy3attack, 24)
 
 add_enemy_collisions()
 add_disable_all_bullets()
