@@ -138,6 +138,8 @@ class Component:
             else: result.append(g)
         if len(result) != len(set(result)):
             raise ValueError(f"Flatten Groups: Duplicate groups found!: \n{result}")
+        if len(result) == 0:
+            raise ValueError("Flatten Groups: No groups provided!")
         return result
     
     def group_last_trigger(self, *new_groups: int | list[int]):
@@ -164,36 +166,35 @@ class Component:
         self.triggers[-1][ppt.GROUPS] = combined_groups
         return self
     
-    def start_group_context(self, *new_groups: int | list[int]):
-        """Start a group context: all subsequent triggers will include these additional groups."""
-        additional_groups = self._flatten_groups(*new_groups)
-        if not additional_groups:
-            raise ValueError("start_group_context requires at least one group")
+    def set_context(self, *,
+        target: int | None = None, groups: int | list[int] | None = None):
+        """Set a context for trigger target and groups. Either or both can be set."""
+        if target is None and groups is None:
+            raise ValueError("set_context: must provide target or groups")
+        if target is not None:
+            if self.target != -1:
+                print(f"\nComponent '{self.name}': Overwriting existing target context\n")
+            validate_params(targets=target)
+            self.target = target
+        if groups is not None:
+            if self.groups != [self.caller]:
+                print(f"\nComponent '{self.name}': Overwriting existing group context\n")
+            self.groups = [self.caller] + self._flatten_groups(groups)
         
-        if len(self.groups) > 1:
-            raise RuntimeError(f"Component '{self.name}' already has an active group context. Call end_group_context() first.")
-        
-        self.groups = [self.caller] + additional_groups
         return self
     
-    def end_group_context(self):
-        """End the most recent group context started with start_group_context."""
-        if len(self.groups) == 1:
-            raise RuntimeError(f"Component '{self.name}' has no active group context to end")
+    def clear_context(self, *, target_only: bool = False, groups_only: bool = False):
+        """
+        Clear active context. By default clears both.
+            target_only: Clear only target context
+            groups_only: Clear only groups context
+        """
+        no_param_given = not (target_only or groups_only)
+        if target_only and groups_only:
+            raise ValueError("clear_context: cannot use both target_only and groups_only")
+        if target_only or no_param_given: self.target = -1
+        if groups_only or no_param_given: self.groups = [self.caller]
         
-        self.groups = [self.caller]
-        return self
-    
-    def start_target_context(self, target: int):
-        """Start a target context: all subsequent triggers will use these targets."""
-        self.target = target
-        validate_params(targets=target)
-        return self
-    
-    def end_target_context(self):
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}' has no active target context to end")
-        self.target = -1
         return self
     
     # ===========================================================
@@ -486,17 +487,17 @@ class Component:
         
         self.triggers.append(trigger)
     
-    def Stop(self, time: float, target: int, *, useControlID: bool = False):
+    def Stop(self, time: float, *, target: int, useControlID: bool = False):
         """WARNING: Does not stop all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 0, useControlID)
         return self
     
-    def Pause(self, time: float, target: int, *, useControlID: bool = False):
+    def Pause(self, time: float, *, target: int, useControlID: bool = False):
         """WARNING: Does not pause all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 1, useControlID)
         return self
     
-    def Resume(self, time: float, target: int, *, useControlID: bool = False):
+    def Resume(self, time: float, *, target: int, useControlID: bool = False):
         """Resume target's paused triggers (Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn)"""
         self._stop_trigger_common(time, target, 2, useControlID)
         return self
@@ -822,12 +823,12 @@ class InstantPatterns:
         step = (slowestTime - fastestTime) / (numBullets - 1)
         for i, bullet_group in enumerate(bullet_groups):
             travel_time = fastestTime + step * i
-            self._component.start_target_context(bullet_group)
+            self._component.set_context(target=bullet_group)
             self._component.MoveTowards(
                 time, targetDir, 
                 t=travel_time, dist=dist, type=type, rate=rate 
             )
-            self._component.end_target_context()
+            self._component.clear_context()
         
         return self._component
     
@@ -891,11 +892,11 @@ class TimedPatterns:
             b, _ = bullet.next()
             self._component.Spawn(
                 time + (i * spacing), comp.caller, True, remap=f"{enum.EMPTY_BULLET}:{b}")
-            self._component.start_target_context(b)
+            self._component.set_context(target=b)
             self._component.MoveTowards(
                 time + (i * spacing), targetDir, t=t, dist=dist, type=type, rate=rate
             )
-            self._component.end_target_context()
+            self._component.clear_context()
         return self._component
         
     # More pattern methods will be added here
