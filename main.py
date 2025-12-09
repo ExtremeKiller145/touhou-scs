@@ -9,6 +9,11 @@ if __name__ != "__main__":
     print("Don't import this! exiting.")
     exit()
 
+main = (Component("Main", 36, 7)
+    .assert_spawn_order(False)
+    .Spawn(0, lib.Stage.stage1.caller, True)
+)
+
 c1 = lib.circle1
 emitter = 30
 enemy1g = 200

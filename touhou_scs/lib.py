@@ -14,7 +14,7 @@ from typing import Any, Self
 from touhou_scs import enums as enum
 from touhou_scs import utils as util
 from touhou_scs.component import Component
-from touhou_scs.utils import group, unknown_g, warn
+from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger, TriggerArea
 from dataclasses import dataclass
 
@@ -140,7 +140,7 @@ reimuA_level1 = BulletPool(110, 128, True)
 def get_all_components() -> list[ComponentProtocol]: return all_components
 
 class Stage:
-    stage1 = Component("Stage1", group(36), 9).assert_spawn_order(True)
+    stage1 = Component("Stage1", unknown_g(), 9).assert_spawn_order(True)
     stage2 = Component("Stage2", unknown_g(), 9).assert_spawn_order(True)
     stage3 = Component("Stage3", unknown_g(), 9).assert_spawn_order(True)
     stage4 = Component("Stage4", unknown_g(), 9).assert_spawn_order(True)
