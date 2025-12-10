@@ -507,7 +507,7 @@ def _print_budget_analysis(stats: dict[str, Any]) -> None:
         print("\nComponents:")
         
         max_group_width = max(len(str(group)) for _, (_, group) in component_stats.items())
-        max_name_width = max(len(name) for name in component_stats.keys())
+        max_name_width = max(len(name) for name in component_stats)
         
         print(f"\033[4m  Group{" " * (max_group_width-2)}"
               f"Name{" "*(max_name_width-3)} Triggers\033[0m")

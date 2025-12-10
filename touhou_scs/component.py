@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from typing import Any, Callable, NamedTuple, Self
 
 from touhou_scs import enums as enum, lib, utils as util
-from touhou_scs.utils import warn
+from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import Trigger
 
 
@@ -58,7 +58,7 @@ def validate_params(*,
         for g in targets:
             if g <= 0:
                 raise ValueError(f"Target Group '{g}' must be positive (>0).")
-            if _RESTRICTED_LOOKUP.get(g):
+            if g in _RESTRICTED_LOOKUP:
                 raise ValueError(f"Target Group '{g}' is restricted.")
             c = util.unknown_g.counter
             if not (0 < g <= (c)):
@@ -126,7 +126,7 @@ class Component:
         return bool(self.get_triggers(trigger))
     
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
-        if _RESTRICTED_LOOKUP.get(target):
+        if target in _RESTRICTED_LOOKUP:
             raise ValueError(f"Group '{target}' is restricted due to known conflicts.")
         return Trigger({
             ppt.OBJ_ID: obj_id,
@@ -395,7 +395,7 @@ class Component:
             keyframe_group = scale_keyframes[scale_settings].caller
         else:
             name = f"Keyframe Scale<{factor}>,T<{t}>,Reverse<{reverse}>"
-            new_keyframe_group = Component(name, util.unknown_g(), 6) \
+            new_keyframe_group = Component(name, unknown_g(), 6) \
                 .assert_spawn_order(True)
             
             def keyframe_obj(*, scale: float, duration: float, order: int, 
@@ -611,7 +611,7 @@ class Multitarget:
         if cls._initialized: raise RuntimeError("Multitarget binary bases already initialized")
         
         for power in cls._powers:
-            component = Component(f"BinaryBase_{power}", util.unknown_g(), 4)
+            component = Component(f"BinaryBase_{power}", unknown_g(), 4)
             component.assert_spawn_order(False)
             # To add support for more parameters, add a new empty group and follow the pattern
             num_emptys = 4
@@ -663,19 +663,31 @@ class Multitarget:
 class _PointerMgr:
     """Used for Pointer internal management."""
     setup_pointercircle: Component | None = None
+    align_north: Component | None = None
     follow_comps: dict[int, Component] = {}
     freed_pointers: list[int] = []
     
     @classmethod
     def get_setup_comp(cls) -> Component:
         if cls.setup_pointercircle is None:
-            cls.setup_pointercircle = Component("Setup PointerCircle", util.unknown_g(), 7)
+            cls.setup_pointercircle = Component("Setup PointerCircle", unknown_g(), 7)
             with cls.setup_pointercircle.temp_context(target=enum.EMPTY_BULLET):
                 (cls.setup_pointercircle
                     .assert_spawn_order(False)
                     .GotoGroup(0, enum.EMPTY_TARGET_GROUP))
-            
+        
         return cls.setup_pointercircle
+    
+    @classmethod
+    def get_align_north_comp(cls) -> Component:
+        if cls.align_north is None:
+            cls.align_north = Component("AlignNorth PointerCircle", unknown_g(), 7)
+            with cls.align_north.temp_context(target=enum.EMPTY_BULLET):
+                (cls.align_north
+                    .assert_spawn_order(False)
+                    .GotoGroup(0, enum.EMPTY_TARGET_GROUP))
+            
+        return cls.align_north
     
     @classmethod
     def next_pointer(cls) -> int:
@@ -690,7 +702,7 @@ class _PointerMgr:
             follow_comp = cls.follow_comps[duration]
         else:
             follow_comp = (Component(
-                f"[{duration}s] Follow PointerCircle", util.unknown_g(), 5)
+                f"[{duration}s] Follow PointerCircle", unknown_g(), 5)
                 .assert_spawn_order(False)
                 .set_context(target=enum.EMPTY_BULLET)
                 .Follow(0, enum.EMPTY_TARGET_GROUP, t=duration)
@@ -704,8 +716,8 @@ class Pointer:
         self._component = component
         self._params: Any = tuple()
 
-    def SetPointerCircle(self, 
-        time: float, gc: lib.GuiderCircle, *, location: int, duration: int = 0):
+    def SetPointerCircle(self, time: float, gc: lib.GuiderCircle, *, 
+        location: int, duration: int = 0, align_north: bool = True):
         """Create a temporary Pointer-based GuiderCircle."""
         if self._component.requireSpawnOrder is False:
             raise RuntimeError("Patterns.SetPointerCircle: Must be trigged in spawn order")
@@ -720,7 +732,7 @@ class Pointer:
         
         self._component.current_pc = pc
         
-        self._params = (time, gc, location, duration)
+        self._params = (time, gc, location, duration, align_north)
         return self._component
     
     def CleanPointerCircle(self):
@@ -733,14 +745,16 @@ class Pointer:
             if p not in self._component.used_pointers.values()
         ])
         
-        time, gc, location, duration = self._params
+        time, gc, location, duration, align_north = self._params
         
         # Move original guidercircle into position
         with self._component.temp_context(target=gc.all):
             self._component.GotoGroup(time - enum.TICK*2, location)
+            if align_north:
+                self._component.PointToGroup(time - enum.TICK*2, enum.NORTH_GROUP)
         
         remaining = len(self._component.used_pointers)
-        angle_iter = iter(self._component.used_pointers.keys())
+        angle_iter = iter(self._component.used_pointers)
         
         while remaining > 0:
             batch_size = 64 if remaining > 127 else remaining
