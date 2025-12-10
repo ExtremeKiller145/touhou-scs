@@ -2,16 +2,11 @@
 Touhou SCS - Type Definitions
 """
 
-from typing import Required, TypedDict, Protocol
-
-
+from typing import Required, TypedDict, Protocol, Any
 
 # ==========================================
 # TRIGGER STRUCTURE
 # ==========================================
-
-
-# Trigger: TypeAlias = dict[str, int | str | bool | float | list[int]]
 
 Trigger = TypedDict("Trigger",{
     
@@ -108,6 +103,9 @@ class ComponentProtocol(Protocol):
     editorLayer: int
     requireSpawnOrder: bool | None
     triggers: list[Trigger]
+    target: int
+    used_pointers: dict[int, int]
+    current_pc: Any
     
     def assert_spawn_order(self, required: bool) -> "ComponentProtocol":
         """Set spawn order requirement. Returns self for chaining."""

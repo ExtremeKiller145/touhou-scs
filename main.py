@@ -75,21 +75,23 @@ test_line = (Component("TestLine", unknown_g(), 5)
 
 enemy1attack = (Component("Enemy1", unknown_g(), 5)
     .assert_spawn_order(True)
-    .set_context(target=c1.all)
-        .GotoGroup(0.9, enemy1g, t=0)
     .set_context(target=enemy1g)
         .MoveBy(0.8, dx=80, dy=-20, t=8, type=e.Easing.BOUNCE_IN_OUT, rate=1)
     .clear_context()
-    .instant.Radial(1, test2, c1, lib.bullet4,
-        numBullets=18, centerAt=0)
-    .timed.RadialWave(3, test2, c1, lib.bullet3,
+    .pointer.SetPointerCircle(0.9, c1, location=enemy1g)
+    .instant.Arc(1, testRadialComp, lib.bullet2,
+        spacing=2, numBullets=12, centerAt=0)
+    .instant.Radial(1, test2, lib.bullet4, numBullets=18, centerAt=0)
+    .pointer.SetPointerCircle(2.9, c1, location=emitter)
+    .timed.RadialWave(3, test2, lib.bullet3,
         numBullets=24, waves=10, interval=0.3, centerAt=10)
+    .pointer.CleanPointerCircle()
     .instant.Line(1, test_line, enemy1g, e.PLR, lib.bullet1,
-        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
+        numBullets=15, fastestTime=1, slowestTime=4, dist=450)
     .instant.Line(3, test_line, enemy1g, e.PLR, lib.bullet1,
-        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
+        numBullets=15, fastestTime=1, slowestTime=4, dist=450)
     .instant.Line(5, test_line, enemy1g, e.PLR, lib.bullet1,
-        numBullets=15, fastestTime=1, slowestTime=4, dist=400)
+        numBullets=15, fastestTime=1, slowestTime=4, dist=450)
 )
 
 enemy1.spawn_enemy(Stage.stage1, 0.5, enemy1attack, 20)

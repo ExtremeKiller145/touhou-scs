@@ -79,15 +79,23 @@ def rgb(r: float, g: float, b: float) -> HSB:
 class GuiderCircle:
     """Circle of 360 pointer objects for angle-based aiming"""
     
-    def __init__(self, all_group: int, center: int, pointer: int):
+    def __init__(self, 
+        center: int, pointer: int, all_group: int = 0, populate_groups: list[int] = []):
+            
         self.all: int = all_group
         self.center: int = center
         self.pointer: int = pointer
         self.groups: dict[int, int] = {}
         
         # Populate groups[1..360] = pointer + (i-1)
-        for i in range(1, 361):
-            self.groups[i] = self.pointer + (i - 1)
+        if populate_groups:
+            if len(populate_groups) != 360:
+                raise ValueError("GuiderCircle: populate_groups must have exactly 360 entries!")
+            for i in range(1, 361):
+                self.groups[i] = populate_groups[i - 1]
+        else:
+            for i in range(1, 361):
+                self.groups[i] = self.pointer + (i - 1)
 
 circle1 = GuiderCircle(all_group=5461, center=5461, pointer=5101)
 
@@ -135,6 +143,8 @@ bullet2 = BulletPool(1501, 2200, False)
 bullet3 = BulletPool(2901, 3600, False)
 bullet4 = BulletPool(4301, 4700, False)
 
+pointer = BulletPool(7000, 7400, False) # CRITICAL: NOT PHYSICALLY ADDED IN LEVEL YET
+
 reimuA_level1 = BulletPool(110, 128, True)
 
 def get_all_components() -> list[ComponentProtocol]: return all_components
@@ -177,7 +187,7 @@ class EnemyPool:
         """
         util.enforce_component_targets("Spawn Enemy", attack,
             # requires={ enum.EMPTY_TARGET_GROUP },
-            excludes={ enum.EMPTY_BULLET, enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER, enum.EMPTY_MULTITARGET })
+            excludes={ enum.EMPTY_BULLET, enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER, enum.EMPTY_MULTITARGET }) 
         
         off_switch = self._off_switches[self._current]
         
@@ -528,6 +538,11 @@ def save_all(*,
     ppt = enum.Properties # shorthand
     
     for comp in all_components:
+        if comp.current_pc is not None:
+            raise RuntimeError(
+                f"CRITICAL ERROR: Component {comp.name} has an active pointer circle that has not been cleared yet!"
+            )
+        
         if len(comp.triggers) == 0:
             warn(f"Component {comp.name} has no triggers")
             continue

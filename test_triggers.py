@@ -19,6 +19,12 @@ from touhou_scs.component import Component, Multitarget
 from touhou_scs import enums, lib, utils
 from typing import Any
 
+def setup_pointer_circle(caller: Component) -> Component:
+    """Helper to set up a PointerCircle context for pattern tests."""
+    caller.assert_spawn_order(True)
+    caller.pointer.SetPointerCircle(0, lib.circle1, location=100)
+    return caller
+
 P = enums.Properties
 
 def assert_error(exc_info: ExceptionInfo[BaseException], *patterns: str) -> None:
@@ -769,24 +775,38 @@ class TestInstantPatternSpawnOrderRequirement:
     """Test that instant patterns require spawn order"""
     
     def test_arc_without_spawn_order_rejected(self):
-        """Arc without spawn order raises ValueError"""
-        comp = Component("Test", 100)
-        with pytest.raises(ValueError) as exc:
-            comp.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+        """Arc without spawn order raises RuntimeError (no PointerCircle)"""
+        comp = Component("Test", 100).assert_spawn_order(True)
+        comp.set_context(target=enums.EMPTY_BULLET)
+        comp.Toggle(0, activateGroup=True)
+        comp.set_context(target=enums.EMPTY_TARGET_GROUP)
+        comp.Toggle(0, activateGroup=True)
+        
+        caller = Component("Caller", 200).assert_spawn_order(True)
+        # No SetPointerCircle called - should fail
+        with pytest.raises(RuntimeError) as exc:
+            caller.instant.Arc(
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=5, spacing=30
             )
-        assert_error(exc, "must require spawn order")
+        assert_error(exc, "requires an active PointerCircle")
     
     def test_radial_without_spawn_order_rejected(self):
-        """Radial without spawn order raises ValueError"""
-        comp = Component("Test", 100)
-        with pytest.raises(ValueError) as exc:
-            comp.instant.Radial(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+        """Radial without spawn order raises RuntimeError (no PointerCircle)"""
+        comp = Component("Test", 100).assert_spawn_order(True)
+        comp.set_context(target=enums.EMPTY_BULLET)
+        comp.Toggle(0, activateGroup=True)
+        comp.set_context(target=enums.EMPTY_TARGET_GROUP)
+        comp.Toggle(0, activateGroup=True)
+        
+        caller = Component("Caller", 200).assert_spawn_order(True)
+        # No SetPointerCircle called - should fail
+        with pytest.raises(RuntimeError) as exc:
+            caller.instant.Radial(
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=12
             )
-        assert_error(exc, "must require spawn order")
+        assert_error(exc, "requires an active PointerCircle")
     
     def test_line_without_spawn_order_rejected(self):
         """Line without spawn order raises ValueError"""
@@ -815,9 +835,10 @@ class TestInstantArcValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=5, spacing=30, centerAt=45.5
             )
         assert_error(exc, "odd bullets requires integer centerAt")
@@ -831,9 +852,10 @@ class TestInstantArcValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=4, spacing=15, centerAt=0
             )
         assert_error(exc, "even", "odd spacing", ".5")
@@ -847,9 +869,10 @@ class TestInstantArcValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=4, spacing=30, centerAt=45.5
             )
         assert_error(exc, "even bullets with even spacing requires integer centerAt")
@@ -863,9 +886,10 @@ class TestInstantArcValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=5, spacing=0
             )
         assert_error(exc, "spacing", "1", "360", "0")
@@ -879,9 +903,10 @@ class TestInstantArcValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=1, spacing=361
             )
         assert_error(exc, "spacing must be between 1 and 360")
@@ -895,9 +920,10 @@ class TestInstantArcValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=10, spacing=40  # 10 * 40 = 400 > 360
             )
         assert_error(exc, "exceeds 360")
@@ -911,9 +937,10 @@ class TestInstantArcValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Arc(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=5, spacing=30, centerAt=45.3, _radialBypass=True  # bypass arc logic to hit generic check
             )
         assert_error(exc, "centerAt must be an integer or integer.5")
@@ -935,9 +962,10 @@ class TestInstantRadialValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1
+                time=0, comp=comp, bullet=lib.bullet1
             )
         assert_error(exc, "must provide", "spacing", "numBullets")
     
@@ -950,9 +978,10 @@ class TestInstantRadialValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=12, spacing=20  # 360/20 = 18, not 12
             )
         assert_error(exc, "don't match")
@@ -966,9 +995,10 @@ class TestInstantRadialValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 spacing=7  # 7 is not a factor of 360
             )
         assert_error(exc, "factor of 360", "7")
@@ -982,9 +1012,10 @@ class TestInstantRadialValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.instant.Radial(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 numBullets=7  # 7 is not a factor of 360
             )
         assert_error(exc, "factor of 360")
@@ -1068,9 +1099,10 @@ class TestTimedRadialWaveValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.timed.RadialWave(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 waves=0, numBullets=12
             )
         assert_error(exc, "waves must be at least 1")
@@ -1084,9 +1116,10 @@ class TestTimedRadialWaveValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc:
             caller.timed.RadialWave(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 waves=1, numBullets=12
             )
         assert_error(exc, "use instant.Radial")
@@ -1100,9 +1133,10 @@ class TestTimedRadialWaveValidation:
         comp.Toggle(0, activateGroup=True)
         
         caller = Component("Caller", 200)
+        setup_pointer_circle(caller)
         with pytest.raises(ValueError) as exc: 
             caller.timed.RadialWave(
-                time=0, comp=comp, gc=lib.circle1, bullet=lib.bullet1,
+                time=0, comp=comp, bullet=lib.bullet1,
                 waves=3, interval=-0.5, numBullets=12
             )
         assert_error(exc, "non-negative", "-0.5")

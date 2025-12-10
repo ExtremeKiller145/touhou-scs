@@ -7,6 +7,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 """
 
 from __future__ import annotations
+from collections import OrderedDict
 from contextlib import contextmanager
 from typing import Any, Callable, NamedTuple, Self
 
@@ -79,14 +80,23 @@ class Component:
         self.caller: int = callerGroup
         self.groups: list[int] = [callerGroup]
         self.editorLayer: int = editorLayer
-        self.target: int = -1
         
+        self.target: int = -1
         self.requireSpawnOrder: bool | None = None
         self.triggers: list[Trigger] = []
+        self.current_pc: lib.GuiderCircle | None = None
+        self.used_pointers: dict[int, int] = OrderedDict()
+        
+        self._pointer: Pointer | None = None
         self._instant: InstantPatterns | None = None
         self._timed: TimedPatterns | None = None
         
         lib.all_components.append(self)
+    
+    @property
+    def pointer(self):
+        if self._pointer is None: self._pointer = Pointer(self)
+        return self._pointer
     
     @property
     def instant(self):
@@ -484,7 +494,7 @@ class Component:
         return self
     
     def Resume(self, time: float, *, target: int, useControlID: bool = False):
-        """Resume target's paused triggers (Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn)"""
+        """Resume target's paused triggers."""
         self._stop_trigger_common(time, target, 2, useControlID)
         return self
     
@@ -650,13 +660,155 @@ class Multitarget:
 # 
 # ===========================================================
 
+class _PointerMgr:
+    """Used for Pointer internal management."""
+    setup_pointercircle: Component | None = None
+    follow_comps: dict[int, Component] = {}
+    freed_pointers: list[int] = []
+    
+    @classmethod
+    def get_setup_comp(cls) -> Component:
+        if cls.setup_pointercircle is None:
+            cls.setup_pointercircle = Component("Setup PointerCircle", util.unknown_g(), 7)
+            with cls.setup_pointercircle.temp_context(target=enum.EMPTY_BULLET):
+                (cls.setup_pointercircle
+                    .assert_spawn_order(False)
+                    .GotoGroup(0, enum.EMPTY_TARGET_GROUP))
+            
+        return cls.setup_pointercircle
+    
+    @classmethod
+    def next_pointer(cls) -> int:
+        if cls.freed_pointers:
+            return cls.freed_pointers.pop()
+        else:
+            return lib.pointer.next()[0]
+    
+    @classmethod
+    def get_follow_comp(cls, duration: int):
+        if duration in cls.follow_comps: 
+            follow_comp = cls.follow_comps[duration]
+        else:
+            follow_comp = (Component(
+                f"[{duration}s] Follow PointerCircle", util.unknown_g(), 5)
+                .assert_spawn_order(False)
+                .set_context(target=enum.EMPTY_BULLET)
+                .Follow(0, enum.EMPTY_TARGET_GROUP, t=duration)
+            )
+            cls.follow_comps[duration] = follow_comp
+        return follow_comp
+
+
+class Pointer:
+    def __init__(self, component: Component):
+        self._component = component
+        self._params: Any = tuple()
+
+    def SetPointerCircle(self, 
+        time: float, gc: lib.GuiderCircle, *, location: int, duration: int = 0):
+        """Create a temporary Pointer-based GuiderCircle."""
+        if self._component.requireSpawnOrder is False:
+            raise RuntimeError("Patterns.SetPointerCircle: Must be trigged in spawn order")
+        if self._component.current_pc is not None:
+            print("Patterns.SetPointerCircle: Overwriting existing GuiderCircle")
+            self.CleanPointerCircle()
+        
+        circle: list[int] = [_PointerMgr.next_pointer() for _ in range(360)]
+        
+        pc = lib.GuiderCircle(
+            center=lib.pointer.next()[0], pointer=circle[0], populate_groups=circle)
+        
+        self._component.current_pc = pc
+        
+        self._params = (time, gc, location, duration)
+        return self._component
+    
+    def CleanPointerCircle(self):
+        """Remove active Pointer-based GuiderCircle"""
+        if self._component.current_pc is None:
+            raise RuntimeError("Patterns.CleanPointerCircle: No active GuiderCircle to clean")
+        
+        _PointerMgr.freed_pointers.extend([
+            p for p in self._component.current_pc.groups.values() 
+            if p not in self._component.used_pointers.values()
+        ])
+        
+        time, gc, location, duration = self._params
+        
+        # Move original guidercircle into position
+        with self._component.temp_context(target=gc.all):
+            self._component.GotoGroup(time - enum.TICK*2, location)
+        
+        remaining = len(self._component.used_pointers)
+        angle_iter = iter(self._component.used_pointers.keys())
+        
+        while remaining > 0:
+            batch_size = 64 if remaining > 127 else remaining
+            def remap_goto(remap_pairs: dict[int, int], remap: util.Remap):
+                angle = next(angle_iter)
+                pointer = self._component.used_pointers[angle]
+                for source, target in remap_pairs.items():
+                    if source == enum.EMPTY_BULLET:
+                        remap.pair(target, pointer)
+                    elif source == enum.EMPTY_TARGET_GROUP:
+                        remap.pair(target, gc.groups[angle])
+                    else:
+                        remap.pair(target, enum.EMPTY_MULTITARGET)
+            
+            Multitarget.spawn_with_remap(self._component, time,
+                batch_size, _PointerMgr.get_setup_comp(), remap_goto)
+            remaining -= batch_size
+        
+        center = self._component.current_pc.center
+        with self._component.temp_context(target=center):
+            self._component.GotoGroup(time, location)
+        
+        if duration == 0:
+            self._params = tuple()
+            self._component.current_pc = None
+            self._component.used_pointers = OrderedDict()
+            return self._component
+        raise NotImplementedError("Follow feature not implemented yet.")
+
+
+        # Prepare Follow component
+
+        # follow_comp = _PointerMgr.get_follow_comp(duration)
+        
+        # Let all pointers follow the center pointer over time
+        # pointer_iter = iter(pointers_used)
+        # remaining = 360
+        # while remaining > 0:
+        #     batch_size = 64 if remaining > 127 else remaining
+            
+        #     def remap_follow(remap_pairs: dict[int, int], remap: util.Remap):
+        #         current_gc_pointer = 0
+        #         for source, target in remap_pairs.items():
+        #             if source == enum.EMPTY_BULLET:
+        #                 remap.pair(target, next(pointer_iter))
+        #             elif source == enum.EMPTY_TARGET_GROUP:
+        #                 remap.pair(target, gc.groups[current_gc_pointer])
+        #             else:
+        #                 remap.pair(target, enum.EMPTY_MULTITARGET)
+        #         current_gc_pointer += 1
+            
+        #     Multitarget.spawn_with_remap(self._component, time, 
+        #         batch_size, follow_comp, remap_follow)
+        #     remaining -= batch_size
+        
+        
+        self._params = tuple()
+        self._component.current_pc = None
+        self._component.used_pointers = OrderedDict()
+        return self._component
+
+
 class InstantPatterns:
     def __init__(self, component: Component):
         self._component = component
 
     
-    def Arc(self, time: float, comp: Component, 
-        gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
+    def Arc(self, time: float, comp: Component, bullet: lib.BulletPool, *, 
         numBullets: int, spacing: int, centerAt: float = 0, _radialBypass: bool = False):
         """
         Arc pattern - partial circle of bullets
@@ -705,6 +857,9 @@ class InstantPatterns:
         if startpos < 0: startpos += 360
         
         bulletPos = int(startpos)
+        pc = self._component.current_pc
+        if pc is None:
+            raise RuntimeError(f"{IA} requires an active PointerCircle in the component")
         
         def remap_arc(remap_pairs: dict[int, int], remap: util.Remap):
             nonlocal bulletPos
@@ -715,9 +870,10 @@ class InstantPatterns:
                 elif source == enum.EMPTY_TARGET_GROUP:
                     # Convert 0-359 range to 1-360 for GuiderCircle indexing
                     angle_index = bulletPos if bulletPos > 0 else 360
-                    remap.pair(target, gc.groups[angle_index])
+                    remap.pair(target, pc.groups[angle_index])
+                    self._component.used_pointers[angle_index] = pc.groups[angle_index]
                 elif source == enum.EMPTY_EMITTER:
-                    remap.pair(target, gc.center)
+                    remap.pair(target, pc.center)
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
             
@@ -729,8 +885,7 @@ class InstantPatterns:
         return self._component
     
     
-    def Radial(self, time: float, comp: Component, 
-        gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
+    def Radial(self, time: float, comp: Component, bullet: lib.BulletPool, *, 
         numBullets: int | None = None, spacing: int | None = None, centerAt: float = 0):
         """
         Radial pattern - full 360° circle of bullets
@@ -759,7 +914,7 @@ class InstantPatterns:
         elif 360 % numBullets != 0:
             raise ValueError(f"{IR} numBullets must be a factor of 360 for perfect circles. Received: {numBullets}")
             
-        self.Arc(time, comp, gc, bullet, 
+        self.Arc(time, comp, bullet, 
             numBullets=numBullets, spacing=spacing, centerAt=centerAt, _radialBypass=True)
         
         return self._component
@@ -824,8 +979,7 @@ class TimedPatterns:
     def __init__(self, component: Component):
         self._component = component
     
-    def RadialWave(self, time: float, comp: Component, 
-        gc: lib.GuiderCircle, bullet: lib.BulletPool, *, 
+    def RadialWave(self, time: float, comp: Component, bullet: lib.BulletPool, *, 
         waves: int, interval: float = 0, numBullets: int | None = None, spacing: int | None = None, centerAt: float = 0):
         """
         Radial Wave pattern - multiple waves of radial bullets over time
@@ -843,7 +997,7 @@ class TimedPatterns:
         for wave_number in range(waves):
             self._component.instant.Radial(
                 time + (wave_number * interval),
-                comp, gc, bullet, numBullets=numBullets, spacing=spacing, centerAt=centerAt
+                comp, bullet, numBullets=numBullets, spacing=spacing, centerAt=centerAt
             )
         
         return self._component
