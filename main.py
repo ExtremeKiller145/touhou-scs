@@ -77,12 +77,16 @@ enemy1attack = (Component("Enemy1", unknown_g(), 5)
     .assert_spawn_order(True)
     .set_context(target=enemy1g)
         .MoveBy(0.8, dx=80, dy=-20, t=8, type=e.Easing.BOUNCE_IN_OUT, rate=1)
-    .clear_context()
+    .clear_context())
+(enemy1attack
     .pointer.SetPointerCircle(0.9, c1, location=enemy1g)
     .instant.Arc(1, testRadialComp, lib.bullet2,
         spacing=2, numBullets=12, centerAt=0)
     .instant.Radial(1, test2, lib.bullet4, numBullets=18, centerAt=0)
-    .pointer.SetPointerCircle(2.9, c1, location=emitter)
+    .pointer.SetPointerCircle(2.9, c1, location=emitter, duration=5)
+    .set_context(target=enemy1attack.pointer.center)
+    .MoveBy(2.95, dx=-180, dy=140, t=4)
+    .clear_context()
     .timed.RadialWave(3, test2, lib.bullet3,
         numBullets=24, waves=10, interval=0.3, centerAt=10)
     .pointer.CleanPointerCircle()

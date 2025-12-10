@@ -27,7 +27,9 @@ Trigger = TypedDict("Trigger",{
     # Alpha
     "35": float,                # OPACITY
     # Follow
-    "71": int,                  # FOLLOW_GROUP (also used for ROTATE_CENTER, SCALE_CENTER, etc.)
+    "71": int,                  # FOLLOW_GROUP / ROTATE_CENTER / SCALE_CENTER, etc.
+    "72": float,                # FOLLOW_X_MOD
+    "73": float,                # FOLLOW_Y_MOD
     # Stop
     "580": int,                 # STOP_OPTION
     "535": bool,                # STOP_USE_CONTROL_ID

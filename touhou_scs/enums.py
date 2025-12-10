@@ -88,6 +88,8 @@ class Properties(str):
     
     # ========== Follow Trigger ==========
     FOLLOW_GROUP = "71"
+    FOLLOW_X_MOD = "72"
+    FOLLOW_Y_MOD = "73"
     
     # ========== Stop Trigger ==========
     STOP_OPTION = "580"

@@ -151,11 +151,11 @@ def get_all_components() -> list[ComponentProtocol]: return all_components
 
 class Stage:
     stage1 = Component("Stage1", unknown_g(), 9).assert_spawn_order(True)
-    stage2 = Component("Stage2", unknown_g(), 9).assert_spawn_order(True)
-    stage3 = Component("Stage3", unknown_g(), 9).assert_spawn_order(True)
-    stage4 = Component("Stage4", unknown_g(), 9).assert_spawn_order(True)
-    stage5 = Component("Stage5", unknown_g(), 9).assert_spawn_order(True)
-    stage6 = Component("Stage6", unknown_g(), 9).assert_spawn_order(True)
+    # stage2 = Component("Stage2", unknown_g(), 9).assert_spawn_order(True)
+    # stage3 = Component("Stage3", unknown_g(), 9).assert_spawn_order(True)
+    # stage4 = Component("Stage4", unknown_g(), 9).assert_spawn_order(True)
+    # stage5 = Component("Stage5", unknown_g(), 9).assert_spawn_order(True)
+    # stage6 = Component("Stage6", unknown_g(), 9).assert_spawn_order(True)
 
 
 class EnemyPool:

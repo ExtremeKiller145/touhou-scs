@@ -9,7 +9,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 from __future__ import annotations
 from collections import OrderedDict
 from contextlib import contextmanager
-from typing import Any, Callable, NamedTuple, Self
+from typing import Any, Callable, NamedTuple
 
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.utils import unknown_g, warn
@@ -440,21 +440,23 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def Follow(self, time: float, targetDir: int, *, t: float = 0) -> Self:
+    def Follow(self, time: float, targetDir: int, *, 
+        t: float = 0, x_mod: float = 1.0, y_mod: float = 1.0):
         """Make target follow another group's movement"""
         
-        raise NotImplementedError("Follow trigger is not tested yet.")
-        # if self.target == -1:
-        #     raise RuntimeError(f"Component '{self.name}': Follow requires an active target context")
-        # validate_params(targets=self.target, non_negative=t)
+        if self.target == -1:
+            raise RuntimeError(f"Component '{self.name}': Follow requires an active target context")
+        validate_params(targets=self.target, non_negative=t)
         
-        # trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), self.target)
         
-        # trigger[ppt.FOLLOW_TARGET] = targetDir
-        # trigger[ppt.DURATION] = t
+        trigger[ppt.FOLLOW_GROUP] = targetDir
+        trigger[ppt.FOLLOW_X_MOD] = x_mod
+        trigger[ppt.FOLLOW_Y_MOD] = y_mod
+        trigger[ppt.DURATION] = t
         
-        # self.triggers.append(trigger)
-        # return self
+        self.triggers.append(trigger)
+        return self
     
     def Alpha(self, time: float, *, opacity: float, t: float = 0):
         """Change target's opacity from a range of 0-100 over time."""
@@ -668,6 +670,11 @@ class _PointerMgr:
     freed_pointers: list[int] = []
     
     @classmethod
+    def next_pointer(cls) -> int:
+        if cls.freed_pointers: return cls.freed_pointers.pop()
+        else: return lib.pointer.next()[0]
+    
+    @classmethod
     def get_setup_comp(cls) -> Component:
         if cls.setup_pointercircle is None:
             cls.setup_pointercircle = Component("Setup PointerCircle", unknown_g(), 7)
@@ -679,35 +686,17 @@ class _PointerMgr:
         return cls.setup_pointercircle
     
     @classmethod
-    def get_align_north_comp(cls) -> Component:
-        if cls.align_north is None:
-            cls.align_north = Component("AlignNorth PointerCircle", unknown_g(), 7)
-            with cls.align_north.temp_context(target=enum.EMPTY_BULLET):
-                (cls.align_north
-                    .assert_spawn_order(False)
-                    .GotoGroup(0, enum.EMPTY_TARGET_GROUP))
-            
-        return cls.align_north
-    
-    @classmethod
-    def next_pointer(cls) -> int:
-        if cls.freed_pointers:
-            return cls.freed_pointers.pop()
-        else:
-            return lib.pointer.next()[0]
-    
-    @classmethod
     def get_follow_comp(cls, duration: int):
         if duration in cls.follow_comps: 
-            follow_comp = cls.follow_comps[duration]
-        else:
-            follow_comp = (Component(
-                f"[{duration}s] Follow PointerCircle", unknown_g(), 5)
+            return cls.follow_comps[duration]
+        
+        follow_comp = Component(f"[{duration}s] Follow PointerCircle", unknown_g(), 5)
+        with follow_comp.temp_context(target=enum.EMPTY_BULLET):
+            (follow_comp
                 .assert_spawn_order(False)
-                .set_context(target=enum.EMPTY_BULLET)
-                .Follow(0, enum.EMPTY_TARGET_GROUP, t=duration)
-            )
-            cls.follow_comps[duration] = follow_comp
+                .Follow(0, enum.EMPTY_TARGET_GROUP, t=duration))
+        
+        cls.follow_comps[duration] = follow_comp
         return follow_comp
 
 
@@ -715,10 +704,23 @@ class Pointer:
     def __init__(self, component: Component):
         self._component = component
         self._params: Any = tuple()
+    
+    @property
+    def center(self) -> int:
+        """Center of the active PointerCircle."""
+        if self._component.current_pc is None:
+            raise RuntimeError(f"Component '{self._component.name}' has no active pointer circle")
+        return self._component.current_pc.center
 
     def SetPointerCircle(self, time: float, gc: lib.GuiderCircle, *, 
         location: int, duration: int = 0, align_north: bool = True):
-        """Create a temporary Pointer-based GuiderCircle."""
+        """
+        Create a temporary Pointer-based GuiderCircle.
+        
+        Duration: PointerCircle groups follow the center for 'duration' seconds.
+        """
+        validate_params(non_negative=duration, targets=location)
+        
         if self._component.requireSpawnOrder is False:
             raise RuntimeError("Patterns.SetPointerCircle: Must be trigged in spawn order")
         if self._component.current_pc is not None:
@@ -773,8 +775,8 @@ class Pointer:
                 batch_size, _PointerMgr.get_setup_comp(), remap_goto)
             remaining -= batch_size
         
-        center = self._component.current_pc.center
-        with self._component.temp_context(target=center):
+        pointer_center = self._component.current_pc.center
+        with self._component.temp_context(target=pointer_center):
             self._component.GotoGroup(time, location)
         
         if duration == 0:
@@ -782,34 +784,28 @@ class Pointer:
             self._component.current_pc = None
             self._component.used_pointers = OrderedDict()
             return self._component
-        raise NotImplementedError("Follow feature not implemented yet.")
 
-
-        # Prepare Follow component
-
-        # follow_comp = _PointerMgr.get_follow_comp(duration)
+        follow_comp = _PointerMgr.get_follow_comp(duration)
         
-        # Let all pointers follow the center pointer over time
-        # pointer_iter = iter(pointers_used)
-        # remaining = 360
-        # while remaining > 0:
-        #     batch_size = 64 if remaining > 127 else remaining
-            
-        #     def remap_follow(remap_pairs: dict[int, int], remap: util.Remap):
-        #         current_gc_pointer = 0
-        #         for source, target in remap_pairs.items():
-        #             if source == enum.EMPTY_BULLET:
-        #                 remap.pair(target, next(pointer_iter))
-        #             elif source == enum.EMPTY_TARGET_GROUP:
-        #                 remap.pair(target, gc.groups[current_gc_pointer])
-        #             else:
-        #                 remap.pair(target, enum.EMPTY_MULTITARGET)
-        #         current_gc_pointer += 1
-            
-        #     Multitarget.spawn_with_remap(self._component, time, 
-        #         batch_size, follow_comp, remap_follow)
-        #     remaining -= batch_size
+        remaining = len(self._component.used_pointers)
+        angle_iter = iter(self._component.used_pointers)
         
+        while remaining > 0:
+            batch_size = 64 if remaining > 127 else remaining
+            
+            def remap_follow(remap_pairs: dict[int, int], remap: util.Remap):
+                pointer = self._component.used_pointers[next(angle_iter)]
+                for source, target in remap_pairs.items():
+                    if source == enum.EMPTY_BULLET:
+                        remap.pair(target, pointer)
+                    elif source == enum.EMPTY_TARGET_GROUP:
+                        remap.pair(target, pointer_center)
+                    else:
+                        remap.pair(target, enum.EMPTY_MULTITARGET)
+            
+            Multitarget.spawn_with_remap(self._component, time, 
+                batch_size, follow_comp, remap_follow)
+            remaining -= batch_size
         
         self._params = tuple()
         self._component.current_pc = None
