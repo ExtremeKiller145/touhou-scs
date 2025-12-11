@@ -20,12 +20,12 @@ try {
   PROPERTY_IDS = ENUMS.Properties;
   OBJECT_TYPES = ENUMS.ObjectID;
   GROUP_FIELDS = ENUMS.GroupFields || [];
-  
+
   // Build reverse mapping for display
   Object.keys(PROPERTY_IDS).forEach(name => {
     PROPERTY_NAMES[PROPERTY_IDS[name]] = name;
   });
-  
+
   console.log('✅ Loaded enums from enums.json');
 } catch (err) {
   console.error('❌ Failed to load enums.json:', err.message);
@@ -48,15 +48,15 @@ class TriggerDebugger {
     this.triggers.forEach((trigger, index) => {
       // Index by all groups mentioned in the trigger
       this.indexGroups(trigger, index);
-      
+
       // Index by specific properties
       this.indexProperties(trigger, index);
-      
+
       // Index by target group
       if (trigger.TargetGroupID !== undefined) {
         this.addToIndex(this.indexes.byTargetGroup, trigger.TargetGroupID, index);
       }
-      
+
       // Index by remap strings
       this.indexRemaps(trigger, index);
     });
@@ -65,7 +65,7 @@ class TriggerDebugger {
   indexGroups(trigger, triggerIndex) {
     // Collect all group references in this trigger
     const groups = new Set();
-    
+
     // Check known group fields from enums
     GROUP_FIELDS.forEach(fieldId => {
       const value = trigger[fieldId];
@@ -73,7 +73,7 @@ class TriggerDebugger {
         groups.add(value);
       }
     });
-    
+
     // Add to index
     groups.forEach(group => {
       this.addToIndex(this.indexes.byGroup, group, triggerIndex);
@@ -87,7 +87,7 @@ class TriggerDebugger {
       { id: PROPERTY_IDS.GROUPS, name: 'GroupID' },
       { id: PROPERTY_IDS.TARGET, name: 'TargetGroupID' },
     ];
-    
+
     propsToIndex.forEach(({ id, name }) => {
       if (trigger[id] !== undefined) {
         const key = `${name}:${trigger[id]}`;
@@ -102,7 +102,7 @@ class TriggerDebugger {
       PROPERTY_IDS.REMAP_STRING,  // 442
       PROPERTY_IDS.SPAWN_ORDERED, // 441
     ];
-    
+
     remapFields.forEach(fieldId => {
       const remapValue = trigger[fieldId];
       if (remapValue) {
@@ -119,7 +119,7 @@ class TriggerDebugger {
     // Extract all numeric groups (skip the mapping keys like 10, 20, etc.)
     const parts = String(remapStr).split('.');
     const groups = [];
-    
+
     for (let i = 0; i < parts.length; i += 2) {
       if (i + 1 < parts.length) {
         const value = parts[i + 1];
@@ -132,7 +132,7 @@ class TriggerDebugger {
         }
       }
     }
-    
+
     return groups;
   }
 
@@ -146,22 +146,22 @@ class TriggerDebugger {
   // Query methods
   findByGroup(groupID) {
     const results = new Set();
-    
+
     // Direct references
     if (this.indexes.byGroup.has(groupID)) {
       this.indexes.byGroup.get(groupID).forEach(i => results.add(i));
     }
-    
+
     // Target references
     if (this.indexes.byTargetGroup.has(groupID)) {
       this.indexes.byTargetGroup.get(groupID).forEach(i => results.add(i));
     }
-    
+
     // Remap references
     if (this.indexes.byRemap.has(groupID)) {
       this.indexes.byRemap.get(groupID).forEach(i => results.add(i));
     }
-    
+
     return Array.from(results).map(i => ({ index: i, trigger: this.triggers[i] }));
   }
 
@@ -170,18 +170,18 @@ class TriggerDebugger {
     const indices = this.indexes.byProperty.get(key) || [];
     return indices.map(i => ({ index: i, trigger: this.triggers[i] }));
   }
-  
+
   getPropertyName(trigger) {
     // Get a human-readable name for the trigger type
     const objId = trigger[PROPERTY_IDS.OBJ_ID];
-    
+
     // Find name from OBJECT_TYPES
     for (const [name, id] of Object.entries(OBJECT_TYPES)) {
       if (id === objId) {
         return name;
       }
     }
-    
+
     return `Type ${objId}`;
   }
 
@@ -190,25 +190,25 @@ class TriggerDebugger {
     const spawners = [];  // Triggers that spawn objects in this group
     const movers = [];    // Triggers that move/modify objects in this group
     const remappers = []; // Triggers that remap to/from this group
-    
+
     const results = this.findByGroup(groupID);
-    
+
     results.forEach(({ index, trigger }) => {
       // Check if it's a spawner (has GroupID and ObjID)
       if (trigger[PROPERTY_IDS.GROUPS] === groupID && trigger[PROPERTY_IDS.OBJ_ID]) {
         spawners.push({ index, trigger });
-      } 
+      }
       // Check if it targets this group
       else if (trigger[PROPERTY_IDS.TARGET] === groupID) {
         movers.push({ index, trigger });
       }
-      
+
       // Check if group is in remap strings
       const remapFields = [
         trigger[PROPERTY_IDS.REMAP_STRING],
         trigger[PROPERTY_IDS.SPAWN_ORDERED]
       ];
-      
+
       remapFields.forEach(remapValue => {
         if (remapValue) {
           const remapGroups = this.parseRemapString(remapValue);
@@ -218,28 +218,28 @@ class TriggerDebugger {
         }
       });
     });
-    
+
     return { spawners, movers, remappers };
   }
 
   generateReportData() {
     // Collect ALL unique groups from ALL indexes
     const allGroups = new Set();
-    
+
     // From direct group references
     this.indexes.byGroup.forEach((_, group) => allGroups.add(group));
-    
+
     // From target groups
     this.indexes.byTargetGroup.forEach((_, group) => allGroups.add(group));
-    
+
     // From remap strings
     this.indexes.byRemap.forEach((_, group) => allGroups.add(group));
-    
+
     // Convert to sorted array and filter out invalid groups (>9999 or <1)
     const validGroups = Array.from(allGroups)
       .filter(g => g >= 1 && g <= 9999)
       .sort((a, b) => a - b);
-    
+
     // Generate data structure for the HTML report
     return {
       totalTriggers: this.triggers.length,
@@ -259,13 +259,13 @@ class TriggerDebugger {
 
 function main() {
   console.log('🔍 Loading triggers.json...');
-  
+
   // Read triggers
   let triggers;
   try {
     const data = fs.readFileSync(TRIGGERS_PATH, 'utf8');
     const parsed = JSON.parse(data);
-    
+
     // Handle both formats: array or { triggers: [...] }
     if (Array.isArray(parsed)) {
       triggers = parsed;
@@ -275,7 +275,7 @@ function main() {
       console.error('❌ Invalid triggers.json format. Expected array or { triggers: [...] }');
       process.exit(1);
     }
-    
+
     console.log(`✅ Loaded ${triggers.length} triggers`);
   } catch (err) {
     console.error('❌ Failed to read triggers.json:', err.message);

@@ -41,8 +41,6 @@ Endboss: ??? (formerly called Nameless Entity)
 
 TODO:
 
-- Ask AI to clean whitespace
-
 - Add 'follow' behaviour to pointer circles
 
 - Replace all 'has key' checks with the better `if key in dict` syntax

@@ -6,7 +6,7 @@ const path = require('path');
 // Generate sample triggers that demonstrate various relationships
 function generateSampleTriggers() {
   const triggers = [];
-  
+
   // Spawn some bullets in group 5000
   triggers.push({
     ObjID: 1,
@@ -16,7 +16,7 @@ function generateSampleTriggers() {
     Y: 200,
     ComponentName: "BulletSpawner"
   });
-  
+
   triggers.push({
     ObjID: 1,
     Type: 1,
@@ -25,7 +25,7 @@ function generateSampleTriggers() {
     Y: 200,
     ComponentName: "BulletSpawner"
   });
-  
+
   // Move trigger targeting group 5000
   triggers.push({
     Type: 901,
@@ -36,7 +36,7 @@ function generateSampleTriggers() {
     Easing: 2,
     ComponentName: "MoveBullets"
   });
-  
+
   // Rotate trigger targeting group 5000
   triggers.push({
     Type: 1346,
@@ -46,7 +46,7 @@ function generateSampleTriggers() {
     CenterGroupID: 6000,
     ComponentName: "RotateBullets"
   });
-  
+
   // Spawn center object for rotation
   triggers.push({
     ObjID: 211,
@@ -56,7 +56,7 @@ function generateSampleTriggers() {
     Y: 200,
     ComponentName: "RotationCenter"
   });
-  
+
   // Remap trigger that references group 5000
   triggers.push({
     Type: 3608,
@@ -64,7 +64,7 @@ function generateSampleTriggers() {
     Remap: "10.5000.20.5001",
     ComponentName: "RemapTrigger"
   });
-  
+
   // Spawn objects in group 5001
   triggers.push({
     ObjID: 1,
@@ -74,7 +74,7 @@ function generateSampleTriggers() {
     Y: 250,
     ComponentName: "RemappedBullet"
   });
-  
+
   // Pulse trigger targeting group 5001
   triggers.push({
     Type: 1006,
@@ -85,7 +85,7 @@ function generateSampleTriggers() {
     PulseType: 1,
     ComponentName: "PulseBullets"
   });
-  
+
   // Multi-target spawn trigger (simulating binary decomposition)
   triggers.push({
     ObjID: 1,
@@ -94,7 +94,7 @@ function generateSampleTriggers() {
     MULTITRIGGER: "10.8001.20.8002.30.8003",
     ComponentName: "MultiTargetSpawn"
   });
-  
+
   // Some triggers in the multitarget chain
   triggers.push({
     Type: 901,
@@ -104,7 +104,7 @@ function generateSampleTriggers() {
     Duration: 1.0,
     ComponentName: "MoveSubset1"
   });
-  
+
   triggers.push({
     Type: 901,
     TargetGroupID: 8002,
@@ -113,7 +113,7 @@ function generateSampleTriggers() {
     Duration: 1.0,
     ComponentName: "MoveSubset2"
   });
-  
+
   triggers.push({
     Type: 901,
     TargetGroupID: 8003,
@@ -122,7 +122,7 @@ function generateSampleTriggers() {
     Duration: 1.0,
     ComponentName: "MoveSubset3"
   });
-  
+
   // A complex chain: spawn -> move -> remap -> pulse
   triggers.push({
     ObjID: 1,
@@ -132,7 +132,7 @@ function generateSampleTriggers() {
     Y: 300,
     ComponentName: "ChainStart"
   });
-  
+
   triggers.push({
     Type: 901,
     TargetGroupID: 9000,
@@ -141,14 +141,14 @@ function generateSampleTriggers() {
     Duration: 2.0,
     ComponentName: "ChainMove"
   });
-  
+
   triggers.push({
     Type: 3608,
     TargetGroupID: 9100,
     Remap: "10.9000.20.9001",
     ComponentName: "ChainRemap"
   });
-  
+
   triggers.push({
     Type: 1006,
     TargetGroupID: 9001,
@@ -158,7 +158,7 @@ function generateSampleTriggers() {
     PulseType: 0,
     ComponentName: "ChainPulse"
   });
-  
+
   // Some unknown_g references (like the real system uses)
   triggers.push({
     Type: 3608,
@@ -166,7 +166,7 @@ function generateSampleTriggers() {
     Remap: "10.unknown_g1.20.unknown_g2",
     ComponentName: "UnresolvedRemap"
   });
-  
+
   return triggers;
 }
 

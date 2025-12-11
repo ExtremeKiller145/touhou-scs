@@ -15,8 +15,8 @@ const groupPropertyField = (key) => {
 
 let triggerCount = 0;
 $.exportConfig({
-	type: 'live_editor', 
-	// type can be 'savefile' to export to savefile, 'levelstring' to return levelstring 
+	type: 'live_editor',
+	// type can be 'savefile' to export to savefile, 'levelstring' to return levelstring
 	// or 'live_editor' to export to WSLiveEditor (must have Geode installed)
 	options: {
 		info: true,
@@ -60,7 +60,7 @@ $.exportConfig({
 	// Step 3: Sort and register unknown groups in order (lowest first)
 	const unknownG_dict = {}; // Maps 10000+n -> actual unknown_g() result object
 	const sortedUnknownGroups = Array.from(unknownG_set).sort((a, b) => a - b);
-	
+
 	sortedUnknownGroups.forEach(groupNum => {
 		unknownG_dict[groupNum] = unknown_g();
 		console.log(`Registered ${groupNum} -> Group ${unknownG_dict[groupNum].value}`);
@@ -111,7 +111,7 @@ $.exportConfig({
 		$.add(object(trigger));
 	});
 	triggerCount = triggers.length;
-	
+
 	const __elapsedMs = Date.now() - __startTime;
   console.log(`main.js completed in ${( __elapsedMs / 1000 ).toFixed(3)}s (${__elapsedMs} ms)`);
   console.log(`Processed ${triggerCount} triggers`);

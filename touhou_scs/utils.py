@@ -16,7 +16,7 @@ class CallTracked:
         self.__func = func
         self.has_been_called = False
         functools.update_wrapper(self, func)
-    
+
     def __call__(self, *args: Any, **kwargs: Any):
         try:
             return self.__func(*args, **kwargs)
@@ -39,7 +39,7 @@ class UnknownGroupGenerator:
     def __init__(self) -> None:
         self.counter = 10000
         self.used_groups: list[int] = []
-    
+
     def __call__(self) -> int:
         result = self.counter
         self.used_groups.append(result)
@@ -53,10 +53,10 @@ def group(group_id: int) -> int: """Semantic Wrapper"""; return group_id # noqa
 
 def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
     """Returns (dict[source] = target, clean_remap_string)"""
-    
+
     parts = remap_string.split(".")
     parts_len = len(parts)
-    
+
     if parts_len == 0:
         raise ValueError("Remap string is empty")
     if parts_len % 2 != 0:
@@ -69,17 +69,17 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
         target_str = parts[i + 1]
         source = int(source_str)
         target = int(target_str)
-        
+
         if source in pairs:
             raise ValueError(f"Duplicate source '{source}' in remap string - cannot remap one group to multiple targets")
         pairs[source] = target
-        
+
         if source != target:
             clean_parts.append(source_str)
             clean_parts.append(target_str)
-    
+
     clean_string = ".".join(clean_parts)
-    
+
     if clean_string != remap_string:
         warn(f"Remap string had redundant mappings:\n{remap_string}")
     if len(clean_string) == 0:
@@ -90,13 +90,13 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
 
 class Remap:
     """Remap string builder class with chainable API."""
-    
+
     def __init__(self): self._pairs: dict[int,int] = {}
-    
+
     def pair(self, source: int, target: int):
         self._pairs[source] = target
         return self
-    
+
     def build(self) -> str:
         parts: list[str] = []
         for source, target in self._pairs.items():
@@ -106,7 +106,7 @@ class Remap:
 
 def create_number_cycler(min_val: int, max_val: int) -> Callable[[], int]:
     if min_val > max_val: raise ValueError("create_number_cycler: min cannot be greater than max")
-    
+
     current = min_val - 1
     def cycler() -> int:
         nonlocal current
@@ -124,21 +124,21 @@ def enforce_component_targets(fn_name: str, comp: ComponentProtocol,*,
 
     requires = requires or set()
     excludes = excludes or set()
-    
+
     found_targets: set[int] = set()
     for trigger in comp.triggers:
         for field in enum.TARGET_FIELDS:
             target = trigger.get(field)
             if target is not None and isinstance(target, int):
                 found_targets.add(target)
-    
+
     missing = requires - found_targets
     if missing:
         missing_names = [f"{g}" for g in missing]
         raise ValueError(
             f"{fn_name}: component must target {', '.join(missing_names)}"
         )
-    
+
     forbidden = found_targets & excludes
     if forbidden:
         forbidden_names = [f"{g}" for g in forbidden]

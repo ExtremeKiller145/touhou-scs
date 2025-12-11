@@ -40,14 +40,14 @@ def validate_params(*,
     item_id: int | None = None
 ) -> None:
     """Validates common trigger parameters."""
-    
+
     if isinstance(positive, (int, float)):
         positive = [positive]
     if isinstance(non_negative, (int, float)):
         non_negative = [non_negative]
     if isinstance(targets, int):
         targets = [targets]
-    
+
     if positive is not None:
         if (values := list(filter(lambda n: n <= 0, positive))):
             raise ValueError(f"Values must be positive (>0). Got: {values}")
@@ -82,24 +82,24 @@ class Component:
         self.caller: int = callerGroup
         self.groups: list[int] = [callerGroup]
         self.editorLayer: int = editorLayer
-        
+
         self.target: int = -1
         self.requireSpawnOrder: bool | None = None
         self.triggers: list[Trigger] = []
         self.current_pc: lib.GuiderCircle | None = None
         self.used_pointers: dict[int, int] = OrderedDict()
-        
+
         self._pointer: Pointer | None = None
         self._instant: InstantPatterns | None = None
         self._timed: TimedPatterns | None = None
-        
+
         lib.all_components.append(self)
-    
+
     @property
     def pointer(self):
         if self._pointer is None: self._pointer = Pointer(self)
         return self._pointer
-    
+
     @property
     def instant(self):
         if self._instant is None: self._instant = InstantPatterns(self)
@@ -109,7 +109,7 @@ class Component:
     def timed(self):
         if self._timed is None: self._timed = TimedPatterns(self)
         return self._timed
-    
+
     def get_triggers(self, trigger: dict[str, Any]) -> list[Trigger]:
         matches: list[Trigger] = []
         for t in self.triggers:
@@ -121,12 +121,12 @@ class Component:
                     num_matches += 1
             if num_matches == len(trigger): matches.append(t)
         return matches
-    
+
     def has_trigger_properties(self, trigger: dict[str, Any]):
-        if len(trigger) == 0: 
+        if len(trigger) == 0:
             raise ValueError("has_trigger_properties: empty trigger dict given")
         return bool(self.get_triggers(trigger))
-    
+
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
         if target in _RESTRICTED_LOOKUP:
             raise ValueError(f"Group '{target}' is restricted due to known conflicts.")
@@ -139,11 +139,11 @@ class Component:
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,
         })
-    
+
     def assert_spawn_order(self, required: bool):
         self.requireSpawnOrder = required
         return self
-    
+
     def _flatten_groups(self, *groups: int | list[int]) -> list[int]:
         result: list[int] = []
         for g in groups:
@@ -154,20 +154,20 @@ class Component:
         if len(result) == 0:
             raise ValueError("Flatten Groups: No groups provided!")
         return result
-    
+
     @contextmanager
     def temp_context(self, target: int | None = None, groups: int | list[int] | None = None):
         """Temporarily set_context, then restore previous state."""
         old_target = self.target
         old_groups = self.groups.copy()
-        
+
         try:
             self.set_context(target=target, groups=groups)
             yield self
         finally:
             self.target = old_target
             self.groups = old_groups
-    
+
     def set_context(self, *,
         target: int | None = None, groups: int | list[int] | None = None):
         """Set a context for trigger target and groups. Either or both can be set."""
@@ -178,9 +178,9 @@ class Component:
             self.target = target
         if groups is not None:
             self.groups = [self.caller] + self._flatten_groups(groups)
-        
+
         return self
-    
+
     def clear_context(self, *, target_only: bool = False, groups_only: bool = False):
         """
         Clear active context. By default clears both.
@@ -192,55 +192,55 @@ class Component:
             raise ValueError("clear_context: cannot use both target_only and groups_only")
         if target_only or no_param_given: self.target = -1
         if groups_only or no_param_given: self.groups = [self.caller]
-        
+
         return self
-    
+
     # ===========================================================
-    # 
+    #
     # TRIGGER METHODS
-    # 
+    #
     # ===========================================================
-    
+
     def Spawn(self, time: float,
         target: int | Component, spawnOrdered: bool, *,
         remap: str | None = None, delay: float = 0, reset_remap: bool = False):
         """Spawn another component or group's triggers"""
         target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target, non_negative=delay)
-        
+
         trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
-        
+
         if spawnOrdered: trigger[ppt.SPAWN_ORDERED] = True
         if delay > 0: trigger[ppt.SPAWN_DELAY] = delay
         if remap: _, trigger[ppt.REMAP_STRING] = util.translate_remap_string(remap)
         if reset_remap: trigger[ppt.RESET_REMAP] = True
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def Toggle(self, time: float, activateGroup: bool):
         """
         Activating does not spawn the target, it only enables it.
         WARNING: A deactivated object cannot be reactivated by a different group
-        
+
         (collision triggers might be different)
         """
         validate_params(targets=self.target)
-        
+
         trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), self.target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def MoveTowards(self, time: float, targetDir: int, *,
         t: float, dist: int,
         type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Move target a set distance towards another group (direction mode)"""
         validate_params(targets=[self.target, targetDir], non_negative=t, type=type, rate=rate)
-        
+
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_DIRECTION_MODE] = True
         trigger[ppt.MOVE_SMALL_STEP] = True
@@ -249,69 +249,69 @@ class Component:
         trigger[ppt.MOVE_DIRECTION_MODE_DISTANCE] = dist
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
-        
+
         if dynamic: trigger[ppt.DYNAMIC] = True
         if t == 0: trigger[ppt.MOVE_SILENT] = True
-        
+
         self.triggers.append(trigger)
         return self
-    
-    def Pulse(self, time: float, 
+
+    def Pulse(self, time: float,
         hsb: lib.HSB, *, exclusive: bool = False,
         fadeIn: float = 0, t: float = 0, fadeOut: float = 0):
         validate_params(non_negative=[fadeIn, t, fadeOut], targets=self.target)
-        
+
         trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), self.target)
 
         trigger[ppt.PULSE_HSV] = True
         trigger[ppt.PULSE_TARGET_TYPE] = True
         #a0a0 for multiplicative, a1a1 for additive (its the checkbox for 's' and 'v')
-        trigger[ppt.PULSE_HSV_STRING] = f"{hsb.h}a{hsb.s}a{hsb.b}a1a1"  
+        trigger[ppt.PULSE_HSV_STRING] = f"{hsb.h}a{hsb.s}a{hsb.b}a1a1"
         trigger[ppt.PULSE_FADE_IN] = fadeIn
         trigger[ppt.PULSE_HOLD] = t
         trigger[ppt.PULSE_FADE_OUT] = fadeOut
         trigger[ppt.PULSE_EXCLUSIVE] = exclusive
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def MoveBy(self, time: float, *,
         dx: float, dy: float,
         t: float = 0, type: int = 0, rate: float = 1.0):
         validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
-        
+
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_X] = dx
         trigger[ppt.MOVE_Y] = dy
         trigger[ppt.MOVE_SMALL_STEP] = True
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
-        
+
         if t == 0: trigger[ppt.MOVE_SILENT] = True
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def GotoGroup(self, time: float, location: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0):
         validate_params(targets=[self.target, location], non_negative=t, type=type, rate=rate)
-        
+
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.MOVE_TARGET_CENTER] = self.target
         trigger[ppt.MOVE_TARGET_LOCATION] = location
         trigger[ppt.MOVE_TARGET_MODE] = True
         trigger[ppt.DURATION] = t
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
-        
+
         if t == 0: trigger[ppt.MOVE_SILENT] = True
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def SetPosition(self, time: float, *, x: float, y: float):
         """
         2 Triggers instantly set target's position relative to origin.
@@ -321,7 +321,7 @@ class Component:
         self.GotoGroup(time, location=enum.GAME_BOTTOM_LEFT, t=0)
         self.MoveBy(time, dx=x, dy=y)
         return self
-    
+
     def Rotate(self, time: float, *,
         angle: float,
         center: int | None = None,
@@ -329,26 +329,26 @@ class Component:
         """Rotate target by angle (degrees, clockwise is positive)"""
         if center is None: center = self.target
         validate_params(targets=[self.target, center], non_negative=t, type=type, rate=rate)
-        
+
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.ROTATE_CENTER] = center
         trigger[ppt.ROTATE_ANGLE] = angle
         trigger[ppt.DURATION] = t
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
-        
+
         self.triggers.append(trigger)
         return self
-    
-    def PointToGroup(self, time: float, 
+
+    def PointToGroup(self, time: float,
         targetDir: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Point target towards another group"""
         validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
-        
+
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.ROTATE_TARGET] = targetDir
         trigger[ppt.ROTATE_CENTER] = self.target
         trigger[ppt.ROTATE_AIM_MODE] = True
@@ -356,45 +356,45 @@ class Component:
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
         trigger[ppt.DYNAMIC] = dynamic
-        
+
         if dynamic and (type or rate != 1.0):
             raise ValueError(
                 f"PointToGroup: dynamic aiming cannot use easing. \n"
                 f"Given type {type}, rate {rate}")
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def Scale(self, time: float, *,
-        factor: float, hold: float = 0, t: float = 0, 
+        factor: float, hold: float = 0, t: float = 0,
         type: int = 0, rate: float = 1.0, reverse: bool = False):
         """
         Scale target by a factor using Keyframes.
-        
+
         't' is the time to scale and 'hold' is the time to stay at that scale.
-        
+
         Reverse mode: Start at full size and scale down (doesnt use hold)
         Optional: t, hold, type, rate, reverse
         """
         validate_params(targets=self.target, factor=factor, non_negative=[t, hold], type=type, rate=rate)
-        
+
         if hold and reverse:
             warn("Scale: 'hold' time is ignored in reverse mode: "
                 "(no need to hold if it goes to original scale)")
         if not hold and not reverse:
             warn("Scale: 'hold' time is 0 but not in reverse."
                 f" Target will instantly revert to full size after {t}s.")
-        
+
         scale_settings = ScaleSettings(factor, hold, t, type, rate, reverse)
-        
+
         if scale_settings in scale_keyframes:
             keyframe_group = scale_keyframes[scale_settings].caller
         else:
             name = f"Keyframe Scale<{factor}>,T<{t}>,Reverse<{reverse}>"
             new_keyframe_group = Component(name, unknown_g(), 6) \
                 .assert_spawn_order(True)
-            
-            def keyframe_obj(*, scale: float, duration: float, order: int, 
+
+            def keyframe_obj(*, scale: float, duration: float, order: int,
                 close_loop: bool = False, ease_type: int = 0, ease_rate: float = 1.0):
                 new_keyframe_group.triggers.append({ #type: ignore
                     ppt.OBJ_ID: enum.ObjectID.KEYFRAME_OBJ,
@@ -410,7 +410,7 @@ class Component:
                     ppt.EASING_RATE: ease_rate,
                     ppt.LINE_OPACITY: 1.0,
                 })
-            
+
             if reverse:
                 keyframe_obj(scale=1, duration=0, order=1)
                 keyframe_obj(scale=factor, duration=t, order=2,
@@ -419,12 +419,12 @@ class Component:
                 keyframe_obj(scale=1, duration=t, order=1, ease_type=type, ease_rate=rate)
                 keyframe_obj(scale=factor, duration=hold, order=2)
                 keyframe_obj(scale=factor, duration=0, order=3, close_loop=True)
-            
+
             keyframe_group = new_keyframe_group.caller
             scale_keyframes[scale_settings] = new_keyframe_group
-            
+
         trigger = self.create_trigger(enum.ObjectID.KEYFRAME_ANIM, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.KEYMAP_ANIM_GID] = keyframe_group
         trigger[ppt.KEYMAP_ANIM_TIME_MOD] = 1.0
         trigger[ppt.KEYMAP_ANIM_POS_X_MOD] = 1.0
@@ -432,137 +432,137 @@ class Component:
         trigger[ppt.KEYMAP_ANIM_ROT_MOD] = 1.0
         trigger[ppt.KEYMAP_ANIM_SCALE_X_MOD] = 1.0
         trigger[ppt.KEYMAP_ANIM_SCALE_Y_MOD] = 1.0
-    
+
         self.triggers.append(trigger)
         return self
-    
-    def Follow(self, time: float, targetDir: int, *, 
+
+    def Follow(self, time: float, targetDir: int, *,
         t: float = 0, x_mod: float = 1.0, y_mod: float = 1.0):
         """Make target follow another group's movement"""
         validate_params(targets=self.target, non_negative=t)
-        
+
         trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.FOLLOW_GROUP] = targetDir
         trigger[ppt.FOLLOW_X_MOD] = x_mod
         trigger[ppt.FOLLOW_Y_MOD] = y_mod
         trigger[ppt.DURATION] = t
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def Alpha(self, time: float, *, opacity: float, t: float = 0):
         """Change target's opacity from a range of 0-100 over time."""
         validate_params(targets=self.target, non_negative=t)
         if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
-        
+
         trigger = self.create_trigger(enum.ObjectID.ALPHA, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.OPACITY] = opacity / 100.0
         trigger[ppt.DURATION] = t
-        
+
         self.triggers.append(trigger)
         return self
-    
-    def _stop_trigger_common(self, 
+
+    def _stop_trigger_common(self,
         time: float, target: int | Component, option: int, useControlID: bool):
         target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target)
-        
+
         trigger = self.create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
-        
+
         trigger[ppt.STOP_OPTION] = option # 0=Stop, 1=Pause, 2=Resume
         trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
-        
+
         self.triggers.append(trigger)
-    
+
     def Stop(self, time: float, *, target: int | Component, useControlID: bool = False):
         """WARNING: Does not stop all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 0, useControlID)
         return self
-    
+
     def Pause(self, time: float, *, target: int | Component, useControlID: bool = False):
         """WARNING: Does not pause all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 1, useControlID)
         return self
-    
+
     def Resume(self, time: float, *, target: int | Component, useControlID: bool = False):
         """Resume target's paused triggers."""
         self._stop_trigger_common(time, target, 2, useControlID)
         return self
-    
-    def Collision(self, time: float, *, 
+
+    def Collision(self, time: float, *,
         blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
         validate_params(targets=self.target)
-        
+
         trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.BLOCK_A] = blockA
         trigger[ppt.BLOCK_B] = blockB
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
         if onExit: trigger[ppt.TRIGGER_ON_EXIT] = True
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def Count(self, time: float, *, item_id: int, count: int, activateGroup: bool):
         validate_params(targets=self.target, item_id=item_id)
-        
+
         trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), self.target)
-        
+
         trigger[ppt.ITEM_ID] = item_id
         trigger[ppt.COUNT_TARGET] = count
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
         trigger[ppt.MULTI_ACTIVATE] = True
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def Pickup(self, time: float, *, item_id: int, count: int, override: bool):
         """Change an Item ID value by 'count' amount, or set to amount w/ 'override'"""
         validate_params(item_id=item_id)
-        
+
         if count == 0: raise ValueError("Pickup: Count is 0 (no change)")
 
         trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
-        
+
         del trigger[ppt.TARGET] # type: ignore
         trigger[ppt.ITEM_ID] = item_id
         trigger[ppt.PICKUP_COUNT] = count
         trigger[ppt.PICKUP_OVERRIDE] = override
         trigger[ppt.PICKUP_MULTIPLY_DIVIDE] = 0
-        
+
         self.triggers.append(trigger)
         return self
-    
+
     def PickupModify(self, time: float, *, item_id: int, factor: float,
         multiply: bool = False, divide: bool = False):
         """Multiply/divide an Item ID value by 'factor' amount"""
         validate_params(item_id=item_id, factor=factor)
-        
+
         if multiply and divide:
             raise ValueError("PickupModify: cannot both multiply and divide")
         if not multiply and not divide:
             raise ValueError("PickupModify: must specify multiply=True or divide=True")
-        
+
         mode = 1 if multiply else 2 # multiply=1, divide=2
-        
+
         trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
-        
+
         del trigger[ppt.TARGET] # type: ignore
         trigger[ppt.ITEM_ID] = item_id
         trigger[ppt.PICKUP_MULTIPLY_DIVIDE] = mode
         trigger[ppt.PICKUP_MODIFIER] = factor
-        
+
         self.triggers.append(trigger)
         return self
 
 
 # ===========================================================
-# 
+#
 # MULTITARGET CLASS
-# 
+#
 # ===========================================================
 
 class Multitarget:
@@ -571,34 +571,34 @@ class Multitarget:
     _powers: list[int] = [1, 2, 4, 8, 16, 32, 64]
     _initialized: bool = False
     _binary_bases: dict[int, Component] = {}
-    
+
     @classmethod
     def _get_binary_components(cls, num_targets: int, comp: Component) -> list[Component]:
         """Get the binary components needed to represent num_of_targets."""
-        
+
         for trigger in comp.triggers:
             if trigger[ppt.OBJ_ID] == enum.ObjectID.SPAWN:
                 warn(f"Spawn limit: [{comp.name}] Multitarget components cannot have Spawn triggers")
 
         if not cls._initialized: cls._initialize_binary_bases()
-        
+
         max_targets: int = 2 ** len(cls._powers) - 1
         if not (1 <= num_targets <= max_targets):
             raise ValueError(f"num_targets must be between 1 and {max_targets}. Got: {num_targets}")
-        
+
         comps: list[Component] = []
         remaining = num_targets
         for power in cls._powers[::-1]:
             if remaining >= power:
                 comps.append(cls._binary_bases[power])
                 remaining -= power
-        
+
         return comps
-    
+
     @classmethod
     def _initialize_binary_bases(cls):
         if cls._initialized: raise RuntimeError("Multitarget binary bases already initialized")
-        
+
         for power in cls._powers:
             component = Component(f"BinaryBase_{power}", unknown_g(), 4)
             component.assert_spawn_order(False)
@@ -612,18 +612,18 @@ class Multitarget:
                     .pair(enum.EMPTY_EMITTER, i + 6004))
                 component.Spawn(0, enum.EMPTY_MULTITARGET, True, remap=rb.build())
             cls._binary_bases[power] = component
-        
+
         max_targets: int = 2 ** len(cls._powers) - 1
         print(f"Multitarget: Initialized {len(cls._powers)} binary components, {max_targets} targets supported)")
         cls._initialized = True
-    
+
     @classmethod
     def spawn_with_remap(cls, caller: Component, time: float, num_targets: int, comp: Component,
         remap_callback: Callable[[dict[int, int], util.Remap], None]
-    ) -> None: 
+    ) -> None:
         """
         Spawn binary components with custom remap logic via callback.
-        
+
         caller: Component that will spawn the multitarget components
         comp: Component that will be called multiple times
         remap_callback: Function that receives (remap_pairs, remap_builder)
@@ -635,18 +635,18 @@ class Multitarget:
                 remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
                 assert remap_string is not None
                 remap_pairs, _ = util.translate_remap_string(remap_string)
-                
+
                 remap_callback(remap_pairs, remap)
-            
+
             remap.pair(enum.EMPTY_MULTITARGET, comp.caller)
             caller.Spawn(time, mt_comp.caller, False,
                 remap=remap.build(), reset_remap=False)
 
 
 # ===========================================================
-# 
+#
 # PATTERN CLASSES
-# 
+#
 # ===========================================================
 
 class _PointerMgr:
@@ -655,12 +655,12 @@ class _PointerMgr:
     align_north: Component | None = None
     follow_comps: dict[int, Component] = {}
     freed_pointers: list[int] = []
-    
+
     @classmethod
     def next_pointer(cls) -> int:
         if cls.freed_pointers: return cls.freed_pointers.pop()
         else: return lib.pointer.next()[0]
-    
+
     @classmethod
     def get_setup_comp(cls) -> Component:
         if cls.setup_pointercircle is None:
@@ -669,20 +669,20 @@ class _PointerMgr:
                 (cls.setup_pointercircle
                     .assert_spawn_order(False)
                     .GotoGroup(0, enum.EMPTY_TARGET_GROUP))
-        
+
         return cls.setup_pointercircle
-    
+
     @classmethod
     def get_follow_comp(cls, duration: int):
-        if duration in cls.follow_comps: 
+        if duration in cls.follow_comps:
             return cls.follow_comps[duration]
-        
+
         follow_comp = Component(f"[{duration}s] Follow PointerCircle", unknown_g(), 5)
         with follow_comp.temp_context(target=enum.EMPTY_BULLET):
             (follow_comp
                 .assert_spawn_order(False)
                 .Follow(0, enum.EMPTY_TARGET_GROUP, t=duration))
-        
+
         cls.follow_comps[duration] = follow_comp
         return follow_comp
 
@@ -691,7 +691,7 @@ class Pointer:
     def __init__(self, component: Component):
         self._component = component
         self._params: Any = tuple()
-    
+
     @property
     def center(self) -> int:
         """Center of the active PointerCircle."""
@@ -699,52 +699,52 @@ class Pointer:
             raise RuntimeError(f"Component '{self._component.name}' has no active pointer circle")
         return self._component.current_pc.center
 
-    def SetPointerCircle(self, time: float, gc: lib.GuiderCircle, *, 
+    def SetPointerCircle(self, time: float, gc: lib.GuiderCircle, *,
         location: int, duration: int = 0, align_north: bool = True):
         """
         Create a temporary Pointer-based GuiderCircle.
-        
+
         Duration: PointerCircle groups follow the center for 'duration' seconds.
         """
         validate_params(non_negative=duration, targets=location)
-        
+
         if self._component.requireSpawnOrder is False:
             raise RuntimeError("Patterns.SetPointerCircle: Must be trigged in spawn order")
         if self._component.current_pc is not None:
             print("Patterns.SetPointerCircle: Overwriting existing GuiderCircle")
             self.CleanPointerCircle()
-        
+
         circle: list[int] = [_PointerMgr.next_pointer() for _ in range(360)]
-        
+
         pc = lib.GuiderCircle(
             center=lib.pointer.next()[0], pointer=circle[0], populate_groups=circle)
-        
+
         self._component.current_pc = pc
-        
+
         self._params = (time, gc, location, duration, align_north)
         return self._component
-    
+
     def CleanPointerCircle(self):
         """Remove active Pointer-based GuiderCircle"""
         if self._component.current_pc is None:
             raise RuntimeError("Patterns.CleanPointerCircle: No active GuiderCircle to clean")
-        
+
         _PointerMgr.freed_pointers.extend([
-            p for p in self._component.current_pc.groups.values() 
+            p for p in self._component.current_pc.groups.values()
             if p not in self._component.used_pointers.values()
         ])
-        
+
         time, gc, location, duration, align_north = self._params
-        
+
         # Move original guidercircle into position
         with self._component.temp_context(target=gc.all):
             self._component.GotoGroup(time - enum.TICK*2, location)
             if align_north:
                 self._component.PointToGroup(time - enum.TICK*2, enum.NORTH_GROUP)
-        
+
         remaining = len(self._component.used_pointers)
         angle_iter = iter(self._component.used_pointers)
-        
+
         def remap_goto(remap_pairs: dict[int, int], remap: util.Remap):
             angle = next(angle_iter)
             pointer = self._component.used_pointers[angle]
@@ -755,18 +755,18 @@ class Pointer:
                     remap.pair(target, gc.groups[angle])
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
-        
+
         while remaining > 0:
             batch_size = 64 if remaining > 127 else remaining
-            
+
             Multitarget.spawn_with_remap(self._component, time,
                 batch_size, _PointerMgr.get_setup_comp(), remap_goto)
             remaining -= batch_size
-        
+
         pointer_center = self._component.current_pc.center
         with self._component.temp_context(target=pointer_center):
             self._component.GotoGroup(time, location)
-        
+
         if duration == 0:
             self._params = tuple()
             self._component.current_pc = None
@@ -774,10 +774,10 @@ class Pointer:
             return self._component
 
         follow_comp = _PointerMgr.get_follow_comp(duration)
-        
+
         remaining = len(self._component.used_pointers)
         angle_iter = iter(self._component.used_pointers)
-        
+
         def remap_follow(remap_pairs: dict[int, int], remap: util.Remap):
             pointer = self._component.used_pointers[next(angle_iter)]
             for source, target in remap_pairs.items():
@@ -787,14 +787,14 @@ class Pointer:
                     remap.pair(target, pointer_center)
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
-        
+
         while remaining > 0:
             batch_size = 64 if remaining > 127 else remaining
-            
-            Multitarget.spawn_with_remap(self._component, time, 
+
+            Multitarget.spawn_with_remap(self._component, time,
                 batch_size, follow_comp, remap_follow)
             remaining -= batch_size
-        
+
         self._params = tuple()
         self._component.current_pc = None
         self._component.used_pointers = OrderedDict()
@@ -805,22 +805,22 @@ class InstantPatterns:
     def __init__(self, component: Component):
         self._component = component
 
-    
-    def Arc(self, time: float, comp: Component, bullet: lib.BulletPool, *, 
+
+    def Arc(self, time: float, comp: Component, bullet: lib.BulletPool, *,
         numBullets: int, spacing: int, centerAt: float = 0, _radialBypass: bool = False):
         """
         Arc pattern - partial circle of bullets
-        
+
         Component must use EMPTY_BULLET and EMPTY_TARGET_GROUP. \n
         Optional: centerAt
         """
         IA = "Instant Arc:"
-        
+
         util.enforce_component_targets("Instant Arc", comp,
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
             excludes={enum.EMPTY_MULTITARGET}
         )
-        
+
         # Arc logic checks
         if not _radialBypass:
             if numBullets % 2 != 0 and not centerAt.is_integer():
@@ -840,25 +840,25 @@ class InstantPatterns:
             raise ValueError(f"{IA} numBullets {numBullets} times spacing {spacing} exceeds 360°")
         if numBullets * spacing == 360 and not _radialBypass:
             warn(f"{IA} numBullets {numBullets} times spacing {spacing} is 360°, making a circle. \nFIX: Use instant.Radial() instead")
-        
+
         # Calculate Arc positioning
         arclength = (numBullets - 1) * spacing
-        
+
         startpos = 0
         if _radialBypass: startpos = centerAt
         else: startpos = centerAt - arclength / 2
         assert startpos.is_integer(), \
             f"FATAL: startpos {startpos} not int. centerAt={centerAt}, arclength={arclength}"
-        
+
         # normalize startpos to [0, 360) range
         startpos = startpos % 360
         if startpos < 0: startpos += 360
-        
+
         bulletPos = int(startpos)
         pc = self._component.current_pc
         if pc is None:
             raise RuntimeError(f"{IA} requires an active PointerCircle in the component")
-        
+
         def remap_arc(remap_pairs: dict[int, int], remap: util.Remap):
             nonlocal bulletPos
             for source, target in remap_pairs.items():
@@ -874,20 +874,20 @@ class InstantPatterns:
                     remap.pair(target, pc.center)
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
-            
+
             bulletPos += spacing
             if bulletPos >= 360: bulletPos -= 360
-        
+
         Multitarget.spawn_with_remap(self._component, time, numBullets, comp, remap_arc)
-        
+
         return self._component
-    
-    
-    def Radial(self, time: float, comp: Component, bullet: lib.BulletPool, *, 
+
+
+    def Radial(self, time: float, comp: Component, bullet: lib.BulletPool, *,
         numBullets: int | None = None, spacing: int | None = None, centerAt: float = 0):
         """
         Radial pattern - full 360° circle of bullets
-        
+
         Component must use EMPTY_BULLET and EMPTY_TARGET_GROUP.  \n
         Optional: spacing or numBullets, centerAt
         """
@@ -896,7 +896,7 @@ class InstantPatterns:
             requires={enum.EMPTY_BULLET, enum.EMPTY_TARGET_GROUP },
             excludes={enum.EMPTY_MULTITARGET}
         )
-        
+
         if spacing and numBullets:
             if numBullets != int(360 / spacing):
                 raise ValueError(f"{IR} spacing and numBullets don't match!\n\n"
@@ -911,41 +911,41 @@ class InstantPatterns:
             raise ValueError(f"{IR} spacing must be a factor of 360 for perfect circles. Received: {spacing}")
         elif 360 % numBullets != 0:
             raise ValueError(f"{IR} numBullets must be a factor of 360 for perfect circles. Received: {numBullets}")
-            
-        self.Arc(time, comp, bullet, 
+
+        self.Arc(time, comp, bullet,
             numBullets=numBullets, spacing=spacing, centerAt=centerAt, _radialBypass=True)
-        
+
         return self._component
-    
-    def Line(self, time: float, comp: Component, emitter: int, 
-        targetDir: int, bullet: lib.BulletPool, *, 
+
+    def Line(self, time: float, comp: Component, emitter: int,
+        targetDir: int, bullet: lib.BulletPool, *,
         numBullets: int, fastestTime: float, slowestTime: float, dist: int,
         type: int = 0, rate: float = 1.0):
         """
         Line pattern - builds MoveTowards triggers at different speeds, forming a line.
-        
+
         Comp requires EMPTY_BULLET and EMPTY_MULTITARGET.
         Optional: type, rate
         """
         validate_params(positive=[fastestTime, slowestTime], type=type, rate=rate)
         IL = "Instant.Line:"
-        
+
         util.enforce_component_targets(IL, comp,
             requires={ enum.EMPTY_BULLET, enum.EMPTY_EMITTER },
-            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
+            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET,
                 enum.EMPTY1, enum.EMPTY2 }
         )
-        
+
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
             warn(f"{IL} Bullet has orientation enabled, but component has no PointToGroup trigger. Bullets may not face the correct direction.")
-        
+
         if fastestTime >= slowestTime:
             raise ValueError(f"{IL} slowestTime {slowestTime} must be greater than fastestTime {fastestTime}")
         if numBullets < 3:
             raise ValueError(f"{IL} numBullets must be at least 3. Got: {numBullets}")
-        
+
         bullet_groups: list[int] = []
-        
+
         def remap_line(remap_pairs: dict[int, int], remap: util.Remap):
             for source, target in remap_pairs.items():
                 if source == enum.EMPTY_BULLET:
@@ -956,32 +956,32 @@ class InstantPatterns:
                     remap.pair(target, emitter)
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
-        
+
         Multitarget.spawn_with_remap(self._component, time, numBullets, comp, remap_line)
-        
+
         step = (slowestTime - fastestTime) / (numBullets - 1)
         for i, bullet_group in enumerate(bullet_groups):
             travel_time = fastestTime + step * i
             with self._component.temp_context(target=bullet_group):
                 self._component.MoveTowards(
-                    time, targetDir, 
-                    t=travel_time, dist=dist, type=type, rate=rate 
+                    time, targetDir,
+                    t=travel_time, dist=dist, type=type, rate=rate
                 )
-        
+
         return self._component
-    
+
     # More pattern methods will be added here
 
 
 class TimedPatterns:
     def __init__(self, component: Component):
         self._component = component
-    
-    def RadialWave(self, time: float, comp: Component, bullet: lib.BulletPool, *, 
+
+    def RadialWave(self, time: float, comp: Component, bullet: lib.BulletPool, *,
         waves: int, interval: float = 0, numBullets: int | None = None, spacing: int | None = None, centerAt: float = 0):
         """
         Radial Wave pattern - multiple waves of radial bullets over time
-        
+
         Optional: spacing or numBullets, centerAt
         """
         RW = "RadialWave:"
@@ -991,40 +991,40 @@ class TimedPatterns:
             raise ValueError(f"{RW} for single wave, use instant.Radial() instead")
         if interval < 0:
             raise ValueError(f"{RW} interval must be non-negative. Got: {interval}")
-        
+
         for wave_number in range(waves):
             self._component.instant.Radial(
                 time + (wave_number * interval),
                 comp, bullet, numBullets=numBullets, spacing=spacing, centerAt=centerAt
             )
-        
+
         return self._component
-    
+
     def Line(self, time: float, comp: Component, targetDir: int, bullet: lib.BulletPool, *,
         numBullets: int, spacing: float, t: float, dist: int, type: int = 0, rate: float = 1.0):
         """
         Line pattern - bullets in a line over time with equal gaps between them
-        
+
         Optional: type, rate
         """
         TL = "Timed.Line:"
-        
+
         util.enforce_component_targets(TL, comp,
             requires={ enum.EMPTY_BULLET },
-            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET, 
+            excludes={ enum.EMPTY_TARGET_GROUP, enum.EMPTY_MULTITARGET,
                 enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER }
         )
-        
+
         if bullet.has_orientation and not comp.has_trigger_properties({ppt.ROTATE_AIM_MODE:Any}):
             warn(f"{TL} Bullet has orientation enabled, but component has no PointToGroup triggers. Bullets may not face the correct direction.")
-        
+
         if numBullets < 2:
             raise ValueError(f"{TL} numBullets must be at least 2. Got: {numBullets}")
         if spacing < 0:
             raise ValueError(f"{TL} spacing must be non-negative. Got: {spacing}")
         if t < 0:
             raise ValueError(f"{TL} t must be non-negative. Got: {t}")
-        
+
         for i in range(0, numBullets):
             b, _ = bullet.next()
             self._component.Spawn(
@@ -1034,5 +1034,5 @@ class TimedPatterns:
                     time + (i * spacing), targetDir, t=t, dist=dist, type=type, rate=rate
                 )
         return self._component
-        
+
     # More pattern methods will be added here
