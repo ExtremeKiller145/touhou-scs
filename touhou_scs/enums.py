@@ -202,9 +202,16 @@ TICK: Final[float] = 1 / 240  # One game tick in seconds
 PLR_SPEED: Final[float] = 311.58  # Player movement speed in studs/second
 
 # Special Groups
-PLR: Final[int] = 2  # Player group ID
-SCREEN_CENTER: Final[int] = 30  # Center group of game window
+PLR: Final[int] = 2
+"""Player group and collision ID"""
+SCREEN_CENTER: Final[int] = 30
+"""Center group of 1200x900 screen window"""
+GAME_CENTER: Final[int] = 109
+"""Center group of 360x420 game window"""
+GAME_BOTTOM_LEFT: Final[int] = 110
+"""Bottom-left corner of 360x420 game window"""
 NORTH_GROUP: Final[int] = 26
+"""North of the map. Used for resetting rotation"""
 
 # Empty Groups for Remapping   (e.g. 21 => group)
 # Holder object for empty groups is directly placed on the physical player, layer 0

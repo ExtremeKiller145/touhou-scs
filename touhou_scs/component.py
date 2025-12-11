@@ -56,6 +56,8 @@ def validate_params(*,
             raise ValueError(f"Values must be non-negative (>=0). Got: {values}")
     if targets is not None:
         for g in targets:
+            if g == -1:
+                raise RuntimeError(f"Trigger requires an active target context. Got: {g}")
             if g <= 0:
                 raise ValueError(f"Target Group '{g}' must be positive (>0).")
             if g in _RESTRICTED_LOOKUP:
@@ -223,8 +225,6 @@ class Component:
         
         (collision triggers might be different)
         """
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Toggle requires an active target context")
         validate_params(targets=self.target)
         
         trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), self.target)
@@ -237,8 +237,6 @@ class Component:
         t: float, dist: int,
         type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Move target a set distance towards another group (direction mode)"""
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': MoveTowards requires an active target context")
         validate_params(targets=[self.target, targetDir], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
@@ -261,8 +259,6 @@ class Component:
     def Pulse(self, time: float, 
         hsb: lib.HSB, *, exclusive: bool = False,
         fadeIn: float = 0, t: float = 0, fadeOut: float = 0):
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Pulse requires an active target context")
         validate_params(non_negative=[fadeIn, t, fadeOut], targets=self.target)
         
         trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), self.target)
@@ -282,8 +278,6 @@ class Component:
     def MoveBy(self, time: float, *,
         dx: float, dy: float,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': MoveBy requires an active target context")
         validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
@@ -302,8 +296,6 @@ class Component:
     
     def GotoGroup(self, time: float, location: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0):
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': GotoGroup requires an active target context")
         validate_params(targets=[self.target, location], non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
@@ -320,13 +312,21 @@ class Component:
         self.triggers.append(trigger)
         return self
     
+    def SetPosition(self, time: float, *, x: float, y: float):
+        """
+        2 Triggers instantly set target's position relative to origin.
+            (bottom left of game window)
+        """
+        validate_params(targets=self.target)
+        self.GotoGroup(time, location=enum.GAME_BOTTOM_LEFT, t=0)
+        self.MoveBy(time, dx=x, dy=y)
+        return self
+    
     def Rotate(self, time: float, *,
         angle: float,
         center: int | None = None,
         t: float = 0, type: int = 0, rate: float = 1.0):
         """Rotate target by angle (degrees, clockwise is positive)"""
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Rotate requires an active target context")
         if center is None: center = self.target
         validate_params(targets=[self.target, center], non_negative=t, type=type, rate=rate)
         
@@ -345,8 +345,6 @@ class Component:
         targetDir: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Point target towards another group"""
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': PointToGroup requires an active target context")
         validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
         
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
@@ -359,7 +357,7 @@ class Component:
         trigger[ppt.EASING_RATE] = rate
         trigger[ppt.DYNAMIC] = dynamic
         
-        if dynamic and type or dynamic and rate != 1.0:
+        if dynamic and (type or rate != 1.0):
             raise ValueError(
                 f"PointToGroup: dynamic aiming cannot use easing. \n"
                 f"Given type {type}, rate {rate}")
@@ -378,8 +376,6 @@ class Component:
         Reverse mode: Start at full size and scale down (doesnt use hold)
         Optional: t, hold, type, rate, reverse
         """
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Scale requires an active target context")
         validate_params(targets=self.target, factor=factor, non_negative=[t, hold], type=type, rate=rate)
         
         if hold and reverse:
@@ -443,9 +439,6 @@ class Component:
     def Follow(self, time: float, targetDir: int, *, 
         t: float = 0, x_mod: float = 1.0, y_mod: float = 1.0):
         """Make target follow another group's movement"""
-        
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Follow requires an active target context")
         validate_params(targets=self.target, non_negative=t)
         
         trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), self.target)
@@ -460,8 +453,6 @@ class Component:
     
     def Alpha(self, time: float, *, opacity: float, t: float = 0):
         """Change target's opacity from a range of 0-100 over time."""
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Alpha requires an active target context")
         validate_params(targets=self.target, non_negative=t)
         if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
@@ -474,7 +465,8 @@ class Component:
         self.triggers.append(trigger)
         return self
     
-    def _stop_trigger_common(self, time: float, target: int, option: int, useControlID: bool):
+    def _stop_trigger_common(self, 
+        time: float, target: int | Component, option: int, useControlID: bool):
         target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target)
         
@@ -485,25 +477,23 @@ class Component:
         
         self.triggers.append(trigger)
     
-    def Stop(self, time: float, *, target: int, useControlID: bool = False):
+    def Stop(self, time: float, *, target: int | Component, useControlID: bool = False):
         """WARNING: Does not stop all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 0, useControlID)
         return self
     
-    def Pause(self, time: float, *, target: int, useControlID: bool = False):
+    def Pause(self, time: float, *, target: int | Component, useControlID: bool = False):
         """WARNING: Does not pause all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
         self._stop_trigger_common(time, target, 1, useControlID)
         return self
     
-    def Resume(self, time: float, *, target: int, useControlID: bool = False):
+    def Resume(self, time: float, *, target: int | Component, useControlID: bool = False):
         """Resume target's paused triggers."""
         self._stop_trigger_common(time, target, 2, useControlID)
         return self
     
     def Collision(self, time: float, *, 
         blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Collision requires an active target context")
         validate_params(targets=self.target)
         
         trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), self.target)
@@ -517,9 +507,6 @@ class Component:
         return self
     
     def Count(self, time: float, *, item_id: int, count: int, activateGroup: bool):
-        """Activate target when item count is reached for item ID."""
-        if self.target == -1:
-            raise RuntimeError(f"Component '{self.name}': Count requires an active target context")
         validate_params(targets=self.target, item_id=item_id)
         
         trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), self.target)
@@ -758,18 +745,19 @@ class Pointer:
         remaining = len(self._component.used_pointers)
         angle_iter = iter(self._component.used_pointers)
         
+        def remap_goto(remap_pairs: dict[int, int], remap: util.Remap):
+            angle = next(angle_iter)
+            pointer = self._component.used_pointers[angle]
+            for source, target in remap_pairs.items():
+                if source == enum.EMPTY_BULLET:
+                    remap.pair(target, pointer)
+                elif source == enum.EMPTY_TARGET_GROUP:
+                    remap.pair(target, gc.groups[angle])
+                else:
+                    remap.pair(target, enum.EMPTY_MULTITARGET)
+        
         while remaining > 0:
             batch_size = 64 if remaining > 127 else remaining
-            def remap_goto(remap_pairs: dict[int, int], remap: util.Remap):
-                angle = next(angle_iter)
-                pointer = self._component.used_pointers[angle]
-                for source, target in remap_pairs.items():
-                    if source == enum.EMPTY_BULLET:
-                        remap.pair(target, pointer)
-                    elif source == enum.EMPTY_TARGET_GROUP:
-                        remap.pair(target, gc.groups[angle])
-                    else:
-                        remap.pair(target, enum.EMPTY_MULTITARGET)
             
             Multitarget.spawn_with_remap(self._component, time,
                 batch_size, _PointerMgr.get_setup_comp(), remap_goto)
@@ -790,18 +778,18 @@ class Pointer:
         remaining = len(self._component.used_pointers)
         angle_iter = iter(self._component.used_pointers)
         
+        def remap_follow(remap_pairs: dict[int, int], remap: util.Remap):
+            pointer = self._component.used_pointers[next(angle_iter)]
+            for source, target in remap_pairs.items():
+                if source == enum.EMPTY_BULLET:
+                    remap.pair(target, pointer)
+                elif source == enum.EMPTY_TARGET_GROUP:
+                    remap.pair(target, pointer_center)
+                else:
+                    remap.pair(target, enum.EMPTY_MULTITARGET)
+        
         while remaining > 0:
             batch_size = 64 if remaining > 127 else remaining
-            
-            def remap_follow(remap_pairs: dict[int, int], remap: util.Remap):
-                pointer = self._component.used_pointers[next(angle_iter)]
-                for source, target in remap_pairs.items():
-                    if source == enum.EMPTY_BULLET:
-                        remap.pair(target, pointer)
-                    elif source == enum.EMPTY_TARGET_GROUP:
-                        remap.pair(target, pointer_center)
-                    else:
-                        remap.pair(target, enum.EMPTY_MULTITARGET)
             
             Multitarget.spawn_with_remap(self._component, time, 
                 batch_size, follow_comp, remap_follow)

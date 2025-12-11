@@ -26,8 +26,8 @@ _start_time = time.time()
 DEFAULT_TRIGGER_AREA: TriggerArea = {
     "min_x": 1350,
     "min_y": 1300,
-    "max_x": 6000,
-    "max_y": 2500
+    "max_x": 9000,
+    "max_y": 4500
 }
 
 class Spell:
@@ -80,8 +80,8 @@ class GuiderCircle:
     """Circle of 360 pointer objects for angle-based aiming"""
     
     def __init__(self, 
-        center: int, pointer: int, all_group: int = 0, populate_groups: list[int] = []):
-            
+        center: int, pointer: int, all_group: int = 0, populate_groups: list[int] | None = None):
+        populate_groups = populate_groups or []
         self.all: int = all_group
         self.center: int = center
         self.pointer: int = pointer
@@ -143,7 +143,7 @@ bullet2 = BulletPool(1501, 2200, False)
 bullet3 = BulletPool(2901, 3600, False)
 bullet4 = BulletPool(4301, 4700, False)
 
-pointer = BulletPool(7000, 7400, False) # CRITICAL: NOT PHYSICALLY ADDED IN LEVEL YET
+pointer = BulletPool(7000, 7400, False)
 
 reimuA_level1 = BulletPool(110, 128, True)
 
@@ -179,24 +179,25 @@ class EnemyPool:
             self._current = self._min_group
         return self._current
     
-    def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int):
-        """
-        Spawn an enemy attack with automatic group cycling and HP/death handling.
+    def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int, enemy_group: int):
+        """Spawn an enemy attack with HP/death handling."""
+        if not (self._min_group <= enemy_group <= self._max_group):
+            raise ValueError(
+                f"spawn_enemy: enemy_group {enemy_group} is not in pool range "
+                f"{self._min_group}-{self._max_group}"
+            )
         
-        Attack component targets 'enum.EMPTY_TARGET_GROUP' instead of hardcoded enemy.
-        """
         util.enforce_component_targets("Spawn Enemy", attack,
-            # requires={ enum.EMPTY_TARGET_GROUP },
-            excludes={ enum.EMPTY_BULLET, enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER, enum.EMPTY_MULTITARGET }) 
+            excludes={ enum.EMPTY_BULLET, enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER, enum.EMPTY_MULTITARGET, enum.EMPTY_TARGET_GROUP }) 
         
-        off_switch = self._off_switches[self._current]
+        off_switch = self._off_switches[enemy_group]
         
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
         
         stage.Spawn(time, self._despawn_setup.caller, False,
-            remap=f"{enum.EMPTY_TARGET_GROUP}.{self._current}.{enum.EMPTY1}.{off_switch}")
-        stage.Pickup(time - enum.TICK*2, item_id=self._current, count=hp, override=True)
+            remap=f"{enum.EMPTY_TARGET_GROUP}.{enemy_group}.{enum.EMPTY1}.{off_switch}")
+        stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
         
 
 
