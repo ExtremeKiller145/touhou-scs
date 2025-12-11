@@ -132,6 +132,12 @@ def validate_params(*,
                 if g > c:
                     raise ValueError(f"Target Group '{g}' is out of valid range (1-{c}).")
 
+def enforce_solid_groups(*groups: int):
+    for g in groups:
+        if g > 9999:
+            raise ValueError(f"Group '{g}' is not a solid group (>9999).")
+
+
 class Component:
     def __init__(self, name: str, callerGroup: int, editorLayer: int = 4):
         self.name: str = name
@@ -292,6 +298,7 @@ class Component:
         type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Move target a set distance towards another group (direction mode)"""
         validate_params(targets=[self.target, targetDir], non_negative=t, type=type, rate=rate)
+        enforce_solid_groups(self.target)
 
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
 
@@ -351,6 +358,7 @@ class Component:
     def GotoGroup(self, time: float, location: int, *,
         t: float = 0, type: int = 0, rate: float = 1.0):
         validate_params(targets=[self.target, location], non_negative=t, type=type, rate=rate)
+        enforce_solid_groups(self.target)
 
         trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
 
@@ -403,6 +411,7 @@ class Component:
         t: float = 0, type: int = 0, rate: float = 1.0, dynamic: bool = False):
         """Point target towards another group"""
         validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
+        enforce_solid_groups(targetDir)
 
         trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
 
@@ -633,9 +642,8 @@ class Multitarget:
     def _get_binary_components(cls, num_targets: int, comp: Component) -> list[Component]:
         """Get the binary components needed to represent num_of_targets."""
 
-        for trigger in comp.triggers:
-            if trigger[ppt.OBJ_ID] == enum.ObjectID.SPAWN:
-                warn(f"Spawn limit: [{comp.name}] Multitarget components cannot have Spawn triggers")
+        if any(t[ppt.OBJ_ID] == enum.ObjectID.SPAWN for t in comp.triggers):
+            warn(f"Spawn limit: [{comp.name}] Multitarget components cannot have Spawn triggers")
 
         if not cls._initialized: cls._initialize_binary_bases()
 

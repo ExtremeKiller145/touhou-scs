@@ -41,16 +41,16 @@ def add_disable_all_bullets():
     bullet_iter = iter(bullet_groups)
     remaining = len(bullet_groups)
 
+    def remap_disable(remap_pairs: dict[int, int], remap: util.Remap):
+        for source, target in remap_pairs.items():
+            if source == enum.EMPTY_BULLET:
+                remap.pair(target, next(bullet_iter))
+            else:
+                remap.pair(target, enum.EMPTY_MULTITARGET)
+    
     # Chunk into max-64 batches and handle remainder normally
     while remaining > 0:
         batch_size = 64 if remaining > 127 else remaining
-
-        def remap_disable(remap_pairs: dict[int, int], remap: util.Remap):
-            for source, target in remap_pairs.items():
-                if source == enum.EMPTY_BULLET:
-                    remap.pair(target, next(bullet_iter))
-                else:
-                    remap.pair(target, enum.EMPTY_MULTITARGET)
 
         Multitarget.spawn_with_remap(comp, 0, batch_size, single, remap_disable)
         remaining -= batch_size
@@ -65,13 +65,10 @@ def add_plr_collisions():
         .assert_spawn_order(False)
         .set_context(target=enum.EMPTY_BULLET)
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
-        .clear_context()
         .set_context(target=GRAZE_FUNCTION)
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_GRAZE_HURTBOX, activateGroup=True)
-        .clear_context()
         .set_context(target=DESPAWN_FUNCTION)
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=BOMB_HITBOX, activateGroup=True)
-        .clear_context()
         .set_context(target=enum.EMPTY_BULLET)
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_HURTBOX, activateGroup=True)
         .clear_context()

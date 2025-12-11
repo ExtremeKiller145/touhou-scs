@@ -41,12 +41,14 @@ Endboss: ??? (formerly called Nameless Entity)
 
 TODO:
 
+- Optimization: Add Enemy Collisions scales to extremely high obj counts! use Multitarget wherever possible
+
+- Minor Optimization: Cache 'enforce_solid_groups' if used multiple times for the same groups
+
 - Add basic Bombing (keybind + texture)
 
 - Add rounding to 6 significant digits to trigger spread 
   (to make sure rounded X positions dont break spawn order)
-
-- For ring patterns: use pointers to create artifical guidercircles based on the OG guidercircle as a template, then feed those pointers as a guidercircle into instant/timed patterns.
 
 - Followed ring pattern: Bullets spawn in a ring formation, but all go in the same direction and speed, keeping their original shape as they move. You can make it optionally rotate on each patterns center, but that would require a pointer for each shape.
 
@@ -61,12 +63,9 @@ TODO:
 
 - Add Item pickups (power, bomb, score)
 
-- Optimization: Use Keyframe Anim's time-mod or scale-mod to possibly re-use keyframe components. This will depend on t/hold timing or scaling ratios.
+- Minor Optimization: Use Keyframe Anim's time-mod or scale-mod to possibly re-use keyframe components. This will depend on t/hold timing or scaling ratios.
 
 - Investigate spread_triggers: might cause spawn_order issues since GD rounds X-pos to 6 significant digits
-
-- Investigate why group field not being replaced for target groups 401 & 395 in main.js
-(theory: intentionally left out bc those fields should never have non-solid groups?)
 
 TODO SYSTEMS:
 
