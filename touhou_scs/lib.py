@@ -5,7 +5,6 @@ Core infrastructure: Spell system, GuiderCircles, BulletPools, and export functi
 Module-level storage for components and spells for automatic registration.
 """
 
-import functools
 import orjson
 import random
 import time
@@ -426,6 +425,24 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
         triggers[0][ppt.Y] = random.randint(min_y, max_y)
         return
 
+    # Single pass to gather all info we need
+    first_x = triggers[0][ppt.X]
+    chain_min_x = float(first_x)
+    chain_max_x = float(first_x)
+    all_same_x = True
+    keyframe_id = enum.ObjectID.KEYFRAME_OBJ
+    
+    for t in triggers:
+        t_x = t[ppt.X]
+        if t[ppt.OBJ_ID] != keyframe_id:
+            all_keyframe_objs = False
+        if t_x != first_x:
+            all_same_x = False
+            t_x_float = float(t_x)
+            if t_x_float < chain_min_x:
+                chain_min_x = t_x_float
+            if t_x_float > chain_max_x:
+                chain_max_x = t_x_float
 
     all_keyframe_objs = all(t[ppt.OBJ_ID] == enum.ObjectID.KEYFRAME_OBJ for t in triggers)
     if all_keyframe_objs:
@@ -436,14 +453,13 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
             keyframe_obj[ppt.Y] = rand_y
         return
 
-    all_same_x = all(t[ppt.X] == triggers[0][ppt.X] for t in triggers)
     if all_same_x and not comp.requireSpawnOrder:
+        rand_x = random.randint(min_x // 2, max_x // 2) * 2
         for trigger in triggers:
-            trigger[ppt.X] = random.randint(min_x // 2, max_x // 2) * 2
+            trigger[ppt.X] = rand_x
+            trigger[ppt.Y] = random.randint(min_y, max_y)
     elif comp.requireSpawnOrder:
         # Rigid chain - maintain exact spacing (ordered spawn)
-        chain_min_x = min(float(t[ppt.X]) for t in triggers)
-        chain_max_x = max(float(t[ppt.X]) for t in triggers)
         chain_width = chain_max_x - chain_min_x
 
         if chain_width > (max_x - min_x):
@@ -452,6 +468,7 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
         shift = float(random.randint(min_x, int(max_x - chain_width)) - chain_min_x)
         for trigger in triggers:
             trigger[ppt.X] = float(trigger[ppt.X]) + shift
+            trigger[ppt.Y] = random.randint(min_y, max_y)
     else:
         # Elastic chain - can stretch beyond area (no spawn order requirement)
         start_x = min_x
@@ -461,9 +478,7 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
             else:
                 spacing = random.randint(1, 10)
                 trigger[ppt.X] = float(triggers[i - 1][ppt.X]) + spacing
-
-    for trigger in triggers:
-        trigger[ppt.Y] = random.randint(min_y, max_y)
+            trigger[ppt.Y] = random.randint(min_y, max_y)
 
 
 def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
