@@ -23,7 +23,7 @@ c1 = lib.circle1
 
 # Entry point - left side offscreen
 entry_left = lib.pointer.next()[0]
-# Entry point - right side offscreen  
+# Entry point - right side offscreen
 entry_right = lib.pointer.next()[0]
 # Exit point - top left offscreen
 exit_top_left = lib.pointer.next()[0]

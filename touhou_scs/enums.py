@@ -67,7 +67,7 @@ class Easing(IntEnum):
 
 class Properties(str):
     """Trigger property field IDs for Geometry Dash level data"""
-    
+
     # ========== General Properties ==========
     OBJ_ID = "1"
     X = "2"
@@ -82,23 +82,23 @@ class Properties(str):
     EASING_RATE = "85"
     MULTI_TRIGGERED = "87"
     DYNAMIC = "397"
-    
+
     # ========== Alpha Trigger ==========
     OPACITY = "35"
-    
+
     # ========== Follow Trigger ==========
     FOLLOW_GROUP = "71"
     FOLLOW_X_MOD = "72"
     FOLLOW_Y_MOD = "73"
-    
+
     # ========== Stop Trigger ==========
     STOP_OPTION = "580"
     """0=stop, 1=pause, 2=resume"""
     STOP_USE_CONTROL_ID = "535"  # boolean
-    
+
     # ========== Toggle Trigger ==========
     ACTIVATE_GROUP = "56"
-    
+
     # ========== Keyframe Animate Trigger =========
     KEYMAP_ANIM_GID = "76" # Keyframe objects to follow
     KEYMAP_ANIM_PARENT_GID = "71"
@@ -108,7 +108,7 @@ class Properties(str):
     KEYMAP_ANIM_ROT_MOD = "522" # float, rotation multiplier (default 0, should be 1)
     KEYMAP_ANIM_SCALE_X_MOD = "523" # float, scale X multiplier (default 0, should be 1)
     KEYMAP_ANIM_SCALE_Y_MOD = "546" # float, scale Y multiplier (default 0, should be 1)
-    
+
     # ========== Keyframe Object ==========
     KEYFRAME_OBJ_MODE = "379"
     """0=time, 1=even, 2=dist"""
@@ -118,22 +118,22 @@ class Properties(str):
     LINE_OPACITY = "524" # float 0.0-1.0, % opacity of connecting lines
     SCALE = "32"
     """Generic object scale property"""
-    
+
     # ========== Count Trigger ==========
     ITEM_ID = "80"
     COUNT_TARGET = "77"
     MULTI_ACTIVATE = "104"
-    
+
     # ========== Pickup Trigger ==========
     PICKUP_OVERRIDE = "139"
     PICKUP_MULTIPLY_DIVIDE = "88" # 0=none, 1=multiply, 2=divide
-    PICKUP_MODIFIER = "449" 
+    PICKUP_MODIFIER = "449"
     PICKUP_COUNT = "77"
     # ========== Collision Trigger ==========
     BLOCK_A = "80"
     BLOCK_B = "95"
     TRIGGER_ON_EXIT = "93"
-    
+
     # ========== Pulse Trigger ==========
     PULSE_FADE_IN = "45"
     PULSE_HOLD = "46"
@@ -142,37 +142,37 @@ class Properties(str):
     """HSV mode boolean"""
     PULSE_HSV_STRING = "49"
     """'a' separated string like 'HaSaBa0a0'"""
-    PULSE_TARGET_TYPE = "52"  
+    PULSE_TARGET_TYPE = "52"
     """false = color channel, true = group ID"""
     PULSE_EXCLUSIVE = "86"
-    
+
     # ========== Scale Trigger ==========
     SCALE_X = "150"
     SCALE_Y = "151"
     SCALE_CENTER = "71"
     SCALE_DIV_BY_X = "153"
     SCALE_DIV_BY_Y = "154"
-    
+
     # ========== Rotate Trigger ==========
     ROTATE_ANGLE = "68"  # In degrees, clockwise is +
     ROTATE_CENTER = "71"  # For Rotate triggers, type group
     ROTATE_TARGET = "401"
     ROTATE_AIM_MODE = "100"
     ROTATE_DYNAMIC_EASING = "403" # int 0-1 (not normal easing)
-    
+
     # ========== Spawn Trigger ==========
-    REMAP_STRING = "442"  
+    REMAP_STRING = "442"
     """Dot separated. e.g. '1.2.3.4' remaps 1->2 and 3->4"""
-    RESET_REMAP = "581"  
+    RESET_REMAP = "581"
     """Bool: Blocks other spawn triggers from remapping"""
     SPAWN_ORDERED = "441"
     """Bool: spawns a trigger function from left to right with time gaps based on player speed"""
     SPAWN_DELAY = "63"
-    
+
     # ========== Move Trigger ==========
     MOVE_X = "28"
     MOVE_Y = "29"
-    MOVE_SMALL_STEP = "393"  
+    MOVE_SMALL_STEP = "393"
     """Bool: Sets Move triggers to the '1/30 of a block' unit standard"""
     MOVE_TARGET_CENTER = "395"  # Target's center for Direction/Goto
     MOVE_TARGET_DIR = "71"

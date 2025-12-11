@@ -9,7 +9,7 @@ from typing import Required, TypedDict, Protocol, Any
 # ==========================================
 
 Trigger = TypedDict("Trigger",{
-    
+
     "1": Required[int],         # OBJ_ID - Trigger type
     "2": Required[float],       # X - X position (time-based)
     "20": Required[int],        # EDITOR_LAYER
@@ -85,7 +85,7 @@ Trigger = TypedDict("Trigger",{
     "394": bool,                # MOVE_DIRECTION_MODE
     "396": float,               # MOVE_DIRECTION_MODE_DISTANCE
     "544": bool,                # MOVE_SILENT
-}, total=False) 
+}, total=False)
 
 
 # ==========================================
@@ -95,7 +95,7 @@ Trigger = TypedDict("Trigger",{
 class ComponentProtocol(Protocol):
     """
     Interface for Component objects.
-    
+
     Any class implementing these attributes/methods can be used as a Component.
     This is Python's way of doing duck typing with type safety.
     """
@@ -108,7 +108,7 @@ class ComponentProtocol(Protocol):
     target: int
     used_pointers: dict[int, int]
     current_pc: Any
-    
+
     def assert_spawn_order(self, required: bool) -> "ComponentProtocol":
         """Set spawn order requirement. Returns self for chaining."""
         ...
@@ -123,7 +123,7 @@ class SpellProtocol(Protocol):
     spell_name: str
     caller_group: int
     components: list[ComponentProtocol]
-    
+
     def add_component(self, component: ComponentProtocol) -> "SpellProtocol":
         """Add component to spell. Returns self for chaining."""
         ...
