@@ -5,6 +5,7 @@ Core infrastructure: Spell system, GuiderCircles, BulletPools, and export functi
 Module-level storage for components and spells for automatic registration.
 """
 
+import functools
 import orjson
 import random
 import time
@@ -307,8 +308,15 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         return [g for g in groups if len(g) >= 2]  # Only care about 2+ simultaneous
 
     # Step 4: Find what groups call this group (A) and what this group calls (C)
+    # Use manual caching since these are inner functions
+    _find_callers_cache: dict[int, list[tuple[int, Trigger]]] = {}
+    _group_has_spawn_cache: dict[int, bool] = {}
+    _c_has_reset_cache: dict[int, bool] = {}
+
     def find_callers(target_group: int) -> list[tuple[int, Trigger]]:
         """Find all (group, trigger) pairs where trigger spawns target_group."""
+        if target_group in _find_callers_cache:
+            return _find_callers_cache[target_group]
         callers: list[tuple[int, Trigger]] = []
         for group, triggers in group_to_triggers.items():
             for trigger in triggers:
@@ -316,20 +324,29 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
                     continue
                 if int(trigger.get(ppt.TARGET, 0)) == target_group:
                     callers.append((group, trigger))
+        _find_callers_cache[target_group] = callers
         return callers
 
     def group_has_spawn_triggers(group: int) -> bool:
-        return any(
+        if group in _group_has_spawn_cache:
+            return _group_has_spawn_cache[group]
+        result = any(
             t[ppt.OBJ_ID] == enum.ObjectID.SPAWN
             for t in group_to_triggers.get(group, [])
         )
+        _group_has_spawn_cache[group] = result
+        return result
 
     def c_has_reset_remap(target_group: int) -> bool:
         """Check if any spawn trigger in target group has reset_remap."""
-        return any(
+        if target_group in _c_has_reset_cache:
+            return _c_has_reset_cache[target_group]
+        result = any(
             t[ppt.OBJ_ID] == enum.ObjectID.SPAWN and t.get(ppt.RESET_REMAP, False)
             for t in group_to_triggers.get(target_group, [])
         )
+        _c_has_reset_cache[target_group] = result
+        return result
 
     # Step 5: Run checks for each group B
     for b_group, b_triggers in group_to_triggers.items():
