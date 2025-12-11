@@ -5,6 +5,7 @@ Core infrastructure: Spell system, GuiderCircles, BulletPools, and export functi
 Module-level storage for components and spells for automatic registration.
 """
 
+import functools
 import orjson
 import random
 import time
