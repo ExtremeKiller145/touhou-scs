@@ -41,8 +41,6 @@ Endboss: ??? (formerly called Nameless Entity)
 
 TODO:
 
-- Optimization: Add Enemy Collisions scales to extremely high obj counts! use Multitarget wherever possible
-
 - Minor Optimization: Cache 'enforce_solid_groups' if used multiple times for the same groups
 
 - Add basic Bombing (keybind + texture)

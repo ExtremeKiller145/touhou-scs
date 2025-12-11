@@ -119,23 +119,40 @@ def add_enemy_collisions():
     if add_enemy_collisions.has_been_called:
         raise RuntimeError("Enemy collision has already been added")
 
-    def add(enemies: list[int], bullet: lib.BulletPool, enemyName: str, bulletName: str):
-        base_col = (Component(f"{enemyName} Collision for {bulletName} (un-mapped)", unknown_g(), editorLayer=6)
-            .assert_spawn_order(False)
-            .set_context(target=plr_bullet_despawn.caller)
-                .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
-            .clear_context()
-        )
+    enemy_groups = (
+        list(range(200, 210 + 1))
+    )
+    bullet_groups = (
+        list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1))
+    )
 
-        global_col = Component(f"{enemyName} Collision remap wrappers for {bulletName}", 17, editorLayer=4) \
-            .assert_spawn_order(False)
+    base_col = (Component("Enemy Collision for PlrBullets (un-mapped)", unknown_g(), editorLayer=6)
+        .assert_spawn_order(False)
+        .set_context(target=plr_bullet_despawn.caller)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
+        .clear_context()
+    )
 
-        for enemy in enemies:
-            for b in range(bullet.min_group, bullet.max_group + 1):
-                global_col.Spawn(0, base_col.caller, False,
-                    remap=f"{enum.EMPTY_BULLET}.{b}.{enum.EMPTY_TARGET_GROUP}.{enemy}")
+    global_col = Component("Enemy Collision remap wrappers for PlrBullets", 17, editorLayer=4) \
+        .assert_spawn_order(False)
 
-    add(list(range(200, 210+1)), lib.reimuA_level1, "PlaceholderEnemies", "ReimuA_L1")
+    for enemy in enemy_groups:
+        bullet_iter = iter(bullet_groups)
+        remaining = len(bullet_groups)
+
+        def remap_collision(remap_pairs: dict[int, int], remap: util.Remap, _enemy: int = enemy):
+            for source, target in remap_pairs.items():
+                if source == enum.EMPTY_BULLET:
+                    remap.pair(target, next(bullet_iter))
+                elif source == enum.EMPTY_TARGET_GROUP:
+                    remap.pair(target, _enemy)
+                else:
+                    remap.pair(target, enum.EMPTY_MULTITARGET)
+
+        while remaining > 0:
+            batch_size = 64 if remaining > 127 else remaining
+            Multitarget.spawn_with_remap(global_col, 0, batch_size, base_col, remap_collision)
+            remaining -= batch_size
 
 despawn1 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)

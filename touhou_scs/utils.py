@@ -38,13 +38,15 @@ def time_to_dist(time: float) -> float:
 class UnknownGroupGenerator:
     def __init__(self) -> None:
         self.counter = 10000
-        self.used_groups: list[int] = []
 
     def __call__(self) -> int:
         result = self.counter
-        self.used_groups.append(result)
         self.counter += 1
         return result
+    
+    @property
+    def used_groups(self) -> list[int]:
+        return list(range(10000, self.counter))
 
 unknown_g = UnknownGroupGenerator()
 """Call with 'unknown_g()' and access list with 'unknown_g.used_groups'."""
@@ -91,7 +93,6 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
 
 class Remap:
     """Remap string builder class with chainable API."""
-
     def __init__(self): self._pairs: dict[int,int] = {}
 
     def pair(self, source: int, target: int):
@@ -106,7 +107,8 @@ class Remap:
 
 
 def create_number_cycler(min_val: int, max_val: int) -> Callable[[], int]:
-    if min_val > max_val: raise ValueError("create_number_cycler: min cannot be greater than max")
+    if min_val > max_val: 
+        raise ValueError("create_number_cycler: min cannot be greater than max")
 
     current = min_val - 1
     def cycler() -> int:
