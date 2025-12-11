@@ -318,8 +318,11 @@ class Component:
             (bottom left of game window)
         """
         validate_params(targets=self.target)
+        if self.requireSpawnOrder is not True:
+            raise RuntimeError("SetPosition: Component must require spawn order.")
+        
         self.GotoGroup(time, location=enum.GAME_BOTTOM_LEFT, t=0)
-        self.MoveBy(time, dx=x, dy=y)
+        self.MoveBy(time * enum.TICK*2, dx=x, dy=y)
         return self
 
     def Rotate(self, time: float, *,

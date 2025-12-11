@@ -39,8 +39,8 @@ stop_pos_center = lib.pointer.next()[0]
 miniboss_pos = lib.pointer.next()[0]
 
 # Setup positioning pointers
-pos_setup = (Component("Position Setup", unknown_g(), 7)
-    .assert_spawn_order(False)
+pos_setup = (Component("Position Setup", unknown_g(), 11)
+    .assert_spawn_order(True)
     # Left entry (offscreen left, mid height)
     .set_context(target=entry_left)
         .SetPosition(0, x=-70, y=310)
