@@ -51,6 +51,7 @@ unknown_g = UnknownGroupGenerator()
 
 def group(group_id: int) -> int: """Semantic Wrapper"""; return group_id # noqa
 
+@functools.lru_cache(maxsize=4096)
 def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
     """Returns (dict[source] = target, clean_remap_string)"""
 

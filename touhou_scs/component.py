@@ -9,6 +9,7 @@ URGENT: SpellBuilder is not yet implemented! stuff is commented out until then.
 from __future__ import annotations
 from collections import OrderedDict
 from contextlib import contextmanager
+import functools
 from typing import Any, Callable, NamedTuple
 
 from touhou_scs import enums as enum, lib, utils as util
@@ -30,41 +31,45 @@ class ScaleSettings(NamedTuple):
 
 scale_keyframes: dict[ScaleSettings, Component] = {}
 
-def validate_params(*,
-    positive: float | int | list[float | int] | None = None,
-    non_negative: float | int | list[float | int] | None = None,
-    targets: int | list[int] | None = None,
+@functools.lru_cache(maxsize=4096)
+def _validate_params_cached(*,
+    positive: tuple[float | int, ...] | None = None,
+    non_negative: tuple[float | int, ...] | None = None,
+    targets: int | tuple[int, ...] | None = None,
     type: int | None = None,
     rate: float | None = None,
     factor: float | None = None,
     item_id: int | None = None
 ) -> None:
-    """Validates common trigger parameters."""
-
-    if isinstance(positive, (int, float)):
-        positive = [positive]
-    if isinstance(non_negative, (int, float)):
-        non_negative = [non_negative]
-    if isinstance(targets, int):
-        targets = [targets]
-
+    """Internal cached validation function. All sequences must be tuples."""
+    
     if positive is not None:
-        if (values := list(filter(lambda n: n <= 0, positive))):
-            raise ValueError(f"Values must be positive (>0). Got: {values}")
+        for val in positive:
+            if val <= 0:
+                raise ValueError(f"Values must be positive (>0). Got: {list(positive)}")
+    
     if non_negative is not None:
-        if (values := list(filter(lambda n: n < 0, non_negative))):
-            raise ValueError(f"Values must be non-negative (>=0). Got: {values}")
+        for val in non_negative:
+            if val < 0:
+                raise ValueError(f"Values must be non-negative (>=0). Got: {list(non_negative)}")
+    
     if targets is not None:
-        for g in targets:
-            if g == -1:
-                raise RuntimeError(f"Trigger requires an active target context. Got: {g}")
-            if g <= 0:
-                raise ValueError(f"Target Group '{g}' must be positive (>0).")
-            if g in _RESTRICTED_LOOKUP:
-                raise ValueError(f"Target Group '{g}' is restricted.")
-            c = util.unknown_g.counter
-            if not (0 < g <= (c)):
-                raise ValueError(f"Target Group '{g}' is out of valid range 0-{c}.")
+        if isinstance(targets, int):
+            if targets == -1:
+                raise RuntimeError(f"Trigger requires an active target context. Got: {targets}")
+            if targets <= 0:
+                raise ValueError(f"Target Group '{targets}' must be positive (>0).")
+            if targets in _RESTRICTED_LOOKUP:
+                raise ValueError(f"Target Group '{targets}' is restricted.")
+        else:
+            for g in targets:
+                if g == -1:
+                    raise RuntimeError(f"Trigger requires an active target context. Got: {g}")
+                if g <= 0:
+                    raise ValueError(f"Target Group '{g}' must be positive (>0).")
+                if g in _RESTRICTED_LOOKUP:
+                    raise ValueError(f"Target Group '{g}' is restricted.")
+    
     if type is not None and (not (0 <= type <= 18) or not type.is_integer()):
         raise ValueError(f"Easing 'type' must be an int in range 0-18. Got: {type}")
     if rate is not None and not (0.10 < rate <= 20.0):
@@ -75,6 +80,57 @@ def validate_params(*,
         raise ValueError("Factor of multiplying/dividing by 1 has no effect")
     if item_id is not None and not (1 <= item_id <= 9999):
         raise ValueError(f"Item ID must be a positive int in range 1-9999. Got: {item_id}")
+
+def validate_params(*,
+    positive: float | int | list[float | int] | None = None,
+    non_negative: float | int | list[float | int] | None = None,
+    targets: int | list[int] | None = None,
+    type: int | None = None,
+    rate: float | None = None,
+    factor: float | None = None,
+    item_id: int | None = None
+) -> None:
+    """Validates common trigger parameters. Converts lists to tuples for caching."""
+    
+    # Convert to tuples for hashability
+    positive_tuple: tuple[float | int, ...] | None = None
+    if isinstance(positive, list):
+        positive_tuple = tuple(positive)
+    elif isinstance(positive, (int, float)):
+        positive_tuple = (positive,)
+    
+    non_negative_tuple: tuple[float | int, ...] | None = None
+    if isinstance(non_negative, list):
+        non_negative_tuple = tuple(non_negative)
+    elif isinstance(non_negative, (int, float)):
+        non_negative_tuple = (non_negative,)
+    
+    targets_tuple: int | tuple[int, ...] | None = None
+    if isinstance(targets, list):
+        targets_tuple = tuple(targets)
+    elif isinstance(targets, int):
+        targets_tuple = targets
+    
+    _validate_params_cached(
+        positive=positive_tuple,
+        non_negative=non_negative_tuple,
+        targets=targets_tuple,
+        type=type,
+        rate=rate,
+        factor=factor,
+        item_id=item_id
+    )
+    
+    # Check counter bounds AFTER caching (counter is dynamic, can't be cached)
+    if targets is not None:
+        c = util.unknown_g.counter
+        if isinstance(targets, int):
+            if targets > c:
+                raise ValueError(f"Target Group '{targets}' is out of valid range (1-{c}).")
+        else:
+            for g in targets:
+                if g > c:
+                    raise ValueError(f"Target Group '{g}' is out of valid range (1-{c}).")
 
 class Component:
     def __init__(self, name: str, callerGroup: int, editorLayer: int = 4):
@@ -128,13 +184,11 @@ class Component:
         return bool(self.get_triggers(trigger))
 
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
-        if target in _RESTRICTED_LOOKUP:
-            raise ValueError(f"Group '{target}' is restricted due to known conflicts.")
         return Trigger({
             ppt.OBJ_ID: obj_id,
             ppt.X: x,
             ppt.TARGET: target,
-            ppt.GROUPS: self.groups.copy(),
+            ppt.GROUPS: self.groups,
             ppt.EDITOR_LAYER: self.editorLayer,
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,

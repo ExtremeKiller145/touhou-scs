@@ -78,6 +78,7 @@ def add_plr_collisions():
     )
 
     placeholder = unknown_g() # never called, just fulfills comp param requirement
+    ppt = enum.Properties
     def add_collision_trigger_remaps(bullet: lib.BulletPool, name: str):
         # Called on level startup
         global_col = Component(f"[{name}]: Bullet Collision remap wrappers", 17, editorLayer=4) \
@@ -88,10 +89,14 @@ def add_plr_collisions():
 
         for bullet_hitbox in range(bullet.min_group, bullet.max_group+ 1):
             # permanently turns on all collisions for each bullet (level calls it on startup)
-            global_col.Spawn(0, cols.caller, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+            global_col_spawn = global_col.create_trigger(enum.ObjectID.SPAWN, 0, cols.caller)
+            global_col_spawn[ppt.REMAP_STRING] = f"{enum.EMPTY_BULLET}.{bullet_hitbox}"
+            global_col.triggers.append(global_col_spawn)
             # Give each bullet a spawn trigger that activates its own collisions
             with plr_hit_col.temp_context(groups=bullet_hitbox):
-                plr_hit_col.Spawn(0, PLR_HURT_FUNCTION, False, remap=f"{enum.EMPTY_BULLET}.{bullet_hitbox}")
+                plr_hit_col_spawn = plr_hit_col.create_trigger(enum.ObjectID.SPAWN, 0, PLR_HURT_FUNCTION)
+                plr_hit_col_spawn[ppt.REMAP_STRING] = f"{enum.EMPTY_BULLET}.{bullet_hitbox}"
+                plr_hit_col.triggers.append(plr_hit_col_spawn)
 
     add_collision_trigger_remaps(lib.bullet1, "B1")
     add_collision_trigger_remaps(lib.bullet2, "B2")
