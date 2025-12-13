@@ -410,8 +410,8 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
                     f"Group {c_group} contains spawn trigger(s), causing spawn limit bug."
                 )
 
-def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_area: TriggerArea):
-    if len(triggers) < 1:
+def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_area: TriggerArea, len_triggers: int):
+    if len_triggers < 1:
         raise ValueError(f"No triggers in component {comp.name}")
 
     min_x = trigger_area["min_x"]
@@ -420,31 +420,25 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
     max_y = trigger_area["max_y"]
     ppt = enum.Properties
 
-    if len(triggers) == 1:
+    if len_triggers == 1:
         triggers[0][ppt.X] = random.randint(min_x, max_x)
         triggers[0][ppt.Y] = random.randint(min_y, max_y)
         return
 
     # Single pass to gather all info we need
     first_x = triggers[0][ppt.X]
-    chain_min_x = float(first_x)
-    chain_max_x = float(first_x)
     all_same_x = True
-    keyframe_id = enum.ObjectID.KEYFRAME_OBJ
+    all_keyframe_objs = True
     
     for t in triggers:
         t_x = t[ppt.X]
-        if t[ppt.OBJ_ID] != keyframe_id:
+        if t[ppt.OBJ_ID] != enum.ObjectID.KEYFRAME_OBJ:
             all_keyframe_objs = False
         if t_x != first_x:
             all_same_x = False
-            t_x_float = float(t_x)
-            if t_x_float < chain_min_x:
-                chain_min_x = t_x_float
-            if t_x_float > chain_max_x:
-                chain_max_x = t_x_float
+        if not all_keyframe_objs and not all_same_x:
+            break
 
-    all_keyframe_objs = all(t[ppt.OBJ_ID] == enum.ObjectID.KEYFRAME_OBJ for t in triggers)
     if all_keyframe_objs:
         rand_x = random.randint(min_x, max_x)
         rand_y = random.randint(min_y, max_y)
@@ -454,30 +448,39 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
         return
 
     if all_same_x and not comp.requireSpawnOrder:
-        rand_x = random.randint(min_x // 2, max_x // 2) * 2
+        # No spawn order because all_same_x suggests spawn order isnt intended
         for trigger in triggers:
-            trigger[ppt.X] = rand_x
+            trigger[ppt.X] = random.randint(min_x // 2, max_x // 2) * 2
             trigger[ppt.Y] = random.randint(min_y, max_y)
+        triggers.sort(key=lambda t: t[ppt.X])
     elif comp.requireSpawnOrder:
         # Rigid chain - maintain exact spacing (ordered spawn)
+        triggers.sort(key=lambda t: t[ppt.X])
+        chain_min_x = triggers[0][ppt.X]
+        chain_max_x = triggers[-1][ppt.X]
         chain_width = chain_max_x - chain_min_x
 
         if chain_width > (max_x - min_x):
             raise ValueError(f"Rigid chain too wide ({chain_width}) to fit in trigger area for {comp.name}")
 
-        shift = float(random.randint(min_x, int(max_x - chain_width)) - chain_min_x)
+        shift = int(random.randint(min_x, int(max_x - chain_width)) - chain_min_x)
         for trigger in triggers:
-            trigger[ppt.X] = float(trigger[ppt.X]) + shift
+            trigger[ppt.X] = util.round_to_n_sig_figs(trigger[ppt.X], 6) + shift
             trigger[ppt.Y] = random.randint(min_y, max_y)
     else:
-        # Elastic chain - can stretch beyond area (no spawn order requirement)
-        start_x = min_x
+        # Elastic chain - can stretch but must be ordered
+        triggers.sort(key=lambda t: t[ppt.X])
+        
+        width = (max_x - min_x) / len_triggers
+        rand_room = width - 1.3
+        
+        if width < 1.3:
+            raise ValueError(f"Elastic chain too wide to fit in trigger area for {comp.name}")
+        
         for i, trigger in enumerate(triggers):
-            if i == 0:
-                trigger[ppt.X] = start_x
-            else:
-                spacing = random.randint(1, 10)
-                trigger[ppt.X] = float(triggers[i - 1][ppt.X]) + spacing
+            rand_offset = random.random() * rand_room
+            raw_x = min_x + width * i + rand_offset
+            trigger[ppt.X] = util.round_to_n_sig_figs(raw_x, 6)
             trigger[ppt.Y] = random.randint(min_y, max_y)
 
 
@@ -575,23 +578,22 @@ def save_all(*,
             raise RuntimeError(
                 f"CRITICAL ERROR: Component {comp.name} has an active pointer circle that has not been cleared yet!"
             )
-
-        if len(comp.triggers) == 0:
+        
+        len_triggers = len(comp.triggers)
+        if len_triggers == 0:
             warn(f"Component {comp.name} has no triggers")
             continue
 
-        sorted_triggers: list[Trigger] = comp.triggers.copy()
-        _spread_triggers(sorted_triggers, comp, trigger_area)
-        sorted_triggers.sort(key=lambda t: float(t[ppt.X]))
+        _spread_triggers(comp.triggers, comp, trigger_area, len_triggers)
 
         prev_x = -10000
-        for trigger in sorted_triggers:
+        for trigger in comp.triggers:
             if 9999 in trigger[ppt.GROUPS]:
                 raise RuntimeError(
                     f"CRITICAL ERROR: Reserved group 9999 detected in {comp.name}"
                 )
-
-            curr_x: float = float(trigger[ppt.X])
+            
+            curr_x = trigger[ppt.X]
             if 0 < curr_x - prev_x < 1.28:
                 raise RuntimeError(
                     f"CRITICAL ERROR: X position within 1.28 unit of previous trigger"

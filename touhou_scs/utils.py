@@ -4,6 +4,7 @@ Touhou SCS - Utilities Module
 Helper functions for component building and validation.
 """
 
+import math
 from typing import Any, Callable
 import warnings
 import functools
@@ -34,6 +35,9 @@ def time_to_dist(time: float) -> float:
     """Based on plr move speed of 311.58 studs/s"""
     return 311.58 * time
 
+def round_to_n_sig_figs(x: float | int, n: int) -> float:
+    """Round to n significant figures (GD uses 6)"""
+    return 0 if x == 0 else round(x, -int(math.floor(math.log10(abs(x)))) + (n - 1))
 
 class UnknownGroupGenerator:
     def __init__(self) -> None:
