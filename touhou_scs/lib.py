@@ -195,13 +195,11 @@ bullet4 = BulletPool(4301, 4700, False)
 
 class pointer:
     obj_count = 250
-    _DEBUG_UI_GROUP = 33
     pointer_comp = Component("Pointers", 0, 11).assert_spawn_order(False)
     pointers = [unknown_g() for _ in range(obj_count)]
     _pointer_iter = cycle(pointers)
     
-    group_registry = { g: [g] for g in pointers }
-    for g in group_registry: group_registry[g].append(_DEBUG_UI_GROUP)
+    group_registry = { g: [enum.DEBUG_UI_GROUP, g] for g in pointers }
     
     @classmethod
     def next(cls) -> int:
@@ -284,12 +282,13 @@ class EnemyPool:
 
         off_switch = self._off_switches[enemy_group]
 
+        stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
+        
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
 
         stage.Spawn(time, self._despawn_setup.caller, False,
             remap=f"{enum.EMPTY_TARGET_GROUP}.{enemy_group}.{enum.EMPTY1}.{off_switch}")
-        stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
 
 
 # less annoying way instead of making 'despawner' have spawn order (uses spawn delay instead)

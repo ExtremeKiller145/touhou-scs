@@ -156,7 +156,8 @@ def add_enemy_collisions():
             Multitarget.spawn_with_remap(global_col, 0, batch_size, base_col, remap_collision)
             remaining -= batch_size
 
-despawn1 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
+
+despawn1 = (Component("EnemyBullet Despawn 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
     .set_context(target=enum.EMPTY_BULLET)
         .Scale(0, factor=0.25, hold=0.01, t=1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.2)
@@ -167,7 +168,7 @@ despawn1 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .clear_context()
 )
 
-despawn2 = (Component("EnemyBullet Despawn 2", unknown_g(), editorLayer=6)
+despawn2 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
     # Bullet despawn
     .set_context(target=enum.EMPTY_BULLET)
@@ -195,7 +196,8 @@ enemy_bullet_despawn = Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, e
 (enemy_bullet_despawn
     .assert_spawn_order(False)
     # Note: if a collisionX component seems to be be spawning delayed, its a GD bug. reload level.
-    .Spawn(0, despawn1.caller, True) # toggle this on/off same tick w/ unique group
+    # .set_context()
+        .Spawn(0, despawn1.caller, True) # toggle this on/off same tick w/ unique group
     # .group_last_trigger
     # .Spawn(0, collision2.caller, True)
 )

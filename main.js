@@ -52,10 +52,13 @@ $.exportConfig({
 		}
 	};
 
-	// Step 2: Scan every property of every trigger to collect all unknown groups
+	// Step 2: Scan only group-bearing fields of every trigger to collect all unknown groups.
+	// Scanning all values would incorrectly treat X positions (up to max_x=20000) as group IDs.
 	data.triggers.forEach(trigger => {
-		Object.values(trigger).forEach(value => {
-			collectUnknownGroup(value);
+		Object.keys(trigger).forEach(key => {
+			if (key === PROPERTY_GROUPS || key === PROPERTY_REMAP_STRING || groupPropertyField(key)) {
+				collectUnknownGroup(trigger[key]);
+			}
 		});
 	});
 

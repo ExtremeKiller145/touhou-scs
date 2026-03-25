@@ -691,7 +691,7 @@ class Multitarget:
         for mt_comp in cls._get_binary_components(num_targets, comp):
             remap = util.Remap()
             for spawn_trigger in mt_comp.triggers:
-                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
+                remap_string = spawn_trigger.get(ppt.REMAP_STRING)
                 assert remap_string is not None
                 remap_pairs, _ = util.translate_remap_string(remap_string)
 

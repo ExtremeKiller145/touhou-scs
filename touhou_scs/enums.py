@@ -206,13 +206,15 @@ PLR_SPEED: Final[float] = 311.58  # Player movement speed in studs/second
 PLR: Final[int] = 2
 """Player group and collision ID"""
 SCREEN_CENTER: Final[int] = 30
-"""Center group of 1200x900 screen window"""
+"""Center group of 1200 x 900 screen window"""
 GAME_CENTER: Final[int] = 109
-"""Center group of 360x420 game window"""
+"""Center group of 360 x 420 game window"""
 GAME_BOTTOM_LEFT: Final[int] = 130
-"""Bottom-left corner of 360x420 game window"""
+"""Bottom-left corner of 360 x 420 game window"""
 NORTH_GROUP: Final[int] = 26
 """North of the map. Used for resetting rotation"""
+DEBUG_UI_GROUP: Final[int] = 33
+"""Group for debug viewing hidden objects (e.g. pointers, item counters)"""
 
 # Empty Groups for Remapping   (e.g. 21 => group)
 # Holder object for empty groups is directly placed on the physical player, layer 0
