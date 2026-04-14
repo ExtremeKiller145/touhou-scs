@@ -9,11 +9,10 @@ from typing import Required, TypedDict, Protocol, Any
 # ==========================================
 
 Trigger = TypedDict("Trigger",{
-
     "1": Required[int],         # OBJ_ID - Trigger type
     "2": Required[float],       # X - X position (time-based)
     "20": Required[int],        # EDITOR_LAYER
-    "51": Required[int],        # TARGET
+    "51": int,                  # TARGET
     "57": Required[list[int]],  # GROUPS - Caller group(s)
     "62": Required[bool],       # SPAWN_TRIGGERED
     "87": Required[bool],       # MULTI_TRIGGERED
@@ -85,6 +84,14 @@ Trigger = TypedDict("Trigger",{
     "394": bool,                # MOVE_DIRECTION_MODE
     "396": float,               # MOVE_DIRECTION_MODE_DISTANCE
     "544": bool,                # MOVE_SILENT
+    # Timer
+    "467": float,               # START_TIME
+    "473": float,               # STOP_TIME
+    "474": bool,               # STOP_CHECKED
+    "470": float,               # TIME_MOD
+    "469": bool,               # IGNORE_TIMEWARP
+    "471": bool,               # START_PAUSED
+    "472": bool,               # DONT_OVERRIDE
 }, total=False)
 
 

@@ -15,7 +15,7 @@ Philosophy: Tests should expose logic bugs and verify validation.
 import warnings
 import pytest
 from pytest import ExceptionInfo
-from touhou_scs.component import Component, Multitarget
+from touhou_scs.component import Component, Multitarget, BulletAlloc
 from touhou_scs import enums, lib, utils
 from typing import Any
 from touhou_scs.movements import CurveType
@@ -26,6 +26,10 @@ def reset_global_state():
     """Clear global state before each test to prevent interference."""
     lib.all_components.clear()
     lib.solid_groups_to_enforce.clear()
+    # Reset BulletAlloc class-level state so pattern tests start clean
+    BulletAlloc.active = False
+    BulletAlloc.deferred_calls.clear()
+    BulletAlloc.offset = 0
     yield
 
 
@@ -88,15 +92,14 @@ class TestSpawnTargetValidation:
             assert comp.triggers[0][ppt.TARGET] == target
     
     @pytest.mark.parametrize("target,error_patterns", [
-        (0, ("positive", "0")),
-        (-50, ("positive", "-50")),
+        (-50, ("non-negative", "-50")),
         (3, ("restricted", "3")),
         (utils.unknown_g.counter + 1, ("out of valid range",)),
     ])
     def test_spawn_target_rejected(self, target: int, error_patterns: tuple[str, ...]):
         self._test_spawn_target(target, True, *error_patterns)
     
-    @pytest.mark.parametrize("target", [10, utils.unknown_g.counter])
+    @pytest.mark.parametrize("target", [0, 10, utils.unknown_g.counter])
     def test_spawn_target_valid(self, target: int):
         self._test_spawn_target(target, False)
 
@@ -605,6 +608,7 @@ class TestInstantArcValidation:
                 )
             assert_error(exc, *error_patterns)
         else:
+            BulletAlloc.start()
             caller.instant.Arc(
                 time=0, comp=spawn_ordered_comp, bullet=lib.bullet1,
                 numBullets=numBullets, angle=angle
@@ -632,6 +636,7 @@ class TestInstantRadialValidation:
                 )
             assert_error(exc, *error_patterns)
         else:
+            BulletAlloc.start()
             caller.instant.Radial(  # type: ignore
                 time=0, comp=spawn_ordered_comp, bullet=lib.bullet1, spacing=spacing, numBullets=numBullets
             )
@@ -682,11 +687,13 @@ class TestInstantLineValidation:
                 )
             assert_error(exc, *error_patterns)
         else:
+            BulletAlloc.start()
             caller.instant.Line(
                 time=0, comp=comp, emitter=50, targetDir=90, bullet=lib.bullet2,
                 numBullets=numBullets, fastestTime=fastestTime, slowestTime=slowestTime, dist=100
             )
-            assert len(caller.triggers) > 0
+            # Triggers are deferred until BulletAlloc.resolve(); verify deferral was queued
+            assert len(BulletAlloc.deferred_calls) > 0
 
 
 # ============================================================================
@@ -713,6 +720,7 @@ class TestTimedRadialWaveValidation:
                 )
             assert_error(exc, *error_patterns)
         else:
+            BulletAlloc.start()
             caller.timed.RadialWave(
                 time=0, comp=spawn_ordered_comp, bullet=lib.bullet1,
                 waves=waves, interval=interval, numBullets=12

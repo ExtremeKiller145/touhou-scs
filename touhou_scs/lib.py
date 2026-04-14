@@ -24,6 +24,7 @@ all_components: list[ComponentProtocol] = []
 
 # unfortunately has to be up here to avoid circular imports
 solid_groups_to_enforce: set[int] = set()
+_registered_bullet_pools: list["BulletPool"] = []  # populated by BulletPool.__init__; used for validation exemptions
 def _validate_solid_groups(*specific_groups: int):
     """Ensures groups marked as solid are not component or trigger groups."""
     ppt = enum.Properties
@@ -35,12 +36,14 @@ def _validate_solid_groups(*specific_groups: int):
             if g in c.groups:
                 raise ValueError(f"Group {g} is a component caller in '{c.name}', not a solid group")
             
+            if any(pool.min_group <= g <= pool.max_group for pool in _registered_bullet_pools):
+                continue
+            
             for t in c.triggers:
                 if t[ppt.OBJ_ID] == enum.ObjectID.POINTER_OBJ: continue
                 
-                groups = t.get(ppt.GROUPS, [])
-                if g in groups:
-                    raise ValueError(f"Group {g} is a trigger group ({t[ppt.OBJ_ID]}) in '{c.name}', not a solid group")
+                if g in t.get(ppt.GROUPS, []):
+                    raise ValueError(f"Group {g} is a trigger group ({t}) in '{c.name}', not a solid group")
 
 
 _start_time = time.time()
@@ -177,6 +180,7 @@ class BulletPool:
         self.max_group = max_group
         self.has_orientation = has_orientation
         self.current = max_group
+        _registered_bullet_pools.append(self)
 
     def next(self) -> tuple[int, int]:
         """Returns: (bullet_group, collision_group)"""
@@ -282,7 +286,9 @@ class EnemyPool:
 
         off_switch = self._off_switches[enemy_group]
 
-        stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
+        # stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
+        with stage.temp_context(target=attack.caller):
+            stage.Timer(time - enum.TICK*2, item_id=enemy_group, start=hp, end=0, mod=-1, start_paused=True)
         
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
