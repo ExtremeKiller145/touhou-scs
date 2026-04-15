@@ -12,8 +12,7 @@ from typing import Final
 # ============================================================================
 # OBJECT IDs - Trigger Types
 # ============================================================================
-
-class ObjectID(IntEnum):
+class ObjectID:
     """Geometry Dash trigger object IDs"""
     TOGGLE = 1049
     SPAWN = 1268
@@ -32,6 +31,9 @@ class ObjectID(IntEnum):
     ADVANCED_RANDOM = 2068
     KEYFRAME_OBJ = 3032
     KEYFRAME_ANIM = 3033
+    TIME = 3614
+    TIME_EVENT = 3615
+    TIME_CONTROL = 3617
     POINTER_OBJ = 3802
 
 
@@ -185,7 +187,18 @@ class Properties(str):
     MOVE_DIRECTION_MODE = "394" # Direction mode boolean
     MOVE_DIRECTION_MODE_DISTANCE = "396"
     MOVE_SILENT = "544"  # Platformer mode 'silent' boolean
-
+    
+    # ========== Time Trigger ==========
+    START_TIME = "467"
+    STOP_TIME = "473"
+    STOP_CHECKED = "474"
+    TIME_MOD = "470"
+    IGNORE_TIMEWARP = "469"
+    START_PAUSED = "471"
+    DONT_OVERRIDE = "472"
+    
+    # ========== TimeControl Trigger ==========
+    START_STOP = "472"
 
 # ========== Fields That Can Target Groups ==========
 # Used for trigger validation systems
@@ -206,13 +219,15 @@ PLR_SPEED: Final[float] = 311.58  # Player movement speed in studs/second
 PLR: Final[int] = 2
 """Player group and collision ID"""
 SCREEN_CENTER: Final[int] = 30
-"""Center group of 1200x900 screen window"""
+"""Center group of 1200 x 900 screen window"""
 GAME_CENTER: Final[int] = 109
-"""Center group of 360x420 game window"""
+"""Center group of 360 x 420 game window"""
 GAME_BOTTOM_LEFT: Final[int] = 130
-"""Bottom-left corner of 360x420 game window"""
+"""Bottom-left corner of 360 x 420 game window"""
 NORTH_GROUP: Final[int] = 26
 """North of the map. Used for resetting rotation"""
+DEBUG_UI_GROUP: Final[int] = 33
+"""Group for debug viewing hidden objects (e.g. pointers, item counters)"""
 
 # Empty Groups for Remapping   (e.g. 21 => group)
 # Holder object for empty groups is directly placed on the physical player, layer 0

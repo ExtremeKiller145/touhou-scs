@@ -62,7 +62,7 @@ test_bullet = (Component("TestBullet", unknown_g(), 5)
         .Alpha(e.TICK, t=0.3, opacity=100)
         .Scale(0, factor=2, t=0.4, reverse=True)
         .PointToGroup(e.TICK, e.EMPTY_TARGET_GROUP)
-        .MoveTowards(e.TICK, e.EMPTY_TARGET_GROUP, t=4.5, dist=450, type=e.Easing.EASE_IN, rate=1.4)
+        .MoveTowards(e.TICK, e.EMPTY_TARGET_GROUP, t=5.5, dist=450, type=e.Easing.EASE_IN, rate=1.4)
         .Pulse(0.2, rgb(255,105,5), fadeIn=0.1, t=0, fadeOut=0.2)
     .set_context(target=e.EMPTY_COLLISION)
         .Toggle(-e.TICK, False)
@@ -80,7 +80,7 @@ test_bullet3 = (Component("TestBullet", unknown_g(), 5)
         .Alpha(e.TICK, t=0.6, opacity=100)
         .Scale(0, factor=2, t=0.4, reverse=True)
         .PointToGroup(e.TICK, e.EMPTY_TARGET_GROUP)
-        .MoveTowards(e.TICK, e.EMPTY_TARGET_GROUP, t=4, dist=450, type=e.Easing.EASE_IN, rate=1.6)
+        .MoveTowards(e.TICK, e.EMPTY_TARGET_GROUP, t=5, dist=450, type=e.Easing.EASE_IN, rate=1.6)
     .set_context(target=e.EMPTY_COLLISION)
         .Toggle(-e.TICK, False)
         .Toggle(1, True)
@@ -98,7 +98,7 @@ test_bullet4 = (Component("TestBullet", unknown_g(), 5)
         .Alpha(e.TICK, t=0.6, opacity=100)
         .Scale(0, factor=2, t=0.4, reverse=True)
         .PointToGroup(e.TICK, e.EMPTY_TARGET_GROUP)
-        .MoveTowards(e.TICK, e.EMPTY_TARGET_GROUP, t=3, dist=450, type=e.Easing.EASE_IN, rate=1.6)
+        .MoveTowards(e.TICK, e.EMPTY_TARGET_GROUP, t=4, dist=450, type=e.Easing.EASE_IN, rate=1.6)
     .set_context(target=e.EMPTY_COLLISION)
         .Toggle(-e.TICK, False)
         .Toggle(1, True)
@@ -111,10 +111,10 @@ test_bullet2 = (Component("TestBullet", unknown_g(), 5)
     .set_context(target=e.EMPTY_BULLET)
         .GotoGroup(0, e.EMPTY_EMITTER)
         .Toggle(e.TICK, True)
-        .Pulse(0, rgb(50, 70, 230), t=4.1)
+        .Pulse(0, rgb(50, 70, 230), t=9)
         .Alpha(0, t=0, opacity=0)
         .Alpha(e.TICK, t=0.3, opacity=100)
-        .Scale(0, factor=1.7, t=0.4, hold=2)
+        .Scale(0, factor=0.8, t=0.4, hold=9)
         .PointToGroup(e.TICK, e.EMPTY_TARGET_GROUP)
         .MoveTowards(e.TICK, e.EMPTY_TARGET_GROUP, t=2, dist=450, type=e.Easing.EASE_IN, rate=1.6)
         .Pulse(2, rgb(205,90,250), fadeIn=0.1, t=0, fadeOut=0.4)
@@ -233,12 +233,32 @@ test_enemy = (Component("TestEnemy", unknown_g(), 5)
         .Rotate(4, center=test_enemy_g, angle=11.25, t=0)
     .clear_context()
     .timed.RadialWave(15, test_bullet2, lib.bullet2, waves=30, interval=0.25, numBullets=16)
+    # .timed.RadialWave(1.0, test_bullet, lib.bullet3, waves=48, interval=0.3, numBullets=20)
+    # .timed.RadialWave(1.1, test_bullet4, lib.bullet2, waves=48, interval=0.3, numBullets=20)
+    # .timed.RadialWave(1.1, test_bullet3, lib.bullet2, waves=48, interval=0.3, numBullets=20)
     .pointer.CleanPointerCircle()
 )
 
+# for i in range(5):
+#     test_enemy.instant.Line(1 + i/3, test_bullet2, test_enemy_g, 2, 
+#         lib.bullet4, numBullets=12, fastestTime=2.5, slowestTime=8, dist=480)
+
+# for i in range(5):
+#     test_enemy.instant.Line(5 + i/3, test_bullet2, test_enemy_g, 2, 
+#         lib.bullet4, numBullets=12, fastestTime=2.5, slowestTime=6, dist=480)
+
+# for i in range(5):
+#     test_enemy.instant.Line(9 + i/3, test_bullet2, test_enemy_g, 2, 
+#         lib.bullet4, numBullets=12, fastestTime=2.5, slowestTime=6, dist=480)
+
+# for i in range(5):
+#     test_enemy.instant.Line(13 + i/3, test_bullet2, test_enemy_g, 2, 
+#         lib.bullet4, numBullets=12, fastestTime=2.5, slowestTime=6, dist=480)
+
+
 BulletAlloc.resolve()
 
-enemy1.spawn_enemy(Stage.stage1, 1.0, test_enemy, 150, test_enemy_g)
+enemy1.spawn_enemy(Stage.stage1, 1.0, test_enemy, 70, test_enemy_g)
 
 Stage.stage1.Spawn(0, pos_setup.caller, True)
 

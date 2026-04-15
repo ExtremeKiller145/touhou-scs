@@ -52,16 +52,16 @@ def _validate_params_cached(*,
         if isinstance(targets, int):
             if targets == -1:
                 raise RuntimeError(f"Trigger requires an active target context. Got: {targets}")
-            if targets <= 0:
-                raise ValueError(f"Target Group '{targets}' must be positive (>0).")
+            if targets < 0:
+                raise ValueError(f"Target Group '{targets}' must be non-negative (>=0).")
             if targets in enum.RESTRICTED_GROUPS:
                 raise ValueError(f"Target Group '{targets}' is restricted.")
         else:
             for g in targets:
                 if g == -1:
                     raise RuntimeError(f"Trigger requires an active target context. Got: {g}")
-                if g <= 0:
-                    raise ValueError(f"Target Group '{g}' must be positive (>0).")
+                if g < 0:
+                    raise ValueError(f"Target Group '{g}' must be non-negative (>=0).")
                 if g in enum.RESTRICTED_GROUPS:
                     raise ValueError(f"Target Group '{g}' is restricted.")
     
@@ -184,7 +184,8 @@ class Component:
         return bool(self.get_triggers(trigger))
 
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
-        return Trigger({
+        """Appends automatically to component trigger list."""
+        t = Trigger({
             ppt.OBJ_ID: obj_id,
             ppt.X: x,
             ppt.TARGET: target,
@@ -193,6 +194,8 @@ class Component:
             ppt.SPAWN_TRIGGERED: True,
             ppt.MULTI_TRIGGERED: True,
         })
+        self.triggers.append(t)
+        return t
 
     def assert_spawn_order(self, required: bool):
         self.requireSpawnOrder = required
@@ -269,7 +272,6 @@ class Component:
         if remap: _, trigger[ppt.REMAP_STRING] = util.translate_remap_string(remap)
         if reset_remap: trigger[ppt.RESET_REMAP] = True
 
-        self.triggers.append(trigger)
         return self
 
     def Toggle(self, time: float, activateGroup: bool):
@@ -284,7 +286,6 @@ class Component:
         trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), self.target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
 
-        self.triggers.append(trigger)
         return self
 
     def MoveTowards(self, time: float, targetDir: int, *,
@@ -308,7 +309,6 @@ class Component:
         if dynamic: trigger[ppt.DYNAMIC] = True
         if t == 0: trigger[ppt.MOVE_SILENT] = True
 
-        self.triggers.append(trigger)
         return self
 
     def Pulse(self, time: float, hsb: lib.HSB, *, 
@@ -327,7 +327,6 @@ class Component:
         trigger[ppt.PULSE_FADE_OUT] = fadeOut
         trigger[ppt.PULSE_EXCLUSIVE] = exclusive
 
-        self.triggers.append(trigger)
         return self
 
     def MoveBy(self, time: float, *, dx: float, dy: float,
@@ -346,7 +345,6 @@ class Component:
 
         if t == 0: trigger[ppt.MOVE_SILENT] = True
 
-        self.triggers.append(trigger)
         return self
 
     def GotoGroup(self, time: float, location: int, *,
@@ -365,7 +363,6 @@ class Component:
 
         if t == 0: trigger[ppt.MOVE_SILENT] = True
 
-        self.triggers.append(trigger)
         return self
 
     def SetPosition(self, time: float, *, x: float, y: float):
@@ -396,7 +393,6 @@ class Component:
         trigger[ppt.EASING] = type
         trigger[ppt.EASING_RATE] = rate
 
-        self.triggers.append(trigger)
         return self
 
     def PointToGroup(self, time: float, targetDir: int, *,
@@ -420,7 +416,6 @@ class Component:
                 f"PointToGroup: dynamic aiming cannot use easing. \n"
                 f"Given type {type}, rate {rate}")
 
-        self.triggers.append(trigger)
         return self
 
     def Scale(self, time: float, *,
@@ -492,7 +487,6 @@ class Component:
         trigger[ppt.KEYMAP_ANIM_SCALE_X_MOD] = 1.0
         trigger[ppt.KEYMAP_ANIM_SCALE_Y_MOD] = 1.0
 
-        self.triggers.append(trigger)
         return self
 
     def Follow(self, time: float, targetDir: int, *,
@@ -508,7 +502,6 @@ class Component:
         trigger[ppt.FOLLOW_Y_MOD] = y_mod
         trigger[ppt.DURATION] = t
 
-        self.triggers.append(trigger)
         return self
 
     def Alpha(self, time: float, *, opacity: float, t: float = 0):
@@ -523,7 +516,6 @@ class Component:
         trigger[ppt.OPACITY] = opacity / 100.0
         trigger[ppt.DURATION] = t
 
-        self.triggers.append(trigger)
         return self
 
     def _stop_trigger_common(self,
@@ -536,7 +528,6 @@ class Component:
         trigger[ppt.STOP_OPTION] = option # 0=Stop, 1=Pause, 2=Resume
         trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
 
-        self.triggers.append(trigger)
 
     def Stop(self, time: float, *, target: int | Component, useControlID: bool = False):
         """WARNING: Does not stop all triggers, but does stop Move, Rotate, Follow, Pulse, Alpha, Scale, Spawn."""
@@ -564,7 +555,6 @@ class Component:
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
         if onExit: trigger[ppt.TRIGGER_ON_EXIT] = True
 
-        self.triggers.append(trigger)
         return self
 
     def Count(self, time: float, *, item_id: int, count: int, activateGroup: bool):
@@ -577,7 +567,6 @@ class Component:
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
         trigger[ppt.MULTI_ACTIVATE] = True
 
-        self.triggers.append(trigger)
         return self
 
     def Pickup(self, time: float, *, item_id: int, count: int, override: bool):
@@ -594,7 +583,6 @@ class Component:
         trigger[ppt.PICKUP_OVERRIDE] = override
         trigger[ppt.PICKUP_MULTIPLY_DIVIDE] = 0
 
-        self.triggers.append(trigger)
         return self
 
     def PickupModify(self, time: float, *, item_id: int, factor: float,
@@ -616,8 +604,43 @@ class Component:
         trigger[ppt.PICKUP_MULTIPLY_DIVIDE] = mode
         trigger[ppt.PICKUP_MODIFIER] = factor
 
-        self.triggers.append(trigger)
         return self
+
+    def Timer(self, time: float, *, item_id: int, 
+        start: float, end: float, mod: float = 1, start_paused: bool = False):
+        """Activate a time trigger that counts down from 'duration' seconds."""
+        validate_params(item_id=item_id)
+        trigger = self.create_trigger(enum.ObjectID.TIME, util.time_to_dist(time), self.target)
+
+        trigger[ppt.ITEM_ID] = item_id
+        trigger[ppt.START_TIME] = start
+        trigger[ppt.STOP_TIME] = end
+        trigger[ppt.TIME_MOD] = mod
+        trigger[ppt.START_PAUSED] = start_paused
+
+        return self
+
+    def _time_control(self, time: float, item_id: int, start: bool):
+        validate_params(item_id=item_id)
+        self.triggers.append(Trigger({
+            ppt.OBJ_ID: enum.ObjectID.TIME_CONTROL,
+            ppt.X: util.time_to_dist(time),
+            ppt.GROUPS: self.groups,
+            ppt.EDITOR_LAYER: self.editorLayer,
+            ppt.SPAWN_TRIGGERED: True,
+            ppt.MULTI_TRIGGERED: True,
+            ppt.ITEM_ID: item_id,
+            ppt.START_STOP: start,
+        }))
+        return self
+    
+    def TimerStart(self, time: float, *, item_id: int):
+        """Start/Resume a timer."""
+        return self._time_control(time, item_id, start=True)
+    
+    def TimerStop(self, time: float, *, item_id: int):
+        """Stop/Pause a timer."""
+        return self._time_control(time, item_id, start=False)
 
 
 # ===========================================================
@@ -691,7 +714,7 @@ class Multitarget:
         for mt_comp in cls._get_binary_components(num_targets, comp):
             remap = util.Remap()
             for spawn_trigger in mt_comp.triggers:
-                remap_string = spawn_trigger.get(ppt.REMAP_STRING, None)
+                remap_string = spawn_trigger.get(ppt.REMAP_STRING)
                 assert remap_string is not None
                 remap_pairs, _ = util.translate_remap_string(remap_string)
 
@@ -940,7 +963,7 @@ class InstantPatterns:
         """
         Line pattern - builds MoveTowards triggers at different speeds, forming a line.
 
-        Comp requires EMPTY_BULLET and EMPTY_MULTITARGET.
+        Comp requires EMPTY_BULLET and EMPTY_EMITTER.
         Optional: type, rate
         """
         validate_params(positive=[fastestTime, slowestTime], type=type, rate=rate)
@@ -984,7 +1007,7 @@ class InstantPatterns:
                 travel_time = fastestTime + step * i
                 with self._component.temp_context(target=bullet_group):
                     self._component.MoveTowards(
-                        time, targetDir,
+                        time + enum.TICK*2, targetDir,
                         t=travel_time, dist=dist, type=type, rate=rate
                     )
 

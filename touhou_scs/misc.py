@@ -156,7 +156,8 @@ def add_enemy_collisions():
             Multitarget.spawn_with_remap(global_col, 0, batch_size, base_col, remap_collision)
             remaining -= batch_size
 
-despawn1 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
+
+despawn1 = (Component("EnemyBullet Despawn 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
     .set_context(target=enum.EMPTY_BULLET)
         .Scale(0, factor=0.25, hold=0.01, t=1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.2)
@@ -167,9 +168,10 @@ despawn1 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .clear_context()
 )
 
-despawn2 = (Component("EnemyBullet Despawn 2", unknown_g(), editorLayer=6)
+despawn2 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .assert_spawn_order(True)
     # Bullet despawn
+    .TimerStart(0, item_id=enum.EMPTY_TARGET_GROUP)
     .set_context(target=enum.EMPTY_BULLET)
         .Scale(0, factor=0.25, hold=0.1, t=0.1, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
         .Alpha(0, t=0.1, opacity=0)
@@ -177,12 +179,12 @@ despawn2 = (Component("EnemyBullet Despawn 2", unknown_g(), editorLayer=6)
         .Alpha(0.2, t=0, opacity=100)
         .Toggle(0.2, False)
     .clear_context()
+    .TimerStop(0.1, item_id=enum.EMPTY_TARGET_GROUP)
 )
 
 plr_bullet_despawn = (Component("PlrBullet Despawn List", unknown_g(), editorLayer=6)
     .assert_spawn_order(False)
     # To decrease enemy health & despawn the player bullet
-    .Pickup(0, item_id=enum.EMPTY_TARGET_GROUP, count=-1, override=False)
     .set_context(target=enum.EMPTY_TARGET_GROUP)
         .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
     .clear_context()
@@ -195,7 +197,8 @@ enemy_bullet_despawn = Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, e
 (enemy_bullet_despawn
     .assert_spawn_order(False)
     # Note: if a collisionX component seems to be be spawning delayed, its a GD bug. reload level.
-    .Spawn(0, despawn1.caller, True) # toggle this on/off same tick w/ unique group
+    # .set_context()
+        .Spawn(0, despawn1.caller, True) # toggle this on/off same tick w/ unique group
     # .group_last_trigger
     # .Spawn(0, collision2.caller, True)
 )
