@@ -6,7 +6,6 @@ Module-level storage for components and spells for automatic registration.
 """
 
 from itertools import cycle
-import orjson
 import random
 import time
 import colorsys
@@ -19,7 +18,9 @@ from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger, TriggerArea
 from dataclasses import dataclass
 
-from gmdbuilder import obj_id
+from gmdbuilder import Level, obj_id, obj_prop
+
+ppt = obj_prop.Trigger
 
 all_spells: list[SpellProtocol] = []
 all_components: list[ComponentProtocol] = []
@@ -29,7 +30,6 @@ solid_groups_to_enforce: set[int] = set()
 _registered_bullet_pools: list["BulletPool"] = []  # populated by BulletPool.__init__; used for validation exemptions
 def _validate_solid_groups(*specific_groups: int):
     """Ensures groups marked as solid are not component or trigger groups."""
-    ppt = enum.Properties
     groups = specific_groups if specific_groups else solid_groups_to_enforce
 
     for g in groups:
@@ -42,9 +42,9 @@ def _validate_solid_groups(*specific_groups: int):
                 continue
             
             for t in c.triggers:
-                if t[ppt.OBJ_ID] == enum.POINTER_OBJ_ID: continue
+                if t[obj_prop.ID] == enum.POINTER_OBJ_ID: continue
                 
-                if g in t.get(ppt.GROUPS, []):
+                if g in t.get(obj_prop.GROUPS, []):
                     raise ValueError(f"Group {g} is a trigger group ({t}) in '{c.name}', not a solid group")
 
 
@@ -205,7 +205,7 @@ class pointer:
     pointers = [unknown_g() for _ in range(obj_count)]
     _pointer_iter = cycle(pointers)
     
-    group_registry = { g: [enum.DEBUG_UI_GROUP, g] for g in pointers }
+    group_registry = { g: {enum.DEBUG_UI_GROUP, g} for g in pointers }
     
     @classmethod
     def next(cls) -> int:
@@ -219,7 +219,7 @@ class pointer:
         if cls.export_mappings.has_been_called:
             raise RuntimeError("Pointer.register_set cannot be called after export_mappings()")
         for p in pointers:
-            cls.group_registry[p].append(new_group)
+            cls.group_registry[p].add(new_group)
     
     @classmethod
     @util.calltracker
@@ -227,18 +227,17 @@ class pointer:
         """Call at export time to generate pointer objects with group mappings."""
         if cls.export_mappings.has_been_called:
             raise RuntimeError("Pointer.export_mappings has already been called")
-        ppt = enum.Properties
         for group_list in cls.group_registry.values():
             # old pointer obj str: 1,3802,2,2625,3,915,20,2,57,7000.33,64,1,67,1,155,14905,25,9,24,11,128,0.25,129,0.25;
             cls.pointer_comp.triggers.append({ #type: ignore
-                ppt.OBJ_ID: enum.POINTER_OBJ_ID,
-                ppt.X: 0.0, ppt.Y: 0.0,
-                ppt.GROUPS: group_list,
-                ppt.EDITOR_LAYER: 11,
-                ppt.SCALE: 0.2, #type: ignore
-                "24": 9, # Z layer
-                "64": True, # dont fade
-                "67": True, # dont enter
+                obj_prop.ID: enum.POINTER_OBJ_ID,
+                obj_prop.X: 0.0, obj_prop.Y: 0.0,
+                obj_prop.GROUPS: group_list,
+                obj_prop.EDITOR_L1: 11,
+                obj_prop.OLD_SCALE: 0.2, #type: ignore
+                obj_prop.Z_LAYER: 9, # Z layer
+                obj_prop.DONT_FADE: True, # dont fade
+                obj_prop.DONT_ENTER: True, # dont enter
             })
 
 reimuA_level1 = BulletPool(110, 128, True)
@@ -296,7 +295,8 @@ class EnemyPool:
             stage.Spawn(time, attack.caller, True)
 
         stage.Spawn(time, self._despawn_setup.caller, False,
-            remap=f"{enum.EMPTY_TARGET_GROUP}.{enemy_group}.{enum.EMPTY1}.{off_switch}")
+            remap={enum.EMPTY_TARGET_GROUP: enemy_group, enum.EMPTY1: off_switch}
+        )
 
 
 # less annoying way instead of making 'despawner' have spawn order (uses spawn delay instead)
@@ -346,7 +346,6 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
                        Exception: If all-but-one of B's simultaneous triggers have
                        reset_remap, they ignore A's remap and don't get limited.
     """
-    ppt = enum.Properties
     EXEC_TIME_TOLERANCE = enum.PLR_SPEED / 240  # ~1.298 studs (one tick)
 
     # Step 1: Build group -> triggers mapping, track spawnOrdered per group
@@ -374,13 +373,13 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     # Step 2: Calculate execution time for spawn triggers
     def get_exec_time(trigger: Trigger, group: int) -> float:
         spawn_ordered = group_spawn_ordered.get(group, False)
-        x_pos = float(trigger.get(ppt.X, 0)) if spawn_ordered else 0.0
-        delay = float(trigger.get(ppt.SPAWN_DELAY, 0))
+        x_pos = float(trigger.get(obj_prop.X, 0)) if spawn_ordered else 0.0
+        delay = float(trigger.get(ppt.Spawn.DELAY, 0))
         return x_pos + util.time_to_dist(delay)
 
     # Step 3: Group spawn triggers by (group, exec_time within tolerance)
     def group_by_exec_time(triggers: list[Trigger], group: int) -> list[list[Trigger]]:
-        spawn_triggers = [t for t in triggers if t[ppt.OBJ_ID] == obj_id.Trigger.SPAWN]
+        spawn_triggers = [t for t in triggers if t[obj_prop.ID] == obj_id.Trigger.SPAWN]
         if not spawn_triggers:
             return []
 
@@ -416,9 +415,9 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         callers: list[tuple[int, Trigger]] = []
         for group, triggers in group_to_triggers.items():
             for trigger in triggers:
-                if trigger[ppt.OBJ_ID] != obj_id.Trigger.SPAWN:
+                if trigger[obj_prop.ID] != obj_id.Trigger.SPAWN:
                     continue
-                if int(trigger.get(ppt.TARGET, 0)) == target_group:
+                if int(trigger.get(ppt.Move.TARGET_ID, 0)) == target_group:
                     callers.append((group, trigger))
         _find_callers_cache[target_group] = callers
         return callers
@@ -427,7 +426,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         if group in _group_has_spawn_cache:
             return _group_has_spawn_cache[group]
         result = any(
-            t[ppt.OBJ_ID] == obj_id.Trigger.SPAWN
+            t[obj_prop.ID] == obj_id.Trigger.SPAWN
             for t in group_to_triggers.get(group, [])
         )
         _group_has_spawn_cache[group] = result
@@ -438,7 +437,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         if target_group in _c_has_reset_cache:
             return _c_has_reset_cache[target_group]
         result = any(
-            t[ppt.OBJ_ID] == obj_id.Trigger.SPAWN and t.get(ppt.RESET_REMAP, False)
+            t[obj_prop.ID] == obj_id.Trigger.SPAWN and t.get(ppt.Spawn.RESET_REMAP, False)
             for t in group_to_triggers.get(target_group, [])
         )
         _c_has_reset_cache[target_group] = result
@@ -452,7 +451,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
             # Group by target (C)
             by_target: dict[int, list[Trigger]] = {}
             for trigger in sim_triggers:
-                target = int(trigger.get(ppt.TARGET, 0))
+                target = int(trigger.get(ppt.Move.TARGET_ID, 0))
                 if target not in by_target:
                     by_target[target] = []
                 by_target[target].append(trigger)
@@ -465,7 +464,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
                 c_resets = c_has_reset_remap(c_group)
 
                 unmapped_count = sum(
-                    1 for t in triggers_to_c if not t.get(ppt.REMAP_STRING, "")
+                    1 for t in triggers_to_c if not t.get(ppt.Spawn.REMAPS, "")
                 )
 
                 # Case 1: Check unmapped spawns
@@ -486,7 +485,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
                 # Case 2: Check if A has remap
                 callers = find_callers(b_group)
                 a_has_remap = any(
-                    caller_trigger.get(ppt.REMAP_STRING, "")
+                    caller_trigger.get(ppt.Spawn.REMAPS, "")
                     for _, caller_trigger in callers
                 )
 
@@ -494,7 +493,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
 
                 non_reset_count = sum(
                     1 for t in triggers_to_c
-                    if not t.get(ppt.RESET_REMAP, False)
+                    if not t.get(ppt.Spawn.RESET_REMAP, False)
                 )
 
                 if non_reset_count < 2: continue
@@ -515,25 +514,23 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
     max_x = trigger_area["max_x"]
     min_y = trigger_area["min_y"]
     max_y = trigger_area["max_y"]
-    ppt = enum.Properties
-
     if len_triggers == 1:
-        triggers[0][ppt.X] = random.randint(min_x, max_x)
-        triggers[0][ppt.Y] = random.randint(min_y, max_y)
+        triggers[0][obj_prop.X] = random.randint(min_x, max_x)
+        triggers[0][obj_prop.Y] = random.randint(min_y, max_y)
         return
 
     # Single pass to gather all info we need
-    first_x = triggers[0][ppt.X]
+    first_x = triggers[0].get(obj_prop.X, 0)
     all_same_x = True
     all_keyframe_objs = True
     has_pointer_objs = False
     
     for t in triggers:
-        t_x = t[ppt.X]
-        if t[ppt.OBJ_ID] == enum.POINTER_OBJ_ID:
+        t_x = t.get(obj_prop.X, 0)
+        if t[obj_prop.ID] == enum.POINTER_OBJ_ID:
             has_pointer_objs = True
             break
-        if t[ppt.OBJ_ID] != obj_id.Trigger.KEYFRAME:
+        if t[obj_prop.ID] != obj_id.Trigger.KEYFRAME:
             all_keyframe_objs = False
         if t_x != first_x:
             all_same_x = False
@@ -542,29 +539,29 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
 
     if has_pointer_objs:
         for pointer_obj in triggers:
-            pointer_obj[ppt.X] = random.randint(min_x, max_x)
-            pointer_obj[ppt.Y] = random.randint(min_y, max_y)
+            pointer_obj[obj_prop.X] = random.randint(min_x, max_x)
+            pointer_obj[obj_prop.Y] = random.randint(min_y, max_y)
         return
 
     if all_keyframe_objs:
         rand_x = random.randint(min_x, max_x)
         rand_y = random.randint(min_y, max_y)
         for keyframe_obj in triggers:
-            keyframe_obj[ppt.X] = rand_x
-            keyframe_obj[ppt.Y] = rand_y
+            keyframe_obj[obj_prop.X] = rand_x
+            keyframe_obj[obj_prop.Y] = rand_y
         return
 
     if all_same_x and not comp.requireSpawnOrder:
         # No spawn order because all_same_x suggests spawn order isnt intended
         for trigger in triggers:
-            trigger[ppt.X] = random.randint(min_x // 2, max_x // 2) * 2
-            trigger[ppt.Y] = random.randint(min_y, max_y)
-        triggers.sort(key=lambda t: t[ppt.X])
+            trigger[obj_prop.X] = random.randint(min_x // 2, max_x // 2) * 2
+            trigger[obj_prop.Y] = random.randint(min_y, max_y)
+        triggers.sort(key=lambda t: t.get(obj_prop.X, 0))
     elif comp.requireSpawnOrder:
         # Rigid chain - maintain exact spacing (ordered spawn)
-        triggers.sort(key=lambda t: t[ppt.X])
-        chain_min_x = triggers[0][ppt.X]
-        chain_max_x = triggers[-1][ppt.X]
+        triggers.sort(key=lambda t: t.get(obj_prop.X, 0))
+        chain_min_x = triggers[0].get(obj_prop.X, 0)
+        chain_max_x = triggers[-1].get(obj_prop.X, 0)
         chain_width = chain_max_x - chain_min_x
 
         if chain_width > (max_x - min_x):
@@ -572,11 +569,11 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
 
         shift = int(random.randint(min_x, int(max_x - chain_width)) - chain_min_x)
         for trigger in triggers:
-            trigger[ppt.X] = util.round_to_n_sig_figs(trigger[ppt.X], 6) + shift
-            trigger[ppt.Y] = random.randint(min_y, max_y)
+            trigger[obj_prop.X] = util.round_to_n_sig_figs(trigger.get(obj_prop.X, 0), 6) + shift
+            trigger[obj_prop.Y] = random.randint(min_y, max_y)
     else:
         # Elastic chain - can stretch but must be ordered
-        triggers.sort(key=lambda t: t[ppt.X])
+        triggers.sort(key=lambda t: t.get(obj_prop.X, 0))
         
         width = (max_x - min_x) / len_triggers
         rand_room = width - 1.3
@@ -587,8 +584,8 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
         for i, trigger in enumerate(triggers):
             rand_offset = random.random() * rand_room
             raw_x = min_x + width * i + rand_offset
-            trigger[ppt.X] = util.round_to_n_sig_figs(raw_x, 6)
-            trigger[ppt.Y] = random.randint(min_y, max_y)
+            trigger[obj_prop.X] = util.round_to_n_sig_figs(raw_x, 6)
+            trigger[obj_prop.Y] = random.randint(min_y, max_y)
 
 
 def _generate_statistics(object_budget: int = 200000) -> dict[str, Any]:
@@ -668,7 +665,8 @@ def _print_budget_analysis(stats: dict[str, Any]) -> None:
 
 
 def save_all(*,
-    filename: str = "triggers.json",
+    level: Level,
+    live_editor: bool = True,
     object_budget: int = 200000,
     check_spawn_limit: bool = True,
     trigger_area: TriggerArea = DEFAULT_TRIGGER_AREA):
@@ -678,10 +676,8 @@ def save_all(*,
     """
     if check_spawn_limit: _enforce_spawn_limit(all_components)
 
-    output: dict[str, list[Trigger]] = {"triggers": []}
+    output: list[Trigger] = []
 
-    ppt = enum.Properties # shorthand (also technically faster lol)
-    
     _validate_solid_groups()
     pointer.export_mappings()
 
@@ -700,12 +696,12 @@ def save_all(*,
 
         prev_x = -10000
         for trigger in comp.triggers:
-            if 9999 in trigger[ppt.GROUPS]:
+            if 9999 in trigger.get(obj_prop.GROUPS,{}):
                 raise RuntimeError(
                     f"CRITICAL ERROR: Reserved group 9999 detected in {comp.name}"
                 )
             
-            curr_x = trigger[ppt.X]
+            curr_x = trigger.get(obj_prop.X, 0)
             if 0 < curr_x - prev_x < 1.28:
                 raise RuntimeError(
                     f"CRITICAL ERROR: X position within 1.28 unit of previous trigger"
@@ -713,16 +709,13 @@ def save_all(*,
                 )
 
             prev_x = curr_x
-            output["triggers"].append(trigger)
+            output.append(trigger)
 
     stats = _generate_statistics(object_budget)
     _print_budget_analysis(stats)
-
-    if filename == "testing": return
-
-    with open(filename, "wb") as file:
-        file.write(orjson.dumps(output))
-
-    elapsed = time.time() - _start_time
-    print(f"\nSaved to {filename} successfully!")
-    print(f"Total execution time: {elapsed:.3f} seconds")
+    
+    level.objects.extend(output)
+    if live_editor:
+        level.export_to_live_editor()
+    else:
+        level.export_to_file()

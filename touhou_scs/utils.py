@@ -100,15 +100,15 @@ def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:
 
 class Remap:
     """Remap string builder class with chainable API."""
-    def __init__(self): self._pairs: dict[int,int] = {}
+    def __init__(self): self.pairs: dict[int,int] = {}
 
     def pair(self, source: int, target: int):
-        self._pairs[source] = target
+        self.pairs[source] = target
         return self
 
     def build(self) -> str:
         parts: list[str] = []
-        for source, target in self._pairs.items():
+        for source, target in self.pairs.items():
             parts.append(f"{source}.{target}")
         return ".".join(parts)
 

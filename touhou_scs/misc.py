@@ -1,9 +1,9 @@
-
+ 
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.component import Component, Multitarget
 from touhou_scs.utils import unknown_g, calltracker
 
-from gmdbuilder import obj_id
+from gmdbuilder import obj_id, obj_prop
 
 # Hitbox is the weapon, hurtbox is the target
 BOUNDARY_HITBOX = 1
@@ -16,7 +16,7 @@ DESPAWN_FUNCTION = 27 #PLR_HURT calls despawn in level, BOMB_HURT calls directly
 ENEMY_HITBOX = 5 # shared for every enemy
 GLOBAL_COLLISIONS = 17
 
-ppt = enum.Properties
+ppt = obj_prop.Trigger
 
 @calltracker
 def add_disable_all_bullets():
@@ -91,12 +91,12 @@ def add_plr_collisions():
             bullet_col = bullet_hitbox + (bullet.max_group - bullet.min_group + 1)
             # permanently turns on all collisions for each bullet (level calls it on startup)
             global_col_spawn = global_col.create_trigger(obj_id.Trigger.SPAWN, 0, cols.caller)
-            global_col_spawn[ppt.REMAP_STRING] = f"{enum.EMPTY_BULLET}.{bullet_hitbox}"
+            global_col_spawn[ppt.Spawn.REMAPS] = { enum.EMPTY_BULLET: bullet_hitbox }
             global_col.triggers.append(global_col_spawn)
             # Give each bullet a spawn trigger that activates its own collisions
-            with plr_hit_col.temp_context(groups=[bullet_hitbox, bullet_col]):
+            with plr_hit_col.temp_context(groups={bullet_hitbox, bullet_col}):
                 plr_hit_col_spawn = plr_hit_col.create_trigger(obj_id.Trigger.SPAWN, 0, PLR_HURT_FUNCTION)
-                plr_hit_col_spawn[ppt.REMAP_STRING] = f"{enum.EMPTY_BULLET}.{bullet_hitbox}"
+                plr_hit_col_spawn[ppt.Spawn.REMAPS] = { enum.EMPTY_BULLET: bullet_hitbox }
                 plr_hit_col.triggers.append(plr_hit_col_spawn)
 
     add_collision_trigger_remaps(lib.bullet1, "B1")

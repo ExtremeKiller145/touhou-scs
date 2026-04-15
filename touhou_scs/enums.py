@@ -5,7 +5,6 @@ All game constants, property IDs, and enumerated values.
 Central location for magic numbers with type safety and IDE autocomplete.
 """
 
-from enum import IntEnum
 from typing import Final
 
 POINTER_OBJ_ID = 3802
@@ -14,7 +13,7 @@ POINTER_OBJ_ID = 3802
 # EASING TYPES
 # ============================================================================
 
-class Easing(IntEnum):
+class Easing:
     """Easing curve types for trigger animations"""
     NONE = 0
     EASE_IN_OUT = 1
@@ -175,7 +174,7 @@ class Properties(str):
 
 # ========== Fields That Can Target Groups ==========
 # Used for trigger validation systems
-TARGET_FIELDS: Final[tuple[str, ...]] = ("51", "71", "401", "395", "76")
+TARGET_FIELDS: Final[tuple[str, ...]] = ("a51", "a71", "a401", "a395", "a76")
 """WARNING: Update the list in main.js !! (if editing)"""
 
 # ============================================================================
