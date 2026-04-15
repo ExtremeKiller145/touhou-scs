@@ -8,34 +8,7 @@ Central location for magic numbers with type safety and IDE autocomplete.
 from enum import IntEnum
 from typing import Final
 
-
-# ============================================================================
-# OBJECT IDs - Trigger Types
-# ============================================================================
-class ObjectID:
-    """Geometry Dash trigger object IDs"""
-    TOGGLE = 1049
-    SPAWN = 1268
-    PULSE = 1006
-    SCALE = 2067
-    MOVE = 901
-    ROTATE = 1346
-    COLLISION = 1815
-    PICKUP = 1817
-    STOP = 1616
-    COUNT = 1611
-    FOLLOW = 1347
-    ALPHA = 1007
-    INSTANT_COUNT = 1811
-    RANDOM = 1912
-    ADVANCED_RANDOM = 2068
-    KEYFRAME_OBJ = 3032
-    KEYFRAME_ANIM = 3033
-    TIME = 3614
-    TIME_EVENT = 3615
-    TIME_CONTROL = 3617
-    POINTER_OBJ = 3802
-
+POINTER_OBJ_ID = 3802
 
 # ============================================================================
 # EASING TYPES

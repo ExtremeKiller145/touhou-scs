@@ -20,6 +20,7 @@ from touhou_scs import enums, lib, utils
 from typing import Any
 from touhou_scs.movements import CurveType
 
+from gmdbuilder import obj_id
 
 @pytest.fixture(autouse=True)
 def reset_global_state():
@@ -811,7 +812,7 @@ class TestGetTriggersMethod:
         comp.Toggle(0, activateGroup=True)
         comp.clear_context()
 
-        result = comp.get_triggers({ppt.OBJ_ID: enums.ObjectID.PICKUP})
+        result = comp.get_triggers({ppt.OBJ_ID: obj_id.Trigger.PICKUP})
         assert len(result) == 1
 
     def test_get_triggers_no_match(self):
@@ -1302,7 +1303,7 @@ class TestBezierMove:
             t=duration
         )
         
-        move_triggers = [t for t in comp.triggers if t.get(ppt.OBJ_ID) == enums.ObjectID.MOVE]
+        move_triggers = [t for t in comp.triggers if t.get(ppt.OBJ_ID) == obj_id.Trigger.MOVE]
         total_dx = float(sum(t.get(ppt.MOVE_X, 0) for t in move_triggers))
         total_dy = float(sum(t.get(ppt.MOVE_Y, 0) for t in move_triggers))
         
@@ -1447,5 +1448,5 @@ class TestBezierMove:
         
         comp.timed.BezierMove(time=0, curve_label=CurveType.GENTLE_ARC, dx=100, dy=50, t=1.0)
         
-        move_triggers = [t for t in comp.triggers if t.get(ppt.OBJ_ID) == enums.ObjectID.MOVE]
+        move_triggers = [t for t in comp.triggers if t.get(ppt.OBJ_ID) == obj_id.Trigger.MOVE]
         assert len(move_triggers) >= 2, "BezierMove should generate at least 2 MoveBy triggers"

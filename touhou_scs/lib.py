@@ -19,6 +19,8 @@ from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger, TriggerArea
 from dataclasses import dataclass
 
+from gmdbuilder import obj_id
+
 all_spells: list[SpellProtocol] = []
 all_components: list[ComponentProtocol] = []
 
@@ -40,7 +42,7 @@ def _validate_solid_groups(*specific_groups: int):
                 continue
             
             for t in c.triggers:
-                if t[ppt.OBJ_ID] == enum.ObjectID.POINTER_OBJ: continue
+                if t[ppt.OBJ_ID] == enum.POINTER_OBJ_ID: continue
                 
                 if g in t.get(ppt.GROUPS, []):
                     raise ValueError(f"Group {g} is a trigger group ({t}) in '{c.name}', not a solid group")
@@ -229,7 +231,7 @@ class pointer:
         for group_list in cls.group_registry.values():
             # old pointer obj str: 1,3802,2,2625,3,915,20,2,57,7000.33,64,1,67,1,155,14905,25,9,24,11,128,0.25,129,0.25;
             cls.pointer_comp.triggers.append({ #type: ignore
-                ppt.OBJ_ID: enum.ObjectID.POINTER_OBJ,
+                ppt.OBJ_ID: enum.POINTER_OBJ_ID,
                 ppt.X: 0.0, ppt.Y: 0.0,
                 ppt.GROUPS: group_list,
                 ppt.EDITOR_LAYER: 11,
@@ -378,7 +380,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
 
     # Step 3: Group spawn triggers by (group, exec_time within tolerance)
     def group_by_exec_time(triggers: list[Trigger], group: int) -> list[list[Trigger]]:
-        spawn_triggers = [t for t in triggers if t[ppt.OBJ_ID] == enum.ObjectID.SPAWN]
+        spawn_triggers = [t for t in triggers if t[ppt.OBJ_ID] == obj_id.Trigger.SPAWN]
         if not spawn_triggers:
             return []
 
@@ -414,7 +416,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         callers: list[tuple[int, Trigger]] = []
         for group, triggers in group_to_triggers.items():
             for trigger in triggers:
-                if trigger[ppt.OBJ_ID] != enum.ObjectID.SPAWN:
+                if trigger[ppt.OBJ_ID] != obj_id.Trigger.SPAWN:
                     continue
                 if int(trigger.get(ppt.TARGET, 0)) == target_group:
                     callers.append((group, trigger))
@@ -425,7 +427,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         if group in _group_has_spawn_cache:
             return _group_has_spawn_cache[group]
         result = any(
-            t[ppt.OBJ_ID] == enum.ObjectID.SPAWN
+            t[ppt.OBJ_ID] == obj_id.Trigger.SPAWN
             for t in group_to_triggers.get(group, [])
         )
         _group_has_spawn_cache[group] = result
@@ -436,7 +438,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         if target_group in _c_has_reset_cache:
             return _c_has_reset_cache[target_group]
         result = any(
-            t[ppt.OBJ_ID] == enum.ObjectID.SPAWN and t.get(ppt.RESET_REMAP, False)
+            t[ppt.OBJ_ID] == obj_id.Trigger.SPAWN and t.get(ppt.RESET_REMAP, False)
             for t in group_to_triggers.get(target_group, [])
         )
         _c_has_reset_cache[target_group] = result
@@ -528,10 +530,10 @@ def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_a
     
     for t in triggers:
         t_x = t[ppt.X]
-        if t[ppt.OBJ_ID] == enum.ObjectID.POINTER_OBJ:
+        if t[ppt.OBJ_ID] == enum.POINTER_OBJ_ID:
             has_pointer_objs = True
             break
-        if t[ppt.OBJ_ID] != enum.ObjectID.KEYFRAME_OBJ:
+        if t[ppt.OBJ_ID] != obj_id.Trigger.KEYFRAME:
             all_keyframe_objs = False
         if t_x != first_x:
             all_same_x = False

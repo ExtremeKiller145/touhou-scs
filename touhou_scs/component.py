@@ -14,6 +14,9 @@ from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import Trigger
 
+from gmdbuilder import obj_id
+from gmdbuilder.object_types import EASING
+
 ppt = enum.Properties # shorthand
 
 class ScaleSettings(NamedTuple):
@@ -265,7 +268,7 @@ class Component:
         target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target, non_negative=delay)
 
-        trigger = self.create_trigger(enum.ObjectID.SPAWN, util.time_to_dist(time), target)
+        trigger = self.create_trigger(obj_id.Trigger.SPAWN, util.time_to_dist(time), target)
 
         if spawnOrdered: trigger[ppt.SPAWN_ORDERED] = True
         if delay > 0: trigger[ppt.SPAWN_DELAY] = delay
@@ -283,7 +286,7 @@ class Component:
         """
         validate_params(targets=self.target)
 
-        trigger = self.create_trigger(enum.ObjectID.TOGGLE, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.MOVE, util.time_to_dist(time), self.target)
         trigger[ppt.ACTIVATE_GROUP] = activateGroup
 
         return self
@@ -295,7 +298,7 @@ class Component:
         validate_params(targets=[self.target, targetDir], non_negative=t, type=type, rate=rate)
         enforce_solid_groups(self.target)
 
-        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.MOVE, util.time_to_dist(time), self.target)
 
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_DIRECTION_MODE] = True
@@ -316,7 +319,7 @@ class Component:
         validate_params(non_negative=[fadeIn, t, fadeOut], targets=self.target)
         enforce_solid_groups(self.target)
 
-        trigger = self.create_trigger(enum.ObjectID.PULSE, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.PULSE, util.time_to_dist(time), self.target)
 
         trigger[ppt.PULSE_HSV] = True
         trigger[ppt.PULSE_TARGET_TYPE] = True
@@ -334,7 +337,7 @@ class Component:
         validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
         enforce_solid_groups(self.target)
 
-        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.MOVE, util.time_to_dist(time), self.target)
 
         trigger[ppt.DURATION] = t
         trigger[ppt.MOVE_X] = dx
@@ -348,11 +351,11 @@ class Component:
         return self
 
     def GotoGroup(self, time: float, location: int, *,
-        t: float = 0, type: int = 0, rate: float = 1.0):
+        t: float = 0, type: EASING = 0, rate: float = 1.0):
         validate_params(targets=[self.target, location], non_negative=t, type=type, rate=rate)
         enforce_solid_groups(self.target, location)
 
-        trigger = self.create_trigger(enum.ObjectID.MOVE, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.MOVE, util.time_to_dist(time), self.target)
 
         trigger[ppt.MOVE_TARGET_CENTER] = self.target
         trigger[ppt.MOVE_TARGET_LOCATION] = location
@@ -379,13 +382,13 @@ class Component:
         return self
 
     def Rotate(self, time: float, *, angle: float, center: int | None = None,
-        t: float = 0, type: int = 0, rate: float = 1.0):
+        t: float = 0, type: EASING = 0, rate: float = 1.0):
         """Rotate target by angle (degrees, clockwise is positive)"""
         if center is None: center = self.target
         validate_params(targets=[self.target, center], non_negative=t, type=type, rate=rate)
         enforce_solid_groups(self.target)
 
-        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.MOVE, util.time_to_dist(time), self.target)
 
         trigger[ppt.ROTATE_CENTER] = center
         trigger[ppt.ROTATE_ANGLE] = angle
@@ -401,7 +404,7 @@ class Component:
         validate_params(targets=self.target, non_negative=t, type=type, rate=rate)
         enforce_solid_groups(self.target, targetDir)
 
-        trigger = self.create_trigger(enum.ObjectID.ROTATE, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.ROTATE, util.time_to_dist(time), self.target)
 
         trigger[ppt.ROTATE_TARGET] = targetDir
         trigger[ppt.ROTATE_CENTER] = self.target
@@ -451,7 +454,7 @@ class Component:
             def keyframe_obj(*, scale: float, duration: float, order: int,
                 close_loop: bool = False, ease_type: int = 0, ease_rate: float = 1.0):
                 new_keyframe_group.triggers.append({ #type: ignore
-                    ppt.OBJ_ID: enum.ObjectID.KEYFRAME_OBJ,
+                    ppt.OBJ_ID: obj_id.Trigger.KEYFRAME,
                     ppt.X: 0.0, ppt.Y: 0.0,
                     ppt.GROUPS: [new_keyframe_group.caller],
                     ppt.KEYFRAME_OBJ_MODE: 0,  # time mode
@@ -477,7 +480,7 @@ class Component:
             keyframe_group = new_keyframe_group.caller
             scale_keyframes[scale_settings] = new_keyframe_group
 
-        trigger = self.create_trigger(enum.ObjectID.KEYFRAME_ANIM, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.ANIMATE_KEYFRAME, util.time_to_dist(time), self.target)
 
         trigger[ppt.KEYMAP_ANIM_GID] = keyframe_group
         trigger[ppt.KEYMAP_ANIM_TIME_MOD] = 1.0
@@ -495,7 +498,7 @@ class Component:
         validate_params(targets=self.target, non_negative=t)
         enforce_solid_groups(self.target, targetDir)
 
-        trigger = self.create_trigger(enum.ObjectID.FOLLOW, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.FOLLOW, util.time_to_dist(time), self.target)
 
         trigger[ppt.FOLLOW_GROUP] = targetDir
         trigger[ppt.FOLLOW_X_MOD] = x_mod
@@ -511,7 +514,7 @@ class Component:
         if not (0 <= opacity <= 100):
             raise ValueError("Opacity must be between 0 and 100")
 
-        trigger = self.create_trigger(enum.ObjectID.ALPHA, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.ALPHA, util.time_to_dist(time), self.target)
 
         trigger[ppt.OPACITY] = opacity / 100.0
         trigger[ppt.DURATION] = t
@@ -523,7 +526,7 @@ class Component:
         target = target.caller if isinstance(target, Component) else target
         validate_params(targets=target)
 
-        trigger = self.create_trigger(enum.ObjectID.STOP, util.time_to_dist(time), target)
+        trigger = self.create_trigger(obj_id.Trigger.STOP, util.time_to_dist(time), target)
 
         trigger[ppt.STOP_OPTION] = option # 0=Stop, 1=Pause, 2=Resume
         trigger[ppt.STOP_USE_CONTROL_ID] = useControlID
@@ -548,7 +551,7 @@ class Component:
         blockA: int, blockB: int, activateGroup: bool, onExit: bool = False):
         validate_params(targets=self.target)
 
-        trigger = self.create_trigger(enum.ObjectID.COLLISION, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.COLLISION, util.time_to_dist(time), self.target)
 
         trigger[ppt.BLOCK_A] = blockA
         trigger[ppt.BLOCK_B] = blockB
@@ -560,7 +563,7 @@ class Component:
     def Count(self, time: float, *, item_id: int, count: int, activateGroup: bool):
         validate_params(targets=self.target, item_id=item_id)
 
-        trigger = self.create_trigger(enum.ObjectID.COUNT, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.COUNT, util.time_to_dist(time), self.target)
 
         trigger[ppt.ITEM_ID] = item_id
         trigger[ppt.COUNT_TARGET] = count
@@ -575,7 +578,7 @@ class Component:
 
         if count == 0: raise ValueError("Pickup: Count is 0 (no change)")
 
-        trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
+        trigger = self.create_trigger(obj_id.Trigger.PICKUP, util.time_to_dist(time), 10)
 
         del trigger[ppt.TARGET] # type: ignore
         trigger[ppt.ITEM_ID] = item_id
@@ -597,7 +600,7 @@ class Component:
 
         mode = 1 if multiply else 2 # multiply=1, divide=2
 
-        trigger = self.create_trigger(enum.ObjectID.PICKUP, util.time_to_dist(time), 10)
+        trigger = self.create_trigger(obj_id.Trigger.PICKUP, util.time_to_dist(time), 10)
 
         del trigger[ppt.TARGET] # type: ignore
         trigger[ppt.ITEM_ID] = item_id
@@ -610,7 +613,7 @@ class Component:
         start: float, end: float, mod: float = 1, start_paused: bool = False):
         """Activate a time trigger that counts down from 'duration' seconds."""
         validate_params(item_id=item_id)
-        trigger = self.create_trigger(enum.ObjectID.TIME, util.time_to_dist(time), self.target)
+        trigger = self.create_trigger(obj_id.Trigger.TIME, util.time_to_dist(time), self.target)
 
         trigger[ppt.ITEM_ID] = item_id
         trigger[ppt.START_TIME] = start
@@ -623,7 +626,7 @@ class Component:
     def _time_control(self, time: float, item_id: int, start: bool):
         validate_params(item_id=item_id)
         self.triggers.append(Trigger({
-            ppt.OBJ_ID: enum.ObjectID.TIME_CONTROL,
+            ppt.OBJ_ID: obj_id.Trigger.TIME_CONTROL,
             ppt.X: util.time_to_dist(time),
             ppt.GROUPS: self.groups,
             ppt.EDITOR_LAYER: self.editorLayer,
@@ -660,7 +663,7 @@ class Multitarget:
     def _get_binary_components(cls, num_targets: int, comp: Component) -> list[Component]:
         """Get the binary components needed to represent num_of_targets."""
 
-        if any(t[ppt.OBJ_ID] == enum.ObjectID.SPAWN for t in comp.triggers):
+        if any(t[ppt.OBJ_ID] == obj_id.Trigger.SPAWN for t in comp.triggers):
             warn(f"Spawn limit: [{comp.name}] Multitarget components cannot have Spawn triggers")
 
         if not cls._initialized: cls._initialize_binary_bases()
