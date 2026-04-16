@@ -15,7 +15,7 @@ from touhou_scs import enums as enum
 from touhou_scs import utils as util
 from touhou_scs.component import Component
 from touhou_scs.utils import unknown_g, warn
-from touhou_scs.types import ComponentProtocol, SpellProtocol, Trigger, TriggerArea
+from touhou_scs.types import ComponentProtocol, SpellProtocol, GenericObj, TriggerArea
 from dataclasses import dataclass
 
 from gmdbuilder import Level, obj_id, obj_prop
@@ -349,7 +349,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
     EXEC_TIME_TOLERANCE = enum.PLR_SPEED / 240  # ~1.298 studs (one tick)
 
     # Step 1: Build group -> triggers mapping, track spawnOrdered per group
-    group_to_triggers: dict[int, list[Trigger]] = {}
+    group_to_triggers: dict[int, list[GenericObj]] = {}
     group_spawn_ordered: dict[int, bool] = {}
 
     for comp in components:
@@ -371,14 +371,14 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         group_to_triggers[group].extend(comp.triggers)
 
     # Step 2: Calculate execution time for spawn triggers
-    def get_exec_time(trigger: Trigger, group: int) -> float:
+    def get_exec_time(trigger: GenericObj, group: int) -> float:
         spawn_ordered = group_spawn_ordered.get(group, False)
         x_pos = float(trigger.get(obj_prop.X, 0)) if spawn_ordered else 0.0
         delay = float(trigger.get(ppt.Spawn.DELAY, 0))
         return x_pos + util.time_to_dist(delay)
 
     # Step 3: Group spawn triggers by (group, exec_time within tolerance)
-    def group_by_exec_time(triggers: list[Trigger], group: int) -> list[list[Trigger]]:
+    def group_by_exec_time(triggers: list[GenericObj], group: int) -> list[list[GenericObj]]:
         spawn_triggers = [t for t in triggers if t[obj_prop.ID] == obj_id.Trigger.SPAWN]
         if not spawn_triggers:
             return []
@@ -387,8 +387,8 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
         timed = [(t, get_exec_time(t, group)) for t in spawn_triggers]
         timed.sort(key=lambda x: x[1])
 
-        groups: list[list[Trigger]] = []
-        current_group: list[Trigger] = [timed[0][0]]
+        groups: list[list[GenericObj]] = []
+        current_group: list[GenericObj] = [timed[0][0]]
         current_time = timed[0][1]
 
         for trigger, exec_time in timed[1:]:
@@ -404,15 +404,15 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
 
     # Step 4: Find what groups call this group (A) and what this group calls (C)
     # Use manual caching since these are inner functions
-    _find_callers_cache: dict[int, list[tuple[int, Trigger]]] = {}
+    _find_callers_cache: dict[int, list[tuple[int, GenericObj]]] = {}
     _group_has_spawn_cache: dict[int, bool] = {}
     _c_has_reset_cache: dict[int, bool] = {}
 
-    def find_callers(target_group: int) -> list[tuple[int, Trigger]]:
+    def find_callers(target_group: int) -> list[tuple[int, GenericObj]]:
         """Find all (group, trigger) pairs where trigger spawns target_group."""
         if target_group in _find_callers_cache:
             return _find_callers_cache[target_group]
-        callers: list[tuple[int, Trigger]] = []
+        callers: list[tuple[int, GenericObj]] = []
         for group, triggers in group_to_triggers.items():
             for trigger in triggers:
                 if trigger[obj_prop.ID] != obj_id.Trigger.SPAWN:
@@ -449,7 +449,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
 
         for sim_triggers in simultaneous_groups:
             # Group by target (C)
-            by_target: dict[int, list[Trigger]] = {}
+            by_target: dict[int, list[GenericObj]] = {}
             for trigger in sim_triggers:
                 target = int(trigger.get(ppt.Move.TARGET_ID, 0))
                 if target not in by_target:
@@ -506,7 +506,7 @@ def _enforce_spawn_limit(components: list[ComponentProtocol]) -> None:
                     f"Group {c_group} contains spawn trigger(s), causing spawn limit bug."
                 )
 
-def _spread_triggers(triggers: list[Trigger], comp: ComponentProtocol, trigger_area: TriggerArea, len_triggers: int):
+def _spread_triggers(triggers: list[GenericObj], comp: ComponentProtocol, trigger_area: TriggerArea, len_triggers: int):
     if len_triggers < 1:
         raise ValueError(f"No triggers in component {comp.name}")
 
@@ -676,7 +676,7 @@ def save_all(*,
     """
     if check_spawn_limit: _enforce_spawn_limit(all_components)
 
-    output: list[Trigger] = []
+    output: list[GenericObj] = []
 
     _validate_solid_groups()
     pointer.export_mappings()

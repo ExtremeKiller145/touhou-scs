@@ -15,7 +15,7 @@ from gmdkit.models.prop.hsv import HSV
 from touhou_scs.movements import CurveType, apply_bezier_movement
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.utils import unknown_g, warn
-from touhou_scs.types import Trigger
+from touhou_scs.types import GenericObj
 
 from gmdbuilder import new_obj, obj_id, obj_prop
 
@@ -145,7 +145,7 @@ class Component:
 
         self.target: int = -1
         self.requireSpawnOrder: bool | None = None
-        self.triggers: list[Trigger] = []
+        self.triggers: list[GenericObj] = []
         self.current_pc: lib.GuiderCircle | None = None
 
         self._pointer: Pointer | None = None
@@ -169,8 +169,8 @@ class Component:
         if self._timed is None: self._timed = TimedPatterns(self)
         return self._timed
 
-    def get_triggers(self, trigger: dict[str, Any]) -> list[Trigger]:
-        matches: list[Trigger] = []
+    def get_triggers(self, trigger: dict[str, Any]) -> list[GenericObj]:
+        matches: list[GenericObj] = []
         for t in self.triggers:
             num_matches = 0
             for key, value in trigger.items():
@@ -186,9 +186,9 @@ class Component:
             raise ValueError("has_trigger_properties: empty trigger dict given")
         return bool(self.get_triggers(trigger))
 
-    def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
+    def create_trigger(self, obj_id: int, x: float, target: int) -> GenericObj:
         """Appends automatically to component trigger list."""
-        t: Trigger = new_obj(obj_id) # type: ignore
+        t: GenericObj = new_obj(obj_id) # type: ignore
         t[obj_prop.X] = x
         t[ppt.Move.TARGET_ID] = target
         t[obj_prop.GROUPS] = self.groups
@@ -457,7 +457,8 @@ class Component:
 
             def keyframe_obj(*, scale: float, duration: float, order: int,
                 close_loop: bool = False, ease_type: int = 0, ease_rate: float = 1.0):
-                new_keyframe_group.triggers.append({ #type: ignore
+                obj = new_obj(obj_id.Trigger.KEYFRAME)
+                new_keyframe_group.triggers.append({
                     obj_prop.ID: obj_id.Trigger.KEYFRAME,
                     obj_prop.X: 0.0, obj_prop.Y: 0.0,
                     obj_prop.GROUPS: [new_keyframe_group.caller],
@@ -471,6 +472,7 @@ class Component:
                     ppt.Keyframe.EASE_RATE: ease_rate,
                     ppt.Keyframe.LINE_OPACITY: 1.0,
                 })
+                new_keyframe_group.triggers.append(obj) #type: ignore
 
             if reverse:
                 keyframe_obj(scale=1, duration=0, order=1)
@@ -629,7 +631,7 @@ class Component:
 
     def _time_control(self, time: float, item_id: int, stop: bool):
         validate_params(item_id=item_id)
-        self.triggers.append(Trigger({
+        self.triggers.append(GenericObj({
             obj_prop.ID: obj_id.Trigger.TIME_CONTROL,
             obj_prop.X: util.time_to_dist(time),
             obj_prop.GROUPS: self.groups,

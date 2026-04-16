@@ -4,12 +4,11 @@ Touhou SCS - Type Definitions
 
 from typing import TypedDict, Protocol, Any
 
-from gmdbuilder.object_types import AllPropsType
 
 # ==========================================
 # TRIGGER STRUCTURE
 # ==========================================
-Trigger = AllPropsType
+GenericObj = dict[str, Any]
 
 # ==========================================
 # COMPONENT PROTOCOL
@@ -27,7 +26,7 @@ class ComponentProtocol(Protocol):
     groups: set[int]
     editorLayer: int
     requireSpawnOrder: bool | None
-    triggers: list[Trigger]
+    triggers: list[GenericObj]
     target: int
     current_pc: Any
 
