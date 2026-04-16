@@ -701,6 +701,11 @@ def save_all(*,
                     f"CRITICAL ERROR: Reserved group 9999 detected in {comp.name}"
                 )
             
+            if not trigger.get(obj_prop.ID):
+                raise RuntimeError(
+                    f"CRITICAL ERROR: Trigger in {comp.name} is missing an ID: {trigger}"
+                )
+            
             curr_x = trigger.get(obj_prop.X, 0)
             if 0 < curr_x - prev_x < 1.28:
                 raise RuntimeError(

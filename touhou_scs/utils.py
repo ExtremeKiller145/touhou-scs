@@ -57,7 +57,7 @@ class _GroupAllocatorProxy:
     def __init__(self) -> None:
         self._level: Level | None = None
 
-    def _init(self, level: Level) -> None:
+    def init(self, level: Level) -> None:
         if self._level is not None:
             raise RuntimeError("init_level() has already been called.")
         self._level = level
@@ -83,7 +83,7 @@ def init_level(level: Level) -> None:
     Must be called once in main.py, immediately after Level.from_file() or
     Level.from_live_editor(), before any other touhou_scs imports.
     """
-    unknown_g._init(level)
+    unknown_g.init(level)
 
 
 def group(group_id: int) -> int: """Semantic Wrapper"""; return group_id # noqa

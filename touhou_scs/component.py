@@ -17,7 +17,7 @@ from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import Trigger
 
-from gmdbuilder import obj_id, obj_prop
+from gmdbuilder import new_obj, obj_id, obj_prop
 
 ppt = obj_prop.Trigger
 
@@ -188,15 +188,13 @@ class Component:
 
     def create_trigger(self, obj_id: int, x: float, target: int) -> Trigger:
         """Appends automatically to component trigger list."""
-        t = Trigger({
-            obj_prop.ID: obj_id,
-            obj_prop.X: x,
-            ppt.Move.TARGET_ID: target,
-            obj_prop.GROUPS: self.groups,
-            obj_prop.EDITOR_L1: self.editorLayer,
-            ppt.SPAWN_TRIGGER: True,
-            ppt.MULTI_TRIGGER: True,
-        })
+        t: Trigger = new_obj(obj_id) # type: ignore
+        t[obj_prop.X] = x
+        t[ppt.Move.TARGET_ID] = target
+        t[obj_prop.GROUPS] = self.groups
+        t[obj_prop.EDITOR_L1] = self.editorLayer
+        t[ppt.SPAWN_TRIGGER] = True
+        t[ppt.MULTI_TRIGGER] = True
         self.triggers.append(t)
         return t
 
@@ -324,6 +322,8 @@ class Component:
         converted.hue = hsb.h
         converted.saturation = hsb.s
         converted.value = hsb.b
+        converted.saturation_add = True
+        converted.value_add = True
 
         trigger[ppt.Pulse.USE_HSV] = True
         trigger[ppt.Pulse.TARGET_TYPE] = True
