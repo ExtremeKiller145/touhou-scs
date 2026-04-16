@@ -4,10 +4,16 @@ Touhou SCS - Utilities Module
 Helper functions for component building and validation.
 """
 
+from __future__ import annotations
+
 import math
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 import warnings
 import functools
+
+if TYPE_CHECKING:
+    from gmdbuilder import Level
+
 from touhou_scs import enums as enum
 from touhou_scs.types import ComponentProtocol
 
@@ -39,21 +45,46 @@ def round_to_n_sig_figs(x: float | int, n: int) -> float:
     """Round to n significant figures (GD uses 6)"""
     return 0 if x == 0 else round(x, -int(math.floor(math.log10(abs(x)))) + (n - 1))
 
-class UnknownGroupGenerator:
+
+class _GroupAllocatorProxy:
+    """
+    Proxy for allocating unique group IDs via level.new.group().
+
+    Before init_level() is called, any call raises a clear RuntimeError.
+    After init_level() is called, every call delegates to level.new.group().
+    """
+
     def __init__(self) -> None:
-        self.counter = 10000
+        self._level: Level | None = None
+
+    def _init(self, level: Level) -> None:
+        if self._level is not None:
+            raise RuntimeError("init_level() has already been called.")
+        self._level = level
 
     def __call__(self) -> int:
-        result = self.counter
-        self.counter += 1
-        return result
-    
-    @property
-    def used_groups(self) -> list[int]:
-        return list(range(10000, self.counter))
+        if self._level is None:
+            raise RuntimeError(
+                "unknown_g() called before init_level(). "
+                "Call init_level(level) in main.py immediately after "
+                "Level.from_file() / Level.from_live_editor(), before "
+                "any other touhou_scs imports."
+            )
+        return int(self._level.new.group())
 
-unknown_g = UnknownGroupGenerator()
-"""Call with 'unknown_g()' and access list with 'unknown_g.used_groups'."""
+
+unknown_g = _GroupAllocatorProxy()
+"""Allocate the next free group ID from the loaded level. Requires init_level() first."""
+
+
+def init_level(level: Level) -> None:
+    """
+    Bind the loaded Level instance to the group allocator.
+    Must be called once in main.py, immediately after Level.from_file() or
+    Level.from_live_editor(), before any other touhou_scs imports.
+    """
+    unknown_g._init(level)
+
 
 def group(group_id: int) -> int: """Semantic Wrapper"""; return group_id # noqa
 

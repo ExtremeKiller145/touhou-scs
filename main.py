@@ -1,13 +1,18 @@
+from gmdbuilder import Level
+from touhou_scs.utils import init_level, unknown_g
+
+if __name__ != "__main__":
+    print("Don't import this! exiting.")
+    exit()
+
+level = Level.from_live_editor()
+init_level(level)
+
 from touhou_scs import enums as e
 from touhou_scs import lib
 from touhou_scs.component import BulletAlloc, Component
 from touhou_scs.lib import Stage, enemy1, rgb, save_all
 from touhou_scs.misc import add_disable_all_bullets, add_enemy_collisions, add_plr_collisions
-from touhou_scs.utils import unknown_g
-
-if __name__ != "__main__":
-    print("Don't import this! exiting.")
-    exit()
 
 main = (Component("Main", 36, 7)
     .assert_spawn_order(False)
@@ -265,4 +270,4 @@ Stage.stage1.Spawn(0, pos_setup.caller, True)
 add_enemy_collisions()
 add_disable_all_bullets()
 add_plr_collisions()
-save_all()
+save_all(level=level)

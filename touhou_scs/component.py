@@ -121,14 +121,12 @@ def validate_params(*,
         item_id=item_id
     )
     
-    # Check counter bounds AFTER caching (counter is dynamic, can't be cached)
+    # Check group ID is within GD's hard limit
     if targets is not None:
-        c = util.unknown_g.counter
         targets_list = [targets] if isinstance(targets, int) else targets
-        
         for g in targets_list:
-            if g > c:
-                raise ValueError(f"Target Group '{g}' is out of valid range (1-{c}).")
+            if not (1 <= g <= 9999):
+                raise ValueError(f"Target Group '{g}' is out of valid range (1-9999).")
 
 def enforce_solid_groups(*groups: int):
     """Mark groups as solid (objects). Validation deferred until export."""
@@ -315,7 +313,7 @@ class Component:
 
         return self
 
-    def Pulse(self, time: float, hsv: lib.HSB, *, 
+    def Pulse(self, time: float, hsb: lib.HSB, *, 
         exclusive: bool = False, fadeIn: float = 0, t: float = 0, fadeOut: float = 0):
         validate_params(non_negative=[fadeIn, t, fadeOut], targets=self.target)
         enforce_solid_groups(self.target)
