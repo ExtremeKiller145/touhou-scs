@@ -10,6 +10,7 @@ import functools
 from typing import Any, Callable, NamedTuple
 
 from gmdbuilder.object_types import EASING, STOP_MODE
+from gmdkit.models.prop.hsv import HSV
 
 from touhou_scs.movements import CurveType, apply_bezier_movement
 from touhou_scs import enums as enum, lib, utils as util
@@ -314,17 +315,22 @@ class Component:
 
         return self
 
-    def Pulse(self, time: float, hsb: lib.HSB, *, 
+    def Pulse(self, time: float, hsv: lib.HSB, *, 
         exclusive: bool = False, fadeIn: float = 0, t: float = 0, fadeOut: float = 0):
         validate_params(non_negative=[fadeIn, t, fadeOut], targets=self.target)
         enforce_solid_groups(self.target)
 
         trigger = self.create_trigger(obj_id.Trigger.PULSE, util.time_to_dist(time), self.target)
+        
+        converted = HSV()
+        converted.hue = hsb.h
+        converted.saturation = hsb.s
+        converted.value = hsb.b
 
         trigger[ppt.Pulse.USE_HSV] = True
         trigger[ppt.Pulse.TARGET_TYPE] = True
         #a0a0 for multiplicative, a1a1 for additive (its the checkbox for 's' and 'v')
-        trigger[ppt.Pulse.HSV] = f"{hsb.h}a{hsb.s}a{hsb.b}a1a1"
+        trigger[ppt.Pulse.HSV] = converted
         trigger[ppt.Pulse.FADE_IN] = fadeIn
         trigger[ppt.Pulse.HOLD] = t
         trigger[ppt.Pulse.FADE_OUT] = fadeOut
