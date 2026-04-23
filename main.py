@@ -6,6 +6,7 @@ if __name__ != "__main__":
     exit()
 
 level = Level.from_live_editor()
+# level.export_to_live_editor()
 init_level(level)
 
 from touhou_scs import enums as e

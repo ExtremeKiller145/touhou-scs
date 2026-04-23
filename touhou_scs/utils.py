@@ -56,6 +56,7 @@ class _GroupAllocatorProxy:
 
     def __init__(self) -> None:
         self._level: Level | None = None
+        self.count = 0
 
     def init(self, level: Level) -> None:
         if self._level is not None:
@@ -70,6 +71,7 @@ class _GroupAllocatorProxy:
                 "Level.from_file() / Level.from_live_editor(), before "
                 "any other touhou_scs imports."
             )
+        self.count += 1
         return int(self._level.new.group())
 
 

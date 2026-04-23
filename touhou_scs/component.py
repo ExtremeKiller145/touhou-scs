@@ -650,6 +650,29 @@ class Component:
     def TimerStop(self, time: float, *, item_id: int):
         """Stop/Pause a timer."""
         return self._time_control(time, item_id, stop=True)
+    
+    def TimerOp(self, time: float, *, item: int, mod: int = 1, 
+        math_op: enum.Item.MathOp, 
+        sign_op: enum.Item.SignOp = enum.Item.SignOp.NONE, 
+        mod_op: enum.Item.MathOp = enum.Item.MathOp.MULTIPLY):
+        """
+        Set a Timer ID to a specific value.
+        
+        Formula: target = target (sign_op) item (mod_op) mod
+        """
+        validate_params(item_id=item)
+        trigger = self.create_trigger(obj_id.Trigger.ITEM_EDIT, util.time_to_dist(time), item)
+        
+        trigger[ppt.ItemEdit.TARGET_ITEM_TYPE] = enum.Item.ItemType.TIMER.value # type for target
+        trigger[ppt.ItemEdit.ITEM_ID_1] = item
+        trigger[ppt.ItemEdit.ITEM_TYPE_1] = enum.Item.ItemType.TIMER.value
+        trigger[ppt.ItemEdit.ITEM_OP_1] = sign_op.value # op for 'target = target (sign_op) item (mod)' 
+        trigger[ppt.ItemEdit.ITEM_TYPE_2] = math_op.value
+        trigger[ppt.ItemEdit.MOD] = mod
+        trigger[ppt.ItemEdit.ITEM_OP_3] = mod_op.value
+        
+        return self
+
 
 # ===========================================================
 #

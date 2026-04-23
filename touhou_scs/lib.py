@@ -634,9 +634,11 @@ def _print_budget_analysis(stats: dict[str, Any]) -> None:
     budget = stats["budget"]
     remaining_budget = budget["object_budget"] - budget["total_triggers"]
     percentage_used = (budget["total_triggers"] / budget["object_budget"]) * 100
+    used_g = unknown_g._level.new.used_group_ids # type: ignore
+    used_g_percent = (len(used_g) / 9999) * 100
     print("\n\033[4m=== BUDGET ANALYSIS ===\033[0m")
-    print(f"Total triggers: {budget['total_triggers']} ({percentage_used:.3f}%)")
-    print(f"Remaining budget: {remaining_budget} triggers")
+    print(f"Total triggers: {budget['total_triggers']} out of {remaining_budget} ({percentage_used:.3f}%)")
+    print(f"Total groups: {len(used_g)} out of 9999 ({used_g_percent:.3f}%)")
 
     spell_stats = stats.get("spell_stats", {})
     if spell_stats:

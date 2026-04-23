@@ -6,6 +6,9 @@ Central location for magic numbers with type safety and IDE autocomplete.
 """
 
 from typing import Final
+from gmdbuilder import enum as gdenum
+
+Item = gdenum.Item
 
 POINTER_OBJ_ID = 3802
 
