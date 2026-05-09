@@ -197,7 +197,7 @@ SCREEN_CENTER: Final[int] = 30
 """Center group of 1200 x 900 screen window"""
 GAME_CENTER: Final[int] = 109
 """Center group of 360 x 420 game window"""
-GAME_BOTTOM_LEFT: Final[int] = 130
+GAME_BOTTOM_LEFT: Final[int] = 110
 """Bottom-left corner of 360 x 420 game window"""
 NORTH_GROUP: Final[int] = 26
 """North of the map. Used for resetting rotation"""

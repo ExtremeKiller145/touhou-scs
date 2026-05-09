@@ -240,7 +240,7 @@ class pointer:
                 obj_prop.DONT_ENTER: True, # dont enter
             })
 
-reimuA_level1 = BulletPool(110, 128, True)
+reimuA_level1 = BulletPool(136, 153, True)
 
 def get_all_components() -> list[ComponentProtocol]: return all_components
 

@@ -92,12 +92,10 @@ def add_plr_collisions():
             # permanently turns on all collisions for each bullet (level calls it on startup)
             global_col_spawn = global_col.create_trigger(obj_id.Trigger.SPAWN, 0, cols.caller)
             global_col_spawn[ppt.Spawn.REMAPS] = { enum.EMPTY_BULLET: bullet_hitbox }
-            global_col.triggers.append(global_col_spawn)
             # Give each bullet a spawn trigger that activates its own collisions
             with plr_hit_col.temp_context(groups={bullet_hitbox, bullet_col}):
                 plr_hit_col_spawn = plr_hit_col.create_trigger(obj_id.Trigger.SPAWN, 0, PLR_HURT_FUNCTION)
                 plr_hit_col_spawn[ppt.Spawn.REMAPS] = { enum.EMPTY_BULLET: bullet_hitbox }
-                plr_hit_col.triggers.append(plr_hit_col_spawn)
 
     add_collision_trigger_remaps(lib.bullet1, "B1")
     add_collision_trigger_remaps(lib.bullet2, "B2")
