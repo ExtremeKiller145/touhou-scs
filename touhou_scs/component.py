@@ -427,7 +427,7 @@ class Component:
 
     def Scale(self, time: float, *,
         factor: float, hold: float = 0, t: float = 0,
-        type: int = 0, rate: float = 1.0, reverse: bool = False):
+        type: EASING = 0, rate: float = 1.0, reverse: bool = False):
         """
         Scale target by a factor using Keyframes.
 
@@ -456,12 +456,11 @@ class Component:
                 .assert_spawn_order(True)
 
             def keyframe_obj(*, scale: float, duration: float, order: int,
-                close_loop: bool = False, ease_type: int = 0, ease_rate: float = 1.0):
-                obj = new_obj(obj_id.Trigger.KEYFRAME)
-                new_keyframe_group.triggers.append({
+                close_loop: bool = False, ease_type: EASING = 0, ease_rate: float = 1.0):
+                new_keyframe_group.triggers.append({ # type: ignore
                     obj_prop.ID: obj_id.Trigger.KEYFRAME,
                     obj_prop.X: 0.0, obj_prop.Y: 0.0,
-                    obj_prop.GROUPS: [new_keyframe_group.caller],
+                    obj_prop.GROUPS: {new_keyframe_group.caller},
                     ppt.Keyframe.TIME_MODE: 0,  # time mode
                     ppt.Keyframe.KEY_ID: new_keyframe_group.caller,
                     ppt.Keyframe.CLOSE_LOOP: close_loop,
@@ -472,7 +471,6 @@ class Component:
                     ppt.Keyframe.EASE_RATE: ease_rate,
                     ppt.Keyframe.LINE_OPACITY: 1.0,
                 })
-                new_keyframe_group.triggers.append(obj) #type: ignore
 
             if reverse:
                 keyframe_obj(scale=1, duration=0, order=1)

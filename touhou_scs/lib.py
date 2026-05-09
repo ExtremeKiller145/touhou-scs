@@ -183,6 +183,9 @@ class BulletPool:
         self.has_orientation = has_orientation
         self.current = max_group
         _registered_bullet_pools.append(self)
+        pool_size = max_group - min_group + 1
+        # Reserve both the hitbox range and the collision-group range
+        util.unknown_g.reserve_range(min_group, max_group + pool_size)
 
     def next(self) -> tuple[int, int]:
         """Returns: (bullet_group, collision_group)"""

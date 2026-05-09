@@ -51,12 +51,21 @@ class _GroupAllocatorProxy:
     Proxy for allocating unique group IDs via level.new.group().
 
     Before init_level() is called, any call raises a clear RuntimeError.
-    After init_level() is called, every call delegates to level.new.group().
+    After init_level() is called, every call delegates to level.new.group(),
+    skipping any groups that fall within a registered reserved range.
     """
 
     def __init__(self) -> None:
         self._level: Level | None = None
         self.count = 0
+        self._reserved_ranges: list[tuple[int, int]] = []  # list of (min, max) inclusive
+
+    def reserve_range(self, min_group: int, max_group: int) -> None:
+        """Register a group range that unknown_g() must never allocate into."""
+        self._reserved_ranges.append((min_group, max_group))
+
+    def _is_reserved(self, g: int) -> bool:
+        return any(lo <= g <= hi for lo, hi in self._reserved_ranges)
 
     def init(self, level: Level) -> None:
         if self._level is not None:
@@ -71,8 +80,11 @@ class _GroupAllocatorProxy:
                 "Level.from_file() / Level.from_live_editor(), before "
                 "any other touhou_scs imports."
             )
+        g = int(self._level.new.group())
+        while self._is_reserved(g):
+            g = int(self._level.new.group())
         self.count += 1
-        return int(self._level.new.group())
+        return g
 
 
 unknown_g = _GroupAllocatorProxy()
