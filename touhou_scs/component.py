@@ -582,9 +582,15 @@ class Component:
 
         if count == 0: raise ValueError("Pickup: Count is 0 (no change)")
 
-        trigger = self.create_trigger(obj_id.Trigger.PICKUP, util.time_to_dist(time), 10)
+        # substituting self.create_trigger bc cant set a51 (pickup has no target field)
+        trigger = new_obj(obj_id.Trigger.PICKUP)
+        trigger[obj_prop.X] = util.time_to_dist(time)
+        trigger[obj_prop.GROUPS] = self.groups
+        trigger[obj_prop.EDITOR_L1] = self.editorLayer
+        trigger[ppt.SPAWN_TRIGGER] = True
+        trigger[ppt.MULTI_TRIGGER] = True
+        self.triggers.append(trigger) # type: ignore
 
-        del trigger[ppt.Move.TARGET_ID] # type: ignore
         trigger[ppt.Pickup.ITEM_ID] = item_id
         trigger[ppt.Pickup.COUNT] = count
         trigger[ppt.Pickup.OVERRIDE] = override
@@ -604,7 +610,14 @@ class Component:
 
         mode = 1 if multiply else 2 # multiply=1, divide=2
 
-        trigger = self.create_trigger(obj_id.Trigger.PICKUP, util.time_to_dist(time), 10)
+        # substituting self.create_trigger bc cant set a51 (pickup has no target field)
+        trigger = new_obj(obj_id.Trigger.PICKUP)
+        trigger[obj_prop.X] = util.time_to_dist(time)
+        trigger[obj_prop.GROUPS] = self.groups
+        trigger[obj_prop.EDITOR_L1] = self.editorLayer
+        trigger[ppt.SPAWN_TRIGGER] = True
+        trigger[ppt.MULTI_TRIGGER] = True
+        self.triggers.append(trigger) # type: ignore
 
         del trigger[ppt.Move.TARGET_ID] # type: ignore
         trigger[ppt.Pickup.ITEM_ID] = item_id

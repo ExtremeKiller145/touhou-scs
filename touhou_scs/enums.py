@@ -190,6 +190,18 @@ TICK: Final[float] = 1 / 240  # One game tick in seconds
 # Speed
 PLR_SPEED: Final[float] = 311.58  # Player movement speed in studs/second
 
+# Special Collision IDs
+BOTTOM_BORDER = 12
+RIGHT_BORDER = 8
+TOP_BORDER = 9
+LEFT_BORDER = 7
+
+# Special Item IDs
+LIVES = 15
+POWER_LEVEL = 12
+BOMB_COUNTER = 11
+SCORE = 16
+
 # Special Groups
 PLR: Final[int] = 2
 """Player group and collision ID"""

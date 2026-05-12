@@ -285,15 +285,15 @@ class EnemyPool:
                 f"{self._min_group}-{self._max_group}"
             )
 
+        self.time = time
+
         util.enforce_component_targets("Spawn Enemy", attack,
             excludes={ enum.EMPTY_BULLET, enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER, enum.EMPTY_MULTITARGET, enum.EMPTY_TARGET_GROUP })
 
         off_switch = self._off_switches[enemy_group]
 
-        # stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
-        with stage.temp_context(target=attack.caller):
-            stage.Timer(time - enum.TICK*2, item_id=enemy_group, start=hp, end=0, mod=-1, start_paused=True)
-        
+        stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
+
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
 
