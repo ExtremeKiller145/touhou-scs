@@ -216,6 +216,9 @@ NORTH_GROUP: Final[int] = 26
 DEBUG_UI_GROUP: Final[int] = 33
 """Group for debug viewing hidden objects (e.g. pointers, item counters)"""
 
+PICKUP_RANDOM_MOVE = 129
+
+
 # Empty Groups for Remapping   (e.g. 21 => group)
 # Holder object for empty groups is directly placed on the physical player, layer 0
 EMPTY1: Final[int] = 21

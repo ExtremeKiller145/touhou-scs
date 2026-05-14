@@ -37,8 +37,10 @@ def add_disable_all_bullets():
         list(range(lib.bullet1.min_group, lib.bullet1.max_group + 1)) +
         list(range(lib.bullet2.min_group, lib.bullet2.max_group + 1)) +
         list(range(lib.bullet3.min_group, lib.bullet3.max_group + 1)) +
-        list(range(lib.bullet4.min_group, lib.bullet4.max_group + 1))
-        # list(range(lib.pointer.min_group, lib.pointer.max_group + 1))
+        list(range(lib.bullet4.min_group, lib.bullet4.max_group + 1)) +
+        list(range(lib.p_pickup.min_group, lib.p_pickup.max_group + 1)) +
+        list(range(lib.b_pickup.min_group, lib.b_pickup.max_group + 1)) +
+        list(range(lib.score_pickup.min_group, lib.score_pickup.max_group + 1))
     )
 
     bullet_iter = iter(bullet_groups)
@@ -168,7 +170,7 @@ def add_pickup_collisions():
     on_p_pickup = (Component("On P Pickup Collision", unknown_g(), editorLayer=6)
         .assert_spawn_order(True)
         .set_context(target=enum.EMPTY_BULLET)
-            .Scale(0, factor=4, hold=0.1, t=0.3, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
+            .Scale(0, factor=2, hold=0.1, t=0.3, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
             .Alpha(0, t=0.3, opacity=0)
             .Pulse(0, lib.rgb(255,255,255), t=0.3, exclusive=True)
             .Alpha(0.3, t=0, opacity=100)
@@ -180,7 +182,7 @@ def add_pickup_collisions():
     on_b_pickup = (Component("On B Pickup Collision", unknown_g(), editorLayer=6)
         .assert_spawn_order(True)
         .set_context(target=enum.EMPTY_BULLET)
-            .Scale(0, factor=4, hold=0.1, t=0.3, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
+            .Scale(0, factor=2, hold=0.1, t=0.3, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
             .Alpha(0, t=0.3, opacity=0)
             .Pulse(0, lib.rgb(255,255,255), t=0.3, exclusive=True)
             .Alpha(0.3, t=0, opacity=100)
@@ -192,7 +194,7 @@ def add_pickup_collisions():
     on_score_pickup = (Component("On Score Pickup Collision", unknown_g(), editorLayer=6)
         .assert_spawn_order(True)
         .set_context(target=enum.EMPTY_BULLET)
-            .Scale(0, factor=4, hold=0, t=0.3, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
+            .Scale(0, factor=2, hold=0, t=0.3, type=enum.Easing.ELASTIC_IN_OUT, rate=1.5)
             .Alpha(0, t=0.3, opacity=0)
             .Pulse(0, lib.rgb(255,255,255), t=0.3, exclusive=True)
             .Alpha(0.3, t=0, opacity=100)
@@ -212,20 +214,20 @@ def add_pickup_collisions():
             .Spawn(0, enum.EMPTY1, True)
 
         .set_context(target=enum.EMPTY_BULLET, groups={p_group})
-            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.BOTTOM_BORDER, activateGroup=False)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.BOTTOM_BORDER, 
+                activateGroup=False, onExit=True)
         .set_context(target=intermediate, groups={p_group})
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_SCREEN_BOUNDARY, activateGroup=True)
-            
-        # .set_context(target=enum.EMPTY_BULLET, groups={p_group})
-        #     .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_SCREEN_BOUNDARY, activateGroup=True)
 
         .set_context(target=enum.EMPTY_BULLET, groups={b_group})
-            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.BOTTOM_BORDER, activateGroup=False)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.BOTTOM_BORDER, 
+                activateGroup=False, onExit=True)
         .set_context(target=intermediate, groups={b_group})
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_SCREEN_BOUNDARY, activateGroup=True)
 
         .set_context(target=enum.EMPTY_BULLET, groups={score_group})
-            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.BOTTOM_BORDER, activateGroup=False)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.BOTTOM_BORDER, 
+                activateGroup=False, onExit=True)
         .set_context(target=intermediate, groups={score_group})
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=PLR_SCREEN_BOUNDARY, activateGroup=True)
     )
@@ -233,21 +235,24 @@ def add_pickup_collisions():
     global_col = Component("Pickup Collision remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
         .assert_spawn_order(False)
 
-    magnet_col = Component("Pickup Magnet Triggers", 0, editorLayer=6) \
+    magnet_col = Component("Pickup Magnet Triggers", unknown_g(), editorLayer=6) \
 
     # optimization: if replacing with multitarget, make
     for i in range(301, 330 + 1):
         global_col.Spawn(0, p_group, False, 
             remap={enum.EMPTY_BULLET: i, enum.EMPTY1: on_p_pickup.caller})
-        # with magnet_col.temp_context(groups={i}):
-        #     magnet_col.Spawn(0, enum.EMPTY1, True) # magnet trigger for each pickup
-        
+        with magnet_col.temp_context(groups={124}, target=i):
+            magnet_col.GotoGroup(0, enum.PLR, t=0.5, dynamic=True, type=1, rate=2)
     for i in range(331, 340 + 1):
         global_col.Spawn(0, b_group, False, 
             remap={enum.EMPTY_BULLET: i, enum.EMPTY1: on_b_pickup.caller})
+        with magnet_col.temp_context(groups={124}, target=i):
+            magnet_col.GotoGroup(0, enum.PLR, t=0.5, dynamic=True, type=1, rate=2)
     for i in range(341, 450 + 1):
         global_col.Spawn(0, score_group, False, 
             remap={enum.EMPTY_BULLET: i, enum.EMPTY1: on_score_pickup.caller})
+        with magnet_col.temp_context(groups={124}, target=i):
+            magnet_col.GotoGroup(0, enum.PLR, t=0.5, dynamic=True, type=1, rate=2)
 
 
 despawn1 = (Component("EnemyBullet Despawn 1", unknown_g(), editorLayer=6)

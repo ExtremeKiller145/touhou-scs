@@ -202,6 +202,11 @@ bullet2 = BulletPool(1501, 2200, True)
 bullet3 = BulletPool(2901, 3600, False)
 bullet4 = BulletPool(4301, 4700, False)
 
+p_pickup = BulletPool(301, 330, True)
+b_pickup = BulletPool(331, 340, True)
+score_pickup = BulletPool(341, 450, True)
+
+
 class pointer:
     obj_count = 250
     pointer_comp = Component("Pointers", 0, 11).assert_spawn_order(False)
@@ -256,7 +261,14 @@ class Stage:
     # stage6 = Component("Stage6", unknown_g(), 9).assert_spawn_order(True)
 
 
+DropConfig = tuple[tuple["BulletPool", int], ...]
+"""Hashable key: ((pool, count), ...) sorted by pool id — used to cache drop components."""
+
+
 class EnemyPool:
+    _drop_components: dict[DropConfig, Component] = {}
+    """Class-level cache: reuse the same drop component for identical pickup configs."""
+
     def __init__(self, min_group: int, max_group: int, despawn_setup: Component):
         self._min_group = min_group
         self._max_group = max_group
@@ -277,8 +289,48 @@ class EnemyPool:
             self._current = self._min_group
         return self._current
 
-    def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int, enemy_group: int):
-        """Spawn an enemy attack with HP/death handling."""
+    @classmethod
+    def _get_drop_component(cls, drops: list[tuple["BulletPool", int]]) -> Component:
+        """
+        Return a cached (or newly created) drop component for the given pickup config.
+
+        The component uses EMPTY_TARGET_GROUP as the enemy position, which gets
+        remapped to the real enemy group at spawn time via despawnSetup's remap.
+        Each pickup is toggled on and instantly snapped to the enemy's position.
+        """
+        key: DropConfig = tuple(sorted(
+            ((pool, count) for pool, count in drops),
+            key=lambda x: id(x[0])
+        ))
+
+        if key in cls._drop_components:
+            return cls._drop_components[key]
+
+        # Build a human-readable name from pool ranges
+        name_parts = [f"{pool.min_group}-{pool.max_group}x{count}" for pool, count in key]
+        comp = Component(f"Drop [{', '.join(name_parts)}]", unknown_g(), editorLayer=7)
+        comp.assert_spawn_order(True)
+
+        for pool, count in drops:
+            for i in range(count):
+                pickup_group, _ = pool.next()
+                # Snap pickup to enemy position, then toggle it on
+                with comp.temp_context(target=pickup_group):
+                    comp.GotoGroup(0 + i/15, enum.EMPTY_TARGET_GROUP)
+                    comp.Toggle(0 + i/15, True)
+                    comp.Spawn(0 + i/15, enum.PICKUP_RANDOM_MOVE, False, remap={10: pickup_group})
+
+        cls._drop_components[key] = comp
+        return comp
+
+    def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int, enemy_group: int,
+                    drops: list[tuple["BulletPool", int]] | None = None):
+        """Spawn an enemy attack with HP/death handling.
+
+        drops: optional list of (BulletPool, count) pairs specifying what pickups to drop on death.
+               e.g. [(lib.score_pickup, 3), (lib.p_pickup, 1)]
+               Identical configs reuse the same component — no extra groups per repeated call.
+        """
         if not (self._min_group <= enemy_group <= self._max_group):
             raise ValueError(
                 f"spawn_enemy: enemy_group {enemy_group} is not in pool range "
@@ -292,13 +344,18 @@ class EnemyPool:
 
         off_switch = self._off_switches[enemy_group]
 
+        drop_caller = (
+            self._get_drop_component(drops).caller
+            if drops else enum.EMPTY_MULTITARGET
+        )
+
         stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
 
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
 
         stage.Spawn(time, self._despawn_setup.caller, False,
-            remap={enum.EMPTY_TARGET_GROUP: enemy_group, enum.EMPTY1: off_switch}
+            remap={enum.EMPTY_TARGET_GROUP: enemy_group, enum.EMPTY1: off_switch, enum.EMPTY2: drop_caller}
         )
 
 
@@ -319,6 +376,7 @@ despawner = (Component("Despawner", unknown_g(), 7)
     .clear_context()
     .Stop(0, target=enum.EMPTY1)
     .Spawn(0, toggler, False, delay=1)
+    .Spawn(0, enum.EMPTY2, True)
 )
 
 despawnSetup = (Component("Despawn Setup", unknown_g(), 7)

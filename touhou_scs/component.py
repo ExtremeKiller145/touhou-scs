@@ -355,7 +355,7 @@ class Component:
         return self
 
     def GotoGroup(self, time: float, location: int, *,
-        t: float = 0, type: EASING = 0, rate: float = 1.0):
+        t: float = 0, type: EASING = 0, rate: float = 1.0, dynamic: bool = False):
         validate_params(targets=[self.target, location], non_negative=t, type=type, rate=rate)
         enforce_solid_groups(self.target, location)
 
@@ -368,6 +368,7 @@ class Component:
         trigger[ppt.Move.EASING] = type
         trigger[ppt.Move.EASE_RATE] = rate
 
+        if dynamic: trigger[ppt.Move.DYNAMIC_MODE] = True
         if t == 0: trigger[ppt.Move.SILENT] = True
 
         return self
@@ -564,7 +565,7 @@ class Component:
 
         return self
 
-    def Count(self, time: float, *, item_id: int, count: int, activateGroup: bool):
+    def Count(self, time: float, *, item_id: int, count: int, activateGroup: bool, multiActivate: bool = True):
         validate_params(targets=self.target, item_id=item_id)
 
         trigger = self.create_trigger(obj_id.Trigger.COUNT, util.time_to_dist(time), self.target)
@@ -572,7 +573,7 @@ class Component:
         trigger[ppt.Count.ITEM_ID] = item_id
         trigger[ppt.Count.COUNT] = count
         trigger[ppt.Count.ACTIVATE_GROUP] = activateGroup
-        trigger[ppt.Count.MULTI_ACTIVATE] = True
+        trigger[ppt.Count.MULTI_ACTIVATE] = multiActivate
 
         return self
 
