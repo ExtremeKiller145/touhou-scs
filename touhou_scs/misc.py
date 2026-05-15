@@ -3,7 +3,7 @@ from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.component import Component, Multitarget
 from touhou_scs.utils import unknown_g, calltracker
 
-from gmdbuilder import obj_id, obj_prop
+from gmdbuilder import from_object_string, obj_id, obj_prop
 
 # Hitbox is the weapon, hurtbox is the target
 BOUNDARY_HITBOX = 1
@@ -202,6 +202,16 @@ def add_pickup_collisions():
         .clear_context()
         .Pickup(0.3, item_id=enum.SCORE, count=100, override=False)
     )
+    
+    def sfx(comp: Component):
+        sfx = from_object_string("1,3602,2,405,3,315,155,1,62,1,87,1,36,1,392,4835,404,2,405,16,406,0.8,410,137,411,117,421,1,422,0.5,10,0.5,433,1,490,0.122,502,6,598,0.01;")
+        sfx[obj_prop.X] = 0
+        sfx[obj_prop.GROUPS] = { comp.caller }
+        comp.triggers.append(sfx) # type: ignore
+    
+    sfx(on_p_pickup)
+    sfx(on_b_pickup)
+    sfx(on_score_pickup)
 
     p_group = unknown_g()
     b_group = unknown_g()

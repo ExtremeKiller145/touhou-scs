@@ -206,6 +206,9 @@ p_pickup = BulletPool(301, 330, True)
 b_pickup = BulletPool(331, 340, True)
 score_pickup = BulletPool(341, 450, True)
 
+PICKUP_SPAWN_TIME = 0.2
+"""Total time window (seconds) over which dropped pickups are spread on enemy death."""
+
 
 class pointer:
     obj_count = 250
@@ -261,13 +264,7 @@ class Stage:
     # stage6 = Component("Stage6", unknown_g(), 9).assert_spawn_order(True)
 
 
-DropConfig = tuple[tuple["BulletPool", int], ...]
-"""Hashable key: ((pool, count), ...) sorted by pool id — used to cache drop components."""
-
-
 class EnemyPool:
-    _drop_components: dict[DropConfig, Component] = {}
-    """Class-level cache: reuse the same drop component for identical pickup configs."""
 
     def __init__(self, min_group: int, max_group: int, despawn_setup: Component):
         self._min_group = min_group
@@ -289,38 +286,33 @@ class EnemyPool:
             self._current = self._min_group
         return self._current
 
-    @classmethod
-    def _get_drop_component(cls, drops: list[tuple["BulletPool", int]]) -> Component:
+    @staticmethod
+    def _new_drop_comp(drops: list[tuple["BulletPool", int]]) -> Component:
         """
-        Return a cached (or newly created) drop component for the given pickup config.
+        Create a new drop component with freshly allocated pickup groups.
 
         The component uses EMPTY_TARGET_GROUP as the enemy position, which gets
         remapped to the real enemy group at spawn time via despawnSetup's remap.
         Each pickup is toggled on and instantly snapped to the enemy's position.
         """
-        key: DropConfig = tuple(sorted(
-            ((pool, count) for pool, count in drops),
-            key=lambda x: id(x[0])
-        ))
-
-        if key in cls._drop_components:
-            return cls._drop_components[key]
-
         # Build a human-readable name from pool ranges
-        name_parts = [f"{pool.min_group}-{pool.max_group}x{count}" for pool, count in key]
+        name_parts = [f"{pool.min_group}-{pool.max_group}x{count}" for pool, count in drops]
         comp = Component(f"Drop [{', '.join(name_parts)}]", unknown_g(), editorLayer=7)
         comp.assert_spawn_order(True)
 
+        total = sum(count for _, count in drops)
+        step = PICKUP_SPAWN_TIME / max(total - 1, 1)
+        i = 0
         for pool, count in drops:
-            for i in range(count):
+            for _ in range(count):
                 pickup_group, _ = pool.next()
-                # Snap pickup to enemy position, then toggle it on
+                t = i * step
                 with comp.temp_context(target=pickup_group):
-                    comp.GotoGroup(0 + i/15, enum.EMPTY_TARGET_GROUP)
-                    comp.Toggle(0 + i/15, True)
-                    comp.Spawn(0 + i/15, enum.PICKUP_RANDOM_MOVE, False, remap={10: pickup_group})
+                    comp.GotoGroup(t, enum.EMPTY_TARGET_GROUP)
+                    comp.Toggle(t, True)
+                    comp.Spawn(t, enum.PICKUP_RANDOM_MOVE, False, remap={10: pickup_group})
+                i += 1
 
-        cls._drop_components[key] = comp
         return comp
 
     def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int, enemy_group: int,
@@ -344,10 +336,7 @@ class EnemyPool:
 
         off_switch = self._off_switches[enemy_group]
 
-        drop_caller = (
-            self._get_drop_component(drops).caller
-            if drops else enum.EMPTY_MULTITARGET
-        )
+        drop_caller = self._new_drop_comp(drops).caller if drops else enum.EMPTY_MULTITARGET
 
         stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
 

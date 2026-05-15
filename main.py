@@ -34,6 +34,11 @@ middle_right = lib.pointer.next()
 side_left = lib.pointer.next()
 side_right = lib.pointer.next()
 
+chain_entry  = lib.pointer.next()  # (-60, 420) offscreen top-left
+chain_mid_l  = lib.pointer.next()  # (90,  300) enter shooting zone
+chain_mid_r  = lib.pointer.next()  # (270, 300) leave shooting zone
+chain_exit   = lib.pointer.next()  # (420, 420) offscreen top-right
+
 pos_setup = (Component("Position Setup", unknown_g(), 11)
     .assert_spawn_order(True)
     .set_context(target=top_left)
@@ -50,6 +55,14 @@ pos_setup = (Component("Position Setup", unknown_g(), 11)
         .SetPosition(0, x=60, y=260)
     .set_context(target=side_right)
         .SetPosition(0, x=360-60, y=260)
+    .set_context(target=chain_entry)
+        .SetPosition(0, x=-60, y=420)
+    .set_context(target=chain_mid_l)
+        .SetPosition(0, x=90,  y=300)
+    .set_context(target=chain_mid_r)
+        .SetPosition(0, x=270, y=300)
+    .set_context(target=chain_exit)
+        .SetPosition(0, x=420, y=420)
     .clear_context()
 )
 
@@ -134,121 +147,68 @@ test_bullet2 = (Component("TestBullet", unknown_g(), 5)
 # TEST PATTERNS
 # ===========================================================================
 
-BulletAlloc.start()
 
-test_enemy_g = enemy1.next()
-test_enemy = (Component("TestEnemy", unknown_g(), 5)
-    .assert_spawn_order(True)
-    .set_context(target=test_enemy_g)
-        .GotoGroup(0, middle_test)
-    .clear_context()
-    .pointer.SetPointerCircle(0.4, location=test_enemy_g, follow=True)
-)
-(test_enemy
-    .set_context(target=test_enemy.pointer.pc.all)
-        .MoveBy(0.5, dx=40, dy=0, t=0)
-        .Rotate(0.55, angle=3060, t=20)
-        .Rotate(0.55, center=test_enemy_g, angle=3060, t=10, type=1, rate=1.5)
-        # .Rotate(0.6, center=test_enemy_g, angle=-5600, t=10, type=2, rate=2.5)
-        # .Rotate(1.6, center=test_enemy_g, angle=-5600, t=4, type=1, rate=2.5)
-        .Rotate(8.5, center=test_enemy_g, angle=1560, t=8, type=2, rate=2.5)
-        # .Rotate(6.5, center=test_enemy_g, angle=3060, t=10, type=1, rate=2.5)
-        # .Rotate(6.5, center=test_enemy_g, angle=-760, t=14, type=2, rate=2.5)
-        .Rotate(14.5, center=test_enemy_g, angle=3060, t=10, type=2, rate=2.5)
-        .Rotate(15.5, center=test_enemy_g, angle=-7600, t=14, type=1, rate=2.5)
-        # .Rotate(16.5, center=test_enemy_g, angle=1560, t=4, type=2, rate=2.5)
-    .clear_context()
-    .timed.RadialWave(1.0, test_bullet, lib.bullet3, waves=48, interval=0.5, numBullets=30)
-    .pointer.CleanPointerCircle()
-    
-    
-    
-    .pointer.SetPointerCircle(5, location=middle_left, follow=True)
-    .set_context(target=test_enemy.pointer.pc.all)
-        .MoveBy(5+0.5, dx=-60, dy=0, t=0)
-        .Rotate(5+0.55, angle=3060, t=20)
-        # .Rotate(5+0.55, center=middle_left, angle=3060, t=10, type=1, rate=1.5)
-        # .Rotate(5+0.6, center=middle_left, angle=-5600, t=10, type=2, rate=2.5)
-        # .Rotate(5+1.6, center=middle_left, angle=-5600, t=4, type=1, rate=2.5)
-        .Rotate(5+8.5, center=middle_left, angle=1560, t=8, type=2, rate=2.5)
-        # .Rotate(5+6.5, center=middle_left, angle=3060, t=10, type=1, rate=2.5)
-        # .Rotate(5+6.5, center=middle_left, angle=-760, t=14, type=2, rate=2.5)
-        .Rotate(5+14.5, center=middle_left, angle=3060, t=10, type=2, rate=2.5)
-        # .Rotate(5+15.5, center=middle_left, angle=-7600, t=14, type=1, rate=2.5)
-        # .Rotate(5+16.5, center=middle_left, angle=1560, t=4, type=2, rate=2.5)
-    .clear_context()
-    .timed.RadialWave(5.5, test_bullet3, lib.bullet3, waves=20, interval=1, numBullets=14)
-    .pointer.CleanPointerCircle()
-    
-    .pointer.SetPointerCircle(4.5, location=middle_right, follow=True)
-    .set_context(target=test_enemy.pointer.pc.all)
-        .MoveBy(4.5+0.5, dx=-60, dy=0, t=0)
-        .Rotate(4.5+0.55, angle=3060, t=20)
-        # .Rotate(4.5+0.55, center=middle_right, angle=3060, t=10, type=1, rate=1.5)
-        # .Rotate(4.5+0.6, center=middle_right, angle=-5600, t=10, type=2, rate=2.5)
-        # .Rotate(4.5+1.6, center=middle_right, angle=-5600, t=4, type=1, rate=2.5)
-        # .Rotate(4.5+8.5, center=middle_right, angle=1560, t=8, type=2, rate=2.5)
-        # .Rotate(4.5+6.5, center=middle_right, angle=3060, t=10, type=1, rate=2.5)
-        .Rotate(4.5+6.5, center=middle_right, angle=-760, t=14, type=2, rate=2.5)
-        # .Rotate(4.5+14.5, center=middle_right, angle=3060, t=10, type=2, rate=2.5)
-        # .Rotate(4.5+15.5, center=middle_right, angle=-7600, t=14, type=1, rate=2.5)
-        .Rotate(4.5+16.5, center=middle_right, angle=1560, t=4, type=2, rate=2.5)
-    .clear_context()
-    .timed.RadialWave(5, test_bullet3, lib.bullet3, waves=20, interval=1, numBullets=14)
-    .pointer.CleanPointerCircle()
-    
-    
-    
-    .pointer.SetPointerCircle(4, location=side_left, follow=True)
-    .set_context(target=test_enemy.pointer.pc.all)
-        .MoveBy(9+0.5, dx=-20, dy=0, t=0)
-        .Rotate(9+0.55, angle=3060, t=20)
-        .Rotate(9+0.55, center=side_left, angle=3060, t=10, type=1, rate=1.5)
-        # .Rotate(9+0.6, center=side_left, angle=-5600, t=10, type=2, rate=2.5)
-        # .Rotate(9+1.6, center=side_left, angle=-5600, t=4, type=1, rate=2.5)
-        # .Rotate(9+8.5, center=side_left, angle=1560, t=8, type=2, rate=2.5)
-        # .Rotate(9+6.5, center=side_left, angle=3060, t=10, type=1, rate=2.5)
-        # .Rotate(9+6.5, center=side_left, angle=-760, t=14, type=2, rate=2.5)
-        # .Rotate(9+14.5, center=side_left, angle=3060, t=10, type=2, rate=2.5)
-        # .Rotate(9+15.5, center=side_left, angle=-7600, t=14, type=1, rate=2.5)
-        # .Rotate(9+16.5, center=side_left, angle=1560, t=4, type=2, rate=2.5)
-    .clear_context()
-    .timed.RadialWave(9.5, test_bullet4, lib.bullet3, waves=10, interval=1.8, numBullets=40)
-    .pointer.CleanPointerCircle()
-    
-    .pointer.SetPointerCircle(3.5, location=side_right, follow=True)
-    .set_context(target=test_enemy.pointer.pc.all)
-        .MoveBy(9.2+0.5, dx=-20, dy=0, t=0)
-        .Rotate(9.2+0.55, angle=3060, t=20)
-        .Rotate(9.2+0.55, center=side_right, angle=3060, t=10, type=1, rate=1.5)
-        # .Rotate(9.2+0.6, center=side_right, angle=-5600, t=10, type=2, rate=2.5)
-        # .Rotate(9.2+1.6, center=side_right, angle=-5600, t=4, type=1, rate=2.5)
-        # .Rotate(9.2+8.5, center=side_right, angle=1560, t=8, type=2, rate=2.5)
-        # .Rotate(9.2+6.5, center=side_right, angle=3060, t=10, type=1, rate=2.5)
-        # .Rotate(9.2+6.5, center=side_right, angle=-760, t=14, type=2, rate=2.5)
-        # .Rotate(9.2+14.5, center=side_right, angle=3060, t=10, type=2, rate=2.5)
-        # .Rotate(9.2+15.5, center=side_right, angle=-7600, t=14, type=1, rate=2.5)
-        .Rotate(9.2+16.5, center=side_right, angle=1560, t=4, type=2, rate=2.5)
-    .clear_context()
-    .timed.RadialWave(9.7, test_bullet4, lib.bullet3, waves=10, interval=1.8, numBullets=40)
-    .pointer.CleanPointerCircle()
-    
-    
-    .pointer.SetPointerCircle(3, location=test_enemy_g, follow=True)
-    .set_context(target=test_enemy.pointer.pc.all)
-        .Rotate(4, center=test_enemy_g, angle=11.25, t=0)
-    .clear_context()
-    .timed.RadialWave(15, test_bullet2, lib.bullet2, waves=30, interval=0.25, numBullets=16)
-    # .timed.RadialWave(1.0, test_bullet, lib.bullet3, waves=48, interval=0.3, numBullets=20)
-    # .timed.RadialWave(1.1, test_bullet4, lib.bullet2, waves=48, interval=0.3, numBullets=20)
-    # .timed.RadialWave(1.1, test_bullet3, lib.bullet2, waves=48, interval=0.3, numBullets=20)
-    .pointer.CleanPointerCircle()
-)
+MOVE_IN_T   = 1.5   # entry offscreen -> mid_l
+SWEEP_T     = 3.0   # mid_l -> mid_r (shooting phase)
+MOVE_OUT_T  = 1.5   # mid_r -> exit offscreen
+WAVES       = 8
+WAVE_INT    = SWEEP_T / (WAVES + 1)  # evenly spread across the sweep
 
-BulletAlloc.resolve()
+from random import randint, random
 
-enemy1.spawn_enemy(Stage.stage1, 1.0, test_enemy, 40, test_enemy_g, 
-    drops=[(lib.p_pickup, 5)])
+
+def make_patrol_enemy(enemy_g: int, bullet_type: lib.BulletPool) -> Component:
+    """Build one patrol enemy attack component for the given enemy group."""
+    shoot_start = MOVE_IN_T  # waves begin as soon as sweep starts
+
+    comp = (Component(f"PatrolEnemy [{enemy_g}]", unknown_g(), 5)
+        .assert_spawn_order(True)
+
+        # -- Enter: snap to entry point, glide to mid_l --
+        .set_context(target=enemy_g)
+            .GotoGroup(0, chain_entry)
+            .GotoGroup(e.TICK, chain_mid_l, t=MOVE_IN_T, type=e.Easing.EASE_IN_OUT, rate=2)
+
+        # -- Sweep: glide from mid_l to mid_r while shooting --
+            .GotoGroup(MOVE_IN_T, chain_mid_r, t=SWEEP_T, type=e.Easing.NONE)
+
+        # -- Exit: glide to offscreen top-right --
+            .GotoGroup(MOVE_IN_T + SWEEP_T, chain_exit, t=MOVE_OUT_T, type=e.Easing.EASE_IN, rate=2)
+            .Toggle(MOVE_IN_T + SWEEP_T + MOVE_OUT_T, False)  # despawn at end of exit
+        .clear_context()
+    )
+
+    # Fire 5 radial waves evenly spaced across the sweep
+    comp.pointer.SetPointerCircle(shoot_start, location=enemy_g, follow=True)
+    for i in range(WAVES):
+        wave_t = shoot_start + (i + 1.5 - random()) * WAVE_INT
+        comp.instant.Radial(wave_t, test_bullet, bullet_type, numBullets=24)
+    comp.set_context(target=comp.pointer.pc.all)
+    comp.Follow(0, enemy_g, t=MOVE_IN_T + SWEEP_T + MOVE_OUT_T)
+    comp.pointer.CleanPointerCircle()
+
+    return comp
+
+CHAIN_SIZE   = 6
+CHAIN_OFFSET = 1.8   # seconds between each enemy entering
+
+chain_enemies: list[tuple[int, Component]] = []
+for i in range(CHAIN_SIZE):
+    g = enemy1.next()
+    BulletAlloc.start()
+    chain_enemies.append((g, make_patrol_enemy(g, lib.bullet1 if i % 2 == 0 else lib.bullet3)))
+
+    BulletAlloc.resolve()
+
+# ===========================================================================
+# SPAWN CALLS
+# ===========================================================================
+
+for i, (g, comp) in enumerate(chain_enemies):
+    t0 = 1.0 + i * CHAIN_OFFSET
+    enemy1.spawn_enemy(Stage.stage1, t0, comp, 10, g,
+        drops=[(lib.score_pickup, randint(5,13)), (lib.p_pickup, randint(2,6))])
+
 
 Stage.stage1.Spawn(0, pos_setup.caller, True)
 
