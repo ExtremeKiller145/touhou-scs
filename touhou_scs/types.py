@@ -62,15 +62,3 @@ TriggerArea = TypedDict('TriggerArea', {
     "max_x": int,
     "max_y": int
 })
-
-GroupID = int
-"""Normal group (0-9999) or unknown_g placeholder (10000+)"""
-
-Time = float
-"""Time in seconds (positional arg in most triggers)"""
-
-Distance = float
-"""Distance in studs"""
-
-Angle = float
-"""Angle in degrees"""

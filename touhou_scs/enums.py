@@ -218,6 +218,9 @@ DEBUG_UI_GROUP: Final[int] = 33
 
 PICKUP_RANDOM_MOVE = 129
 
+HOMING_TRACKER_OBJ = 130
+HOMING_TRACKER_BLOCK = 133
+HOMING_TRACKER_COL_ID = 14
 
 # Empty Groups for Remapping   (e.g. 21 => group)
 # Holder object for empty groups is directly placed on the physical player, layer 0

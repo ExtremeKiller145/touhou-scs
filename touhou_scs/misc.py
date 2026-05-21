@@ -130,14 +130,14 @@ def add_enemy_collisions():
         list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1))
     )
 
-    base_col = (Component("Enemy Collision for PlrBullets (un-mapped)", unknown_g(), editorLayer=6)
+    base_plr_col = (Component("Enemy Collision for PlrBullets (un-mapped)", unknown_g(), editorLayer=6)
         .assert_spawn_order(False)
         .set_context(target=plr_bullet_despawn.caller)
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
         .clear_context()
     )
 
-    global_col = Component("Enemy Collision remap wrappers for PlrBullets", GLOBAL_COLLISIONS, editorLayer=4) \
+    global_col = Component("Enemy Collision PlrBullet & Homing remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
         .assert_spawn_order(False)
 
     for enemy in enemy_groups:
@@ -155,8 +155,45 @@ def add_enemy_collisions():
 
         while remaining > 0:
             batch_size = 64 if remaining > 127 else remaining
-            Multitarget.spawn_with_remap(global_col, 0, batch_size, base_col, remap_collision)
+            Multitarget.spawn_with_remap(global_col, 0, batch_size, base_plr_col, remap_collision)
             remaining -= batch_size
+
+    # Homing collision logic
+
+    homing_func = (Component("Homing Collision remap wrapper", unknown_g(), editorLayer=4) \
+        .assert_spawn_order(False)
+        .set_context(target=enum.HOMING_TRACKER_BLOCK)
+            .Toggle(0, False)
+        .clear_context()
+    )
+    retarget = from_object_string(f"1,3661,2,0,20,4,57,{homing_func.caller},62,1,87,1,36,1,51,136,71,20,566,1,568,1;")
+    homing_func.triggers.append(retarget) # type: ignore
+    
+    base_homing_col = (Component("Enemy Collision for Homing (un-mapped)", unknown_g(), editorLayer=6)
+        .assert_spawn_order(False)
+        .set_context(target=homing_func.caller)
+            .Collision(0, blockA=enum.HOMING_TRACKER_COL_ID, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
+        .clear_context()
+    )
+
+    # for enemy in enemy_groups:
+    #     global_col.Spawn(0, base_homing_col, False, remap={enum.EMPTY_TARGET_GROUP: enemy})
+    enemy_iter = iter(enemy_groups)
+    remaining = len(enemy_groups)
+
+    def remap_homing(remap_pairs: dict[int, int], remap: util.Remap):
+        for source, target in remap_pairs.items():
+            if source == enum.HOMING_TRACKER_COL_ID:
+                remap.pair(target, enum.HOMING_TRACKER_COL_ID)
+            elif source == enum.EMPTY_TARGET_GROUP:
+                remap.pair(target, next(enemy_iter))
+            else:
+                remap.pair(target, enum.EMPTY_MULTITARGET)
+
+    while remaining > 0:
+        batch_size = 64 if remaining > 127 else remaining
+        Multitarget.spawn_with_remap(global_col, 0, batch_size, base_homing_col, remap_homing)
+        remaining -= batch_size
 
 
 @calltracker
