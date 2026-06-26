@@ -627,13 +627,13 @@ class Component:
 
         return self
 
-    def Timer(self, time: float, *, item_id: int, 
+    def Timer(self, time: float, *, item: int, 
         start: float, end: float, mod: float = 1, start_paused: bool = False):
         """Activate a time trigger that counts down from 'duration' seconds."""
-        validate_params(item_id=item_id)
+        validate_params(item_id=item)
         trigger = self.create_trigger(obj_id.Trigger.TIME, util.time_to_dist(time), self.target)
 
-        trigger[ppt.Time.ITEM_ID] = item_id
+        trigger[ppt.Time.ITEM_ID] = item
         trigger[ppt.Time.START_TIME] = start
         trigger["a473"] = end  # STOP_TIME (missing from obj_prop.Trigger.Time)
         trigger[ppt.Time.MOD] = mod
@@ -641,8 +641,8 @@ class Component:
 
         return self
 
-    def _time_control(self, time: float, item_id: int, stop: bool):
-        validate_params(item_id=item_id)
+    def _time_control(self, time: float, item: int, stop: bool):
+        validate_params(item_id=item)
         self.triggers.append(GenericObj({
             obj_prop.ID: obj_id.Trigger.TIME_CONTROL,
             obj_prop.X: util.time_to_dist(time),
@@ -650,38 +650,34 @@ class Component:
             obj_prop.EDITOR_L1: self.editorLayer,
             ppt.SPAWN_TRIGGER: True,
             ppt.MULTI_TRIGGER: True,
-            ppt.TimeControl.ITEM_ID: item_id,
+            ppt.TimeControl.ITEM_ID: item,
             ppt.TimeControl.STOP: stop,
         }))
         return self
     
-    def TimerStart(self, time: float, *, item_id: int):
+    def TimerStart(self, time: float, *, item: int):
         """Start/Resume a timer."""
-        return self._time_control(time, item_id, stop=False)
+        return self._time_control(time, item, stop=False)
     
-    def TimerStop(self, time: float, *, item_id: int):
+    def TimerStop(self, time: float, *, item: int):
         """Stop/Pause a timer."""
-        return self._time_control(time, item_id, stop=True)
+        return self._time_control(time, item, stop=True)
     
-    def TimerOp(self, time: float, *, item: int, mod: int = 1, 
-        math_op: enum.Item.MathOp, 
-        sign_op: enum.Item.SignOp = enum.Item.SignOp.NONE, 
-        mod_op: enum.Item.MathOp = enum.Item.MathOp.MULTIPLY):
+    def TimerOp(self, time: float, *, item: int, mod: float = 1, 
+        sign: enum.Item.MathOp = 0): # type: ignore
         """
         Set a Timer ID to a specific value.
         
-        Formula: target = target (sign_op) item (mod_op) mod
+        Formula: target = target (sign_op) mod
+
+        sign as 'None' removes 'target' from the right side
         """
         validate_params(item_id=item)
         trigger = self.create_trigger(obj_id.Trigger.ITEM_EDIT, util.time_to_dist(time), item)
         
         trigger[ppt.ItemEdit.TARGET_ITEM_TYPE] = enum.Item.ItemType.TIMER.value # type for target
-        trigger[ppt.ItemEdit.ITEM_ID_1] = item
-        trigger[ppt.ItemEdit.ITEM_TYPE_1] = enum.Item.ItemType.TIMER.value
-        trigger[ppt.ItemEdit.ITEM_OP_1] = sign_op.value # op for 'target = target (sign_op) item (mod)' 
-        trigger[ppt.ItemEdit.ITEM_TYPE_2] = math_op.value
         trigger[ppt.ItemEdit.MOD] = mod
-        trigger[ppt.ItemEdit.ITEM_OP_3] = mod_op.value
+        if sign: trigger[ppt.ItemEdit.ITEM_OP_1] = sign.value # op for 'target = target (sign) (mod)' 
         
         return self
 

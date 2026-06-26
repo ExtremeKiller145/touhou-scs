@@ -18,7 +18,7 @@ from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import ComponentProtocol, SpellProtocol, GenericObj, TriggerArea
 from dataclasses import dataclass
 
-from gmdbuilder import Level, obj_id, obj_prop
+from gmdbuilder import Level, from_object_string, obj_id, obj_prop
 
 ppt = obj_prop.Trigger
 
@@ -251,7 +251,8 @@ class pointer:
                 obj_prop.DONT_ENTER: True, # dont enter
             })
 
-reimuA_level1 = BulletPool(136, 153, True)
+reimuA_level1 = BulletPool(6300, 6339, True)
+reimuA_homing_shots = BulletPool(6230, 6299, True)
 
 def get_all_components() -> list[ComponentProtocol]: return all_components
 
@@ -338,13 +339,13 @@ class EnemyPool:
 
         drop_caller = self._new_drop_comp(drops).caller if drops else enum.EMPTY_MULTITARGET
 
-        stage.Pickup(time - enum.TICK*2, item_id=enemy_group, count=hp, override=True)
+        stage.TimerOp(time - enum.TICK*2, item=enemy_group, mod=hp)
 
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
 
-        stage.Spawn(time, self._despawn_setup.caller, False,
-            remap={enum.EMPTY_TARGET_GROUP: enemy_group, enum.EMPTY1: off_switch, enum.EMPTY2: drop_caller}
+        stage.Spawn(time, 150, False,
+            remap={enum.EMPTY_TARGET_GROUP: enemy_group, enum.EMPTY_BULLET: self._despawn_setup.caller, enum.EMPTY1: off_switch, enum.EMPTY2: drop_caller}
         )
 
 
@@ -356,26 +357,34 @@ toggler = (Component("Toggler", unknown_g(), 7)
     .clear_context()
 )
 
+ret = from_object_string("1,3661,2,0,20,4,62,1,87,1,36,1,51,136,71,26,566,1,568,1;")
+ret["a57"] = {toggler.caller}
+toggler.triggers.append(ret) # type: ignore
+
 despawner = (Component("Despawner", unknown_g(), 7)
     .assert_spawn_order(False)
     .set_context(target=enum.EMPTY_TARGET_GROUP)
         .Alpha(0, t=1, opacity=0)
         .Pulse(0, HSB(0, 0, -20), fadeIn=0.1, t=0.3, fadeOut=0.6, exclusive=True)
         .Scale(0, factor=0.1, t=0.5, hold=3)
+    # .set_context(target=130)
+    #     .GotoGroup(0, enum.NORTH_GROUP)
     .clear_context()
     .Stop(0, target=enum.EMPTY1)
-    .Spawn(0, toggler, False, delay=1)
+    .Spawn(0, toggler, False, delay=0.51)
     .Spawn(0, enum.EMPTY2, True)
 )
 
-despawnSetup = (Component("Despawn Setup", unknown_g(), 7)
-    .assert_spawn_order(False)
-    .set_context(target=despawner.caller)
-        .Count(0, item_id=enum.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
-    .clear_context()
-)
+# despawnSetup = (Component("Despawn Setup", unknown_g(), 7)
+#     .assert_spawn_order(False)
+#     .Spawn(0, 150, False, remap={enum.EMPTY_BULLET: despawner.caller})
+#     # .set_context(target=despawner.caller)
+#         # .TimerEvent(0, item=enum.EMPTY_TARGET_GROUP, t=0)
+#         # .Count(0, item_id=enum.EMPTY_TARGET_GROUP, count=0, activateGroup=True)
+#     # .clear_context()
+# )
 
-enemy1 = EnemyPool(200, 211, despawnSetup)
+enemy1 = EnemyPool(200, 211, despawner)
 
 # ============================================================================
 # EXPORT FUNCTIONS

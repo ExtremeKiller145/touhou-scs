@@ -184,6 +184,14 @@ TARGET_FIELDS: Final[tuple[str, ...]] = ("a51", "a71", "a401", "a395", "a76")
 # GAME CONSTANTS
 # ============================================================================
 
+class PowerLevel:
+    """Level toggle group for power (shottype stuff)"""
+    LEVEL_1 = 143
+    LEVEL_2 = 144
+    LEVEL_3 = 145
+    LEVEL_4 = 146
+    LEVEL_5 = 147
+
 # Timing
 TICK: Final[float] = 1 / 240  # One game tick in seconds
 

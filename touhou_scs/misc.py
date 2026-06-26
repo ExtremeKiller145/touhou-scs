@@ -40,7 +40,9 @@ def add_disable_all_bullets():
         list(range(lib.bullet4.min_group, lib.bullet4.max_group + 1)) +
         list(range(lib.p_pickup.min_group, lib.p_pickup.max_group + 1)) +
         list(range(lib.b_pickup.min_group, lib.b_pickup.max_group + 1)) +
-        list(range(lib.score_pickup.min_group, lib.score_pickup.max_group + 1))
+        list(range(lib.score_pickup.min_group, lib.score_pickup.max_group + 1)) +
+        list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1)) +
+        list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
     )
 
     bullet_iter = iter(bullet_groups)
@@ -127,7 +129,8 @@ def add_enemy_collisions():
         list(range(200, 210 + 1))
     )
     bullet_groups = (
-        list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1))
+        list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1)) +
+        list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
     )
 
     base_plr_col = (Component("Enemy Collision for PlrBullets (un-mapped)", unknown_g(), editorLayer=6)
@@ -136,6 +139,23 @@ def add_enemy_collisions():
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
         .clear_context()
     )
+
+    # Boundary-exit despawn for player bullets — one permanent collision trigger per bullet,
+    # identical pattern to how enemy bullets are handled in add_plr_collisions.
+    # Must be separate from base_plr_col to avoid the onExit firing on level load
+    # (before any bullets exist) and permanently killing the enemy-hit collision.
+    plr_bullet_boundary_col = (Component("PlrBullet Boundary Exit (un-mapped)", unknown_g(), editorLayer=6)
+        .assert_spawn_order(False)
+        .set_context(target=enum.EMPTY_BULLET)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
+        .clear_context()
+    )
+    plr_bullet_boundary_col_spawner = Component("PlrBullet Boundary Exit remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
+        .assert_spawn_order(False)
+    for bullet_group in bullet_groups:
+        spawn = plr_bullet_boundary_col_spawner.create_trigger(
+            obj_id.Trigger.SPAWN, 0, plr_bullet_boundary_col.caller)
+        spawn[ppt.Spawn.REMAPS] = {enum.EMPTY_BULLET: bullet_group}
 
     global_col = Component("Enemy Collision PlrBullet & Homing remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
         .assert_spawn_order(False)
@@ -328,13 +348,12 @@ despawn2 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
 plr_bullet_despawn = (Component("PlrBullet Despawn List", unknown_g(), editorLayer=6)
     .assert_spawn_order(False)
     # To decrease enemy health & despawn the player bullet
-    .Pickup(0, item_id=enum.EMPTY_TARGET_GROUP, count=-1, override=False)
+    .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.5)
     .set_context(target=enum.EMPTY_TARGET_GROUP)
         .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
     .clear_context()
     .Spawn(0, despawn2.caller, True) # toggle this on/off same tick w/ unique group
 )
-
 
 enemy_bullet_despawn = Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, editorLayer=6)
 
