@@ -128,10 +128,9 @@ def add_enemy_collisions():
     enemy_groups = (
         list(range(200, 210 + 1))
     )
-    bullet_groups = (
-        list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1)) +
-        list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
-    )
+    regular_bullet_groups = list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1))
+    homing_bullet_groups = list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
+    bullet_groups = regular_bullet_groups + homing_bullet_groups
 
     base_plr_col = (Component("Enemy Collision for PlrBullets (un-mapped)", unknown_g(), editorLayer=6)
         .assert_spawn_order(False)
@@ -161,8 +160,8 @@ def add_enemy_collisions():
         .assert_spawn_order(False)
 
     for enemy in enemy_groups:
-        bullet_iter = iter(bullet_groups)
-        remaining = len(bullet_groups)
+        bullet_iter = iter(regular_bullet_groups)
+        remaining = len(regular_bullet_groups)
 
         def remap_collision(remap_pairs: dict[int, int], remap: util.Remap, _enemy: int = enemy):
             for source, target in remap_pairs.items():
@@ -176,6 +175,24 @@ def add_enemy_collisions():
         while remaining > 0:
             batch_size = 64 if remaining > 127 else remaining
             Multitarget.spawn_with_remap(global_col, 0, batch_size, base_plr_col, remap_collision)
+            remaining -= batch_size
+
+    for enemy in enemy_groups:
+        homing_iter = iter(homing_bullet_groups)
+        remaining = len(homing_bullet_groups)
+
+        def remap_homing_plr_col(remap_pairs: dict[int, int], remap: util.Remap, _enemy: int = enemy):
+            for source, target in remap_pairs.items():
+                if source == enum.EMPTY_BULLET:
+                    remap.pair(target, next(homing_iter))
+                elif source == enum.EMPTY_TARGET_GROUP:
+                    remap.pair(target, _enemy)
+                else:
+                    remap.pair(target, enum.EMPTY_MULTITARGET)
+
+        while remaining > 0:
+            batch_size = 64 if remaining > 127 else remaining
+            Multitarget.spawn_with_remap(global_col, 0, batch_size, base_plr_col, remap_homing_plr_col)
             remaining -= batch_size
 
     # Homing collision logic
@@ -233,7 +250,7 @@ def add_pickup_collisions():
             .Alpha(0.3, t=0, opacity=100)
             .Toggle(0.3, False)
         .clear_context()
-        .Pickup(0.3, item_id=enum.POWER_LEVEL, count=1, override=False)
+        .TimerOp(0.3, item=enum.POWER_LEVEL, sign=enum.Item.MathOp.ADD, mod=0.05)
     )
     
     on_b_pickup = (Component("On B Pickup Collision", unknown_g(), editorLayer=6)
@@ -348,11 +365,41 @@ despawn2 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
 plr_bullet_despawn = (Component("PlrBullet Despawn List", unknown_g(), editorLayer=6)
     .assert_spawn_order(False)
     # To decrease enemy health & despawn the player bullet
-    .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.5)
+    .set_context(groups=enum.PowerLevel.LEVEL_0)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.4)
+    .set_context(groups=enum.PowerLevel.LEVEL_1)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.5)
+    .set_context(groups=enum.PowerLevel.LEVEL_2)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.6)
+    .set_context(groups=enum.PowerLevel.LEVEL_3)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.7)
+    .set_context(groups=enum.PowerLevel.LEVEL_4)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.8)
+    
     .set_context(target=enum.EMPTY_TARGET_GROUP)
         .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
     .clear_context()
-    .Spawn(0, despawn2.caller, True) # toggle this on/off same tick w/ unique group
+    .Spawn(0, despawn2.caller, True)
+)
+
+homing_bullet_despawn = (Component("HomingBullet Despawn List", unknown_g(), editorLayer=6)
+    .assert_spawn_order(False)
+    # Homing shots deal less damage than regular shots
+    .set_context(groups=enum.PowerLevel.LEVEL_0)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.3)
+    .set_context(groups=enum.PowerLevel.LEVEL_1)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.35)
+    .set_context(groups=enum.PowerLevel.LEVEL_2)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.4)
+    .set_context(groups=enum.PowerLevel.LEVEL_3)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.5)
+    .set_context(groups=enum.PowerLevel.LEVEL_4)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.6)
+
+    .set_context(target=enum.EMPTY_TARGET_GROUP)
+        .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
+    .clear_context()
+    .Spawn(0, despawn2.caller, True)
 )
 
 enemy_bullet_despawn = Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, editorLayer=6)
