@@ -253,6 +253,8 @@ class pointer:
 
 reimuA_level1 = BulletPool(6300, 6339, True)
 reimuA_homing_shots = BulletPool(6230, 6299, True)
+reimuA_bomb_balls = BulletPool(6200, 6229, True)
+
 
 def get_all_components() -> list[ComponentProtocol]: return all_components
 

@@ -125,79 +125,73 @@ def add_enemy_collisions():
     if add_enemy_collisions.has_been_called:
         raise RuntimeError("Enemy collision has already been added")
 
-    enemy_groups = (
-        list(range(200, 210 + 1))
-    )
-    regular_bullet_groups = list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1))
-    homing_bullet_groups = list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
-    bullet_groups = regular_bullet_groups + homing_bullet_groups
+    enemy_groups = list(range(200, 210 + 1))
 
-    base_plr_col = (Component("Enemy Collision for PlrBullets (un-mapped)", unknown_g(), editorLayer=6)
-        .assert_spawn_order(False)
-        .set_context(target=plr_bullet_despawn.caller)
-            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
-        .clear_context()
-    )
+    regular_bullet_groups = list(range(lib.reimuA_level1.min_group,       lib.reimuA_level1.max_group + 1))
+    homing_bullet_groups  = list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
+    bomb_bullet_groups    = list(range(lib.reimuA_bomb_balls.min_group,    lib.reimuA_bomb_balls.max_group + 1))
 
-    # Boundary-exit despawn for player bullets — one permanent collision trigger per bullet,
-    # identical pattern to how enemy bullets are handled in add_plr_collisions.
-    # Must be separate from base_plr_col to avoid the onExit firing on level load
-    # (before any bullets exist) and permanently killing the enemy-hit collision.
+    all_bullet_groups = regular_bullet_groups + homing_bullet_groups + bomb_bullet_groups
+
+    # ── Boundary-exit despawn ─────────────────────────────────────────────────
+    # One permanent collision trigger per bullet.  Must be a separate component
+    # from the enemy-hit ones — mixing them causes onExit to fire on level load
+    # and permanently kill the enemy-hit collision (bullet group gets deactivated
+    # before any enemy is ever hit).
     plr_bullet_boundary_col = (Component("PlrBullet Boundary Exit (un-mapped)", unknown_g(), editorLayer=6)
         .assert_spawn_order(False)
         .set_context(target=enum.EMPTY_BULLET)
             .Collision(0, blockA=enum.EMPTY_BULLET, blockB=BOUNDARY_HITBOX, activateGroup=False, onExit=True)
         .clear_context()
     )
-    plr_bullet_boundary_col_spawner = Component("PlrBullet Boundary Exit remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
+    boundary_spawner = Component("PlrBullet Boundary Exit remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
         .assert_spawn_order(False)
-    for bullet_group in bullet_groups:
-        spawn = plr_bullet_boundary_col_spawner.create_trigger(
-            obj_id.Trigger.SPAWN, 0, plr_bullet_boundary_col.caller)
-        spawn[ppt.Spawn.REMAPS] = {enum.EMPTY_BULLET: bullet_group}
+    for bg in all_bullet_groups:
+        t = boundary_spawner.create_trigger(obj_id.Trigger.SPAWN, 0, plr_bullet_boundary_col.caller)
+        t[ppt.Spawn.REMAPS] = {enum.EMPTY_BULLET: bg}
 
-    global_col = Component("Enemy Collision PlrBullet & Homing remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
+    # ── Enemy-hit collisions ──────────────────────────────────────────────────
+    global_col = Component("Enemy Collision remap wrappers", GLOBAL_COLLISIONS, editorLayer=4) \
         .assert_spawn_order(False)
 
-    for enemy in enemy_groups:
-        bullet_iter = iter(regular_bullet_groups)
-        remaining = len(regular_bullet_groups)
+    # One shared base: EMPTY_BULLET hits EMPTY_TARGET_GROUP → activate EMPTY1.
+    # EMPTY1 is remapped to the appropriate despawn component per bullet type.
+    base_col = (Component("Enemy Collision for PlrBullets (un-mapped)", unknown_g(), editorLayer=6)
+        .assert_spawn_order(False)
+        .set_context(target=enum.EMPTY1)
+            .Collision(0, blockA=enum.EMPTY_BULLET, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
+        .clear_context()
+    )
 
-        def remap_collision(remap_pairs: dict[int, int], remap: util.Remap, _enemy: int = enemy):
-            for source, target in remap_pairs.items():
-                if source == enum.EMPTY_BULLET:
-                    remap.pair(target, next(bullet_iter))
-                elif source == enum.EMPTY_TARGET_GROUP:
-                    remap.pair(target, _enemy)
-                else:
-                    remap.pair(target, enum.EMPTY_MULTITARGET)
+    def add_bullet_enemy_collisions(bullet_groups: list[int], despawn: Component) -> None:
+        """Wire every bullet in bullet_groups to activate despawn when it hits any enemy."""
+        for enemy in enemy_groups:
+            bullet_iter = iter(bullet_groups)
+            remaining   = len(bullet_groups)
 
-        while remaining > 0:
-            batch_size = 64 if remaining > 127 else remaining
-            Multitarget.spawn_with_remap(global_col, 0, batch_size, base_plr_col, remap_collision)
-            remaining -= batch_size
+            def remap_cb(remap_pairs: dict[int, int], remap: util.Remap,
+                         _enemy: int = enemy, _iter=bullet_iter):
+                for source, target in remap_pairs.items():
+                    if source == enum.EMPTY_BULLET:
+                        remap.pair(target, next(_iter))
+                    elif source == enum.EMPTY_TARGET_GROUP:
+                        remap.pair(target, _enemy)
+                    elif source == enum.EMPTY1:
+                        remap.pair(target, despawn.caller)
+                    else:
+                        remap.pair(target, enum.EMPTY_MULTITARGET)
 
-    for enemy in enemy_groups:
-        homing_iter = iter(homing_bullet_groups)
-        remaining = len(homing_bullet_groups)
+            while remaining > 0:
+                batch_size = 64 if remaining > 127 else remaining
+                Multitarget.spawn_with_remap(global_col, 0, batch_size, base_col, remap_cb)
+                remaining -= batch_size
 
-        def remap_homing_plr_col(remap_pairs: dict[int, int], remap: util.Remap, _enemy: int = enemy):
-            for source, target in remap_pairs.items():
-                if source == enum.EMPTY_BULLET:
-                    remap.pair(target, next(homing_iter))
-                elif source == enum.EMPTY_TARGET_GROUP:
-                    remap.pair(target, _enemy)
-                else:
-                    remap.pair(target, enum.EMPTY_MULTITARGET)
+    add_bullet_enemy_collisions(regular_bullet_groups, plr_bullet_despawn)
+    add_bullet_enemy_collisions(homing_bullet_groups,  homing_bullet_despawn)
+    add_bullet_enemy_collisions(bomb_bullet_groups,    bomb_bullet_despawn)
 
-        while remaining > 0:
-            batch_size = 64 if remaining > 127 else remaining
-            Multitarget.spawn_with_remap(global_col, 0, batch_size, base_plr_col, remap_homing_plr_col)
-            remaining -= batch_size
-
-    # Homing collision logic
-
-    homing_func = (Component("Homing Collision remap wrapper", unknown_g(), editorLayer=4) \
+    # ── Homing tracker collision ──────────────────────────────────────────────
+    homing_func = (Component("Homing Collision remap wrapper", unknown_g(), editorLayer=4)
         .assert_spawn_order(False)
         .set_context(target=enum.HOMING_TRACKER_BLOCK)
             .Toggle(0, False)
@@ -205,16 +199,14 @@ def add_enemy_collisions():
     )
     retarget = from_object_string(f"1,3661,2,0,20,4,57,{homing_func.caller},62,1,87,1,36,1,51,136,71,20,566,1,568,1;")
     homing_func.triggers.append(retarget) # type: ignore
-    
-    base_homing_col = (Component("Enemy Collision for Homing (un-mapped)", unknown_g(), editorLayer=6)
+
+    base_homing_col = (Component("Enemy Collision for Homing tracker (un-mapped)", unknown_g(), editorLayer=6)
         .assert_spawn_order(False)
         .set_context(target=homing_func.caller)
             .Collision(0, blockA=enum.HOMING_TRACKER_COL_ID, blockB=enum.EMPTY_TARGET_GROUP, activateGroup=True)
         .clear_context()
     )
 
-    # for enemy in enemy_groups:
-    #     global_col.Spawn(0, base_homing_col, False, remap={enum.EMPTY_TARGET_GROUP: enemy})
     enemy_iter = iter(enemy_groups)
     remaining = len(enemy_groups)
 
@@ -395,6 +387,25 @@ homing_bullet_despawn = (Component("HomingBullet Despawn List", unknown_g(), edi
         .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.5)
     .set_context(groups=enum.PowerLevel.LEVEL_4)
         .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.6)
+
+    .set_context(target=enum.EMPTY_TARGET_GROUP)
+        .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
+    .clear_context()
+    .Spawn(0, despawn2.caller, True)
+)
+
+bomb_bullet_despawn = (Component("BombBullet Despawn List", unknown_g(), editorLayer=6)
+    .assert_spawn_order(False)
+    .set_context(groups=enum.PowerLevel.LEVEL_0)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.0)
+    .set_context(groups=enum.PowerLevel.LEVEL_1)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.2)
+    .set_context(groups=enum.PowerLevel.LEVEL_2)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.4)
+    .set_context(groups=enum.PowerLevel.LEVEL_3)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.6)
+    .set_context(groups=enum.PowerLevel.LEVEL_4)
+        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-2.0)
 
     .set_context(target=enum.EMPTY_TARGET_GROUP)
         .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
