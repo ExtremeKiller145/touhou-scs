@@ -1,4 +1,6 @@
  
+from typing import Iterator
+
 from touhou_scs import enums as enum, lib, utils as util
 from touhou_scs.component import Component, Multitarget
 from touhou_scs.utils import unknown_g, calltracker
@@ -127,11 +129,10 @@ def add_enemy_collisions():
 
     enemy_groups = list(range(200, 210 + 1))
 
-    regular_bullet_groups = list(range(lib.reimuA_level1.min_group,       lib.reimuA_level1.max_group + 1))
-    homing_bullet_groups  = list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
-    bomb_bullet_groups    = list(range(lib.reimuA_bomb_balls.min_group,    lib.reimuA_bomb_balls.max_group + 1))
-
-    all_bullet_groups = regular_bullet_groups + homing_bullet_groups + bomb_bullet_groups
+    all_bullet_groups = [
+        g for pool, _ in PLAYER_SHOT_TYPES
+        for g in range(pool.min_group, pool.max_group + 1)
+    ]
 
     # ── Boundary-exit despawn ─────────────────────────────────────────────────
     # One permanent collision trigger per bullet.  Must be a separate component
@@ -170,7 +171,7 @@ def add_enemy_collisions():
             remaining   = len(bullet_groups)
 
             def remap_cb(remap_pairs: dict[int, int], remap: util.Remap,
-                         _enemy: int = enemy, _iter=bullet_iter):
+                         _enemy: int = enemy, _iter: Iterator[int] = bullet_iter):
                 for source, target in remap_pairs.items():
                     if source == enum.EMPTY_BULLET:
                         remap.pair(target, next(_iter))
@@ -186,9 +187,9 @@ def add_enemy_collisions():
                 Multitarget.spawn_with_remap(global_col, 0, batch_size, base_col, remap_cb)
                 remaining -= batch_size
 
-    add_bullet_enemy_collisions(regular_bullet_groups, plr_bullet_despawn)
-    add_bullet_enemy_collisions(homing_bullet_groups,  homing_bullet_despawn)
-    add_bullet_enemy_collisions(bomb_bullet_groups,    bomb_bullet_despawn)
+    for pool, despawn in PLAYER_SHOT_TYPES:
+        bullet_groups = list(range(pool.min_group, pool.max_group + 1))
+        add_bullet_enemy_collisions(bullet_groups, despawn)
 
     # ── Homing tracker collision ──────────────────────────────────────────────
     homing_func = (Component("Homing Collision remap wrapper", unknown_g(), editorLayer=4)
@@ -354,72 +355,50 @@ despawn2 = (Component("PlrBullet Despawn 1", unknown_g(), editorLayer=6)
     .clear_context()
 )
 
-plr_bullet_despawn = (Component("PlrBullet Despawn List", unknown_g(), editorLayer=6)
-    .assert_spawn_order(False)
-    # To decrease enemy health & despawn the player bullet
-    .set_context(groups=enum.PowerLevel.LEVEL_0)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.4)
-    .set_context(groups=enum.PowerLevel.LEVEL_1)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.5)
-    .set_context(groups=enum.PowerLevel.LEVEL_2)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.6)
-    .set_context(groups=enum.PowerLevel.LEVEL_3)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.7)
-    .set_context(groups=enum.PowerLevel.LEVEL_4)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.8)
-    
-    .set_context(target=enum.EMPTY_TARGET_GROUP)
-        .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
-    .clear_context()
-    .Spawn(0, despawn2.caller, True)
-)
+def make_shot_despawn(name: str, damage: tuple[float, float, float, float, float], despawn_g: int) -> Component:
+    """Create a per-power-level damage + bullet-despawn component for a player shot type."""
+    l0, l1, l2, l3, l4 = damage
+    return (Component(f"{name} Despawn", unknown_g(), editorLayer=6)
+        .assert_spawn_order(False)
+        .set_context(groups=enum.PowerLevel.LEVEL_0)
+            .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=l0)
+        .set_context(groups=enum.PowerLevel.LEVEL_1)
+            .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=l1)
+        .set_context(groups=enum.PowerLevel.LEVEL_2)
+            .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=l2)
+        .set_context(groups=enum.PowerLevel.LEVEL_3)
+            .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=l3)
+        .set_context(groups=enum.PowerLevel.LEVEL_4)
+            .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=l4)
+        .set_context(target=enum.EMPTY_TARGET_GROUP)
+            .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
+        .clear_context()
+        .Spawn(0, despawn_g, True)
+    )
 
-homing_bullet_despawn = (Component("HomingBullet Despawn List", unknown_g(), editorLayer=6)
-    .assert_spawn_order(False)
-    # Homing shots deal less damage than regular shots
-    .set_context(groups=enum.PowerLevel.LEVEL_0)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.3)
-    .set_context(groups=enum.PowerLevel.LEVEL_1)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.35)
-    .set_context(groups=enum.PowerLevel.LEVEL_2)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.4)
-    .set_context(groups=enum.PowerLevel.LEVEL_3)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.5)
-    .set_context(groups=enum.PowerLevel.LEVEL_4)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-0.6)
+plr_bullet_despawn    = make_shot_despawn("ReimuA Regular", (-0.4, -0.5, -0.6, -0.7, -0.8), despawn2.caller)
+homing_bullet_despawn = make_shot_despawn("ReimuA Homing",  (-0.3, -0.35, -0.4, -0.5, -0.6), despawn2.caller)
+bomb_bullet_despawn   = make_shot_despawn("ReimuA Bomb",    (-1.0, -1.2,  -1.4, -1.6, -2.0), despawn2.caller) # REPLACE WITH NON-DESPAWN BECAUSED WE DONT WANT BALLS TO DESPAWN LIKE THAT
 
-    .set_context(target=enum.EMPTY_TARGET_GROUP)
-        .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
-    .clear_context()
-    .Spawn(0, despawn2.caller, True)
-)
 
-bomb_bullet_despawn = (Component("BombBullet Despawn List", unknown_g(), editorLayer=6)
-    .assert_spawn_order(False)
-    .set_context(groups=enum.PowerLevel.LEVEL_0)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.0)
-    .set_context(groups=enum.PowerLevel.LEVEL_1)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.2)
-    .set_context(groups=enum.PowerLevel.LEVEL_2)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.4)
-    .set_context(groups=enum.PowerLevel.LEVEL_3)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-1.6)
-    .set_context(groups=enum.PowerLevel.LEVEL_4)
-        .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=-2.0)
 
-    .set_context(target=enum.EMPTY_TARGET_GROUP)
-        .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
-    .clear_context()
-    .Spawn(0, despawn2.caller, True)
-)
 
-enemy_bullet_despawn = Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, editorLayer=6)
+# =============================
+# ENEMY BULLET DESPAWN FUNCTION
+# =============================
 
-(enemy_bullet_despawn
+enemy_bullet_despawn = (Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, editorLayer=6)
     .assert_spawn_order(False)
     # Note: if a collisionX component seems to be be spawning delayed, its a GD bug. reload level.
-    # .set_context()
         .Spawn(0, despawn1.caller, True) # toggle this on/off same tick w/ unique group
-    # .group_last_trigger
-    # .Spawn(0, collision2.caller, True)
 )
+
+
+# Shot types registered for enemy collision and boundary despawn.
+# To add a new shot type: add its BulletPool to lib.py, define its despawn
+# with make_shot_despawn above, then add one entry here.
+PLAYER_SHOT_TYPES: list[tuple[lib.BulletPool, Component]] = [
+    (lib.reimuA_level1,       plr_bullet_despawn),
+    (lib.reimuA_homing_shots, homing_bullet_despawn),
+    (lib.reimuA_bomb_balls,   bomb_bullet_despawn),
+]
