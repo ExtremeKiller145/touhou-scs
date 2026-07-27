@@ -78,29 +78,27 @@ Keybind editor
 Bullet types (only 4 out of 8)
 Lasers
 Main Bullet SFX (1 made)
-Player Shot types
-Item Pickups
 
 
 GROUP/OBJ BUDGET:
-Groups (9999 limit): 
- 
-Bullet types: 3,000 - 5,000 
-Pickups: 300 - 500 
-Player shots: 1,050 - 1,800 
-Common enemies: 544 - 1,000 
-Total usage: 4,894 - 8,300 groups 
-Remaining: 1,699 - 5,105 groups 
-Objects (250k target): 
- 
-Current: 20k 
-Spells: 10k - 30k 
-Common enemies: 11k - 36k 
-Player shots: 1.5k - 4k 
-Backgrounds: 2k - 5k 
-UI: 3k - 8k 
-Visual effects: 5k - 10k 
-Total projected: 52.5k - 113k objects 
+Groups (9999 limit):
+
+Bullet types: 3,000 - 5,000
+Pickups: 300 - 500
+Player shots: 1,050 - 1,800
+Common enemies: 544 - 1,000
+Total usage: 4,894 - 8,300 groups
+Remaining: 1,699 - 5,105 groups
+Objects (250k target):
+
+Current: 20k
+Spells: 10k - 30k
+Common enemies: 11k - 36k
+Player shots: 1.5k - 4k
+Backgrounds: 2k - 5k
+UI: 3k - 8k
+Visual effects: 5k - 10k
+Total projected: 52.5k - 113k objects
 Remaining budget: 137k - 197k objects
 
 

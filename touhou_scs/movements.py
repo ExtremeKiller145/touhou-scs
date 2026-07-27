@@ -40,7 +40,8 @@ DEVELOPER EXPERIENCE NOTE:
 """
 
 from __future__ import annotations
-from typing import Union, TYPE_CHECKING, List, Any, Callable, Optional, Tuple, TypedDict, Dict, Literal
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -54,7 +55,7 @@ from touhou_scs import enums as e
 if TYPE_CHECKING: from touhou_scs.component import Component
 
 # Queue for preview generation specs
-_preview_queue: List[Tuple[str, CurveParams, float, float, float]] = []
+_preview_queue: list[tuple[str, CurveParams, float, float, float]] = []
 
 
 # ============================================================================
@@ -102,7 +103,7 @@ DEFAULT_POWER_RATES = [0.65, 0.85, 1.0, 1.25, 1.6, 2.0, 2.8, 3.8, 5.0]
 DEFAULT_POWER_RATES_ULTRA = [0.55, 0.7, 0.85, 1.0, 1.2, 1.5, 1.9, 2.5, 3.2, 4.2, 5.5, 7.5]
 
 # NEW optimizer quality presets
-NEW_QUALITY_PRESETS: Dict[str, Dict[str, Any]] = {
+NEW_QUALITY_PRESETS: dict[str, dict[str, Any]] = {
     "fast":   {"x_terms": 3, "y_terms": 3, "power_rates": DEFAULT_POWER_RATES,       "candidates": "basic"},
     "medium": {"x_terms": 4, "y_terms": 4, "power_rates": DEFAULT_POWER_RATES,       "candidates": "basic"},
     "high":   {"x_terms": 4, "y_terms": 4, "power_rates": DEFAULT_POWER_RATES,       "candidates": "rich"},
@@ -167,7 +168,7 @@ class NewCurveParams(TypedDict):
 
 
 # Union type for all curve parameters
-CurveParams = Union[OldCurveParams, NewCurveParams]
+CurveParams = OldCurveParams | NewCurveParams
 
 
 @dataclass(slots=True, kw_only=True)
@@ -179,8 +180,8 @@ class OptimizationResult:
     score: float = 1e18
     max_speed_dev: float = 1e18
     rms_speed_dev: float = 1e18
-    y_coeffs_1: Optional[np.ndarray] = None
-    y_coeffs_2: Optional[np.ndarray] = None
+    y_coeffs_1: np.ndarray | None = None
+    y_coeffs_2: np.ndarray | None = None
 
 
 # ============================================================================
@@ -256,7 +257,7 @@ def basis_curve(t: np.ndarray, kind: str, rate: float) -> np.ndarray:
     raise ValueError(f"Unknown basis kind: {kind}")
 
 
-def term_to_gd_easing(kind: str, rate: float) -> Tuple[Any, float]:
+def term_to_gd_easing(kind: str, rate: float) -> tuple[Any, float]:
     """Map basis term to GD easing enum + rate."""
     if kind == "linear":
         return e.Easing.NONE, 1.0
@@ -277,7 +278,7 @@ def term_to_gd_easing(kind: str, rate: float) -> Tuple[Any, float]:
     raise ValueError(f"Unknown kind for GD mapping: {kind}")
 
 
-def cubic_bezier_xy(u: np.ndarray, p0: Point, p1: Point, p2: Point, p3: Point) -> Tuple[np.ndarray, np.ndarray]:
+def cubic_bezier_xy(u: np.ndarray, p0: Point, p1: Point, p2: Point, p3: Point) -> tuple[np.ndarray, np.ndarray]:
     """Evaluate cubic Bezier at parameter u, returning (x, y)."""
     u = np.asarray(u, dtype=float)
     s = 1.0 - u
@@ -291,7 +292,7 @@ def cubic_bezier_xy(u: np.ndarray, p0: Point, p1: Point, p2: Point, p3: Point) -
 
 
 def resample_bezier_by_arclength(p0: Point, p1: Point, p2: Point, p3: Point,
-                                 dense: int = TARGET_DENSE, out: int = TARGET_OUT) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                                 dense: int = TARGET_DENSE, out: int = TARGET_OUT) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Return (t, x(t), y(t)) where t in [0,1] corresponds to normalized arc length.
     This is the ideal constant-speed parameterization along the curve.
@@ -347,13 +348,13 @@ def _nnls_with_sum_constraint(G: np.ndarray, y: np.ndarray, w_sum: float = 50.0)
 
 @dataclass(slots=True)
 class FitResult:
-    terms: List[BasisTermDict]
+    terms: list[BasisTermDict]
     rmse: float
 
 
-def build_candidates(power_rates: List[float], richness: str) -> List[Tuple[str, float]]:
+def build_candidates(power_rates: list[float], richness: str) -> list[tuple[str, float]]:
     """Build candidate basis set for greedy selection."""
-    cands: List[Tuple[str, float]] = [("linear", 1.0)]
+    cands: list[tuple[str, float]] = [("linear", 1.0)]
     for r in power_rates:
         cands.append(("ease_in", float(r)))
         cands.append(("ease_out", float(r)))
@@ -362,7 +363,7 @@ def build_candidates(power_rates: List[float], richness: str) -> List[Tuple[str,
     return cands
 
 
-def greedy_fit(target: np.ndarray, t: np.ndarray, candidates: List[Tuple[str, float]], k: int) -> FitResult:
+def greedy_fit(target: np.ndarray, t: np.ndarray, candidates: list[tuple[str, float]], k: int) -> FitResult:
     """
     Greedy forward selection of k basis terms (nonnegative mixture).
     Returns selected term descriptors + coefficients.
@@ -370,7 +371,7 @@ def greedy_fit(target: np.ndarray, t: np.ndarray, candidates: List[Tuple[str, fl
     t = np.asarray(t, dtype=float)
     y = np.asarray(target, dtype=float)
 
-    selected: List[Tuple[str, float]] = []
+    selected: list[tuple[str, float]] = []
     remaining = candidates.copy()
 
     # Ensure linear always present if available
@@ -380,7 +381,7 @@ def greedy_fit(target: np.ndarray, t: np.ndarray, candidates: List[Tuple[str, fl
         if linear_term in remaining:
             remaining.remove(linear_term)
 
-    def fit_with_set(sel: List[Tuple[str, float]]) -> Tuple[np.ndarray, float]:
+    def fit_with_set(sel: list[tuple[str, float]]) -> tuple[np.ndarray, float]:
         G = np.column_stack([basis_curve(t, kind, rate) for (kind, rate) in sel])
         a = _nnls_with_sum_constraint(G, y, w_sum=60.0)
         pred = G @ a
@@ -390,8 +391,8 @@ def greedy_fit(target: np.ndarray, t: np.ndarray, candidates: List[Tuple[str, fl
     # Grow until k
     while len(selected) < k and remaining:
         best_rmse = 1e18
-        best_term: Optional[Tuple[str, float]] = None
-        best_a: Optional[np.ndarray] = None
+        best_term: tuple[str, float] | None = None
+        best_a: np.ndarray | None = None
 
         for term in remaining:
             sel_try = selected + [term]
@@ -410,7 +411,7 @@ def greedy_fit(target: np.ndarray, t: np.ndarray, candidates: List[Tuple[str, fl
     # Final fit with selected
     a, rmse = fit_with_set(selected)
 
-    terms_out: List[BasisTermDict] = []
+    terms_out: list[BasisTermDict] = []
     for (kind, rate), coef in zip(selected, a):
         terms_out.append({"kind": kind, "rate": float(rate), "coef": float(coef)})
 
@@ -426,7 +427,7 @@ def greedy_fit(target: np.ndarray, t: np.ndarray, candidates: List[Tuple[str, fl
     return FitResult(terms=terms_out, rmse=rmse)
 
 
-def eval_path(xt: np.ndarray, yt: np.ndarray, T: float) -> Tuple[float, float]:
+def eval_path(xt: np.ndarray, yt: np.ndarray, T: float) -> tuple[float, float]:
     """Return (max_dev, rms_dev) of speed vs mean speed."""
     pos = np.column_stack([xt, yt])
     dx = np.diff(pos[:, 0])
@@ -440,7 +441,7 @@ def eval_path(xt: np.ndarray, yt: np.ndarray, T: float) -> Tuple[float, float]:
     return float(np.max(np.abs(dev))), float(np.sqrt(np.mean(dev**2)))
 
 
-def build_implemented_xy(t: np.ndarray, x_terms: List[BasisTermDict], y_terms: List[BasisTermDict]) -> Tuple[np.ndarray, np.ndarray]:
+def build_implemented_xy(t: np.ndarray, x_terms: list[BasisTermDict], y_terms: list[BasisTermDict]) -> tuple[np.ndarray, np.ndarray]:
     """Build X and Y paths from basis term mixtures."""
     x = np.zeros_like(t, dtype=float)
     y = np.zeros_like(t, dtype=float)
@@ -453,7 +454,7 @@ def build_implemented_xy(t: np.ndarray, x_terms: List[BasisTermDict], y_terms: L
 
 def score_fit(t: np.ndarray,
               x_target: np.ndarray, y_target: np.ndarray,
-              x_terms: List[BasisTermDict], y_terms: List[BasisTermDict]) -> Tuple[float, float, float, float]:
+              x_terms: list[BasisTermDict], y_terms: list[BasisTermDict]) -> tuple[float, float, float, float]:
     """Returns (score, max_dev, rms_dev, shape_rmse)."""
     xi, yi = build_implemented_xy(t, x_terms, y_terms)
     shape_rmse = float(np.sqrt(np.mean((xi - x_target)**2 + (yi - y_target)**2)))
@@ -485,7 +486,7 @@ def register_bezier_curve_new(p0: Point, p1: Point, p2: Point, p3: Point,
     settings = NEW_QUALITY_PRESETS[quality]
     x_budget = int(settings["x_terms"])
     y_budget = int(settings["y_terms"])
-    power_rates: List[float] = list(settings["power_rates"])
+    power_rates: list[float] = list(settings["power_rates"])
     richness = str(settings["candidates"])
 
     print(f"  NEW optimizer: X={x_budget} terms, Y={y_budget} terms")
@@ -539,7 +540,7 @@ def register_bezier_curve_new(p0: Point, p1: Point, p2: Point, p3: Point,
 
 
 def fit_polynomial_least_squares(
-    t: np.ndarray, y: np.ndarray, exponents: List[float]
+    t: np.ndarray, y: np.ndarray, exponents: list[float]
 ) -> np.ndarray:
     """Fit y(t) = sum(c_i * t^exp_i) using least squares. No constant term."""
     A = np.vstack([t**exp for exp in exponents]).T
@@ -556,7 +557,7 @@ def compute_speed_profile(positions: np.ndarray, dt: float) -> np.ndarray:
     return speeds
 
 
-def score_speed_consistency(speeds: np.ndarray) -> Tuple[float, float, float]:
+def score_speed_consistency(speeds: np.ndarray) -> tuple[float, float, float]:
     """Returns (score, max_deviation, rms_deviation). Lower is better."""
     if len(speeds) == 0:
         return 1e18, 1e18, 1e18
@@ -600,7 +601,7 @@ def fit_and_evaluate_curve(
     x1: float,
     total_duration: float,
     params: OptimizationResult,
-    y_exponents: List[float],
+    y_exponents: list[float],
 ) -> OptimizationResult:
     """Fit 2-segment piecewise curve and score speed consistency."""
     duration_seg1 = total_duration * params.t_split
@@ -659,7 +660,7 @@ def optimize_curve_parameters(
     x0: float,
     x1: float,
     total_duration: float,
-    y_exponents: List[float],
+    y_exponents: list[float],
     iterations: int = 1000,
     seed: int = 1,
 ) -> OptimizationResult:
@@ -796,7 +797,7 @@ CURVE_PARAMS = {
 # ============================================================================
 
 # Type annotation for the auto-generated CURVE_PARAMS
-CURVE_PARAMS: Dict[str, CurveParams]
+CURVE_PARAMS: dict[str, CurveParams]
 
 
 # ============================================================================
@@ -804,7 +805,7 @@ CURVE_PARAMS: Dict[str, CurveParams]
 # ============================================================================
 
 
-def _point_to_line_distance(p: Tuple[float, float], start: Tuple[float, float], end: Tuple[float, float]) -> float:
+def _point_to_line_distance(p: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> float:
     """Calculate perpendicular distance from point to line segment."""
     line_vec = np.array([end[0] - start[0], end[1] - start[1]])
     line_len = np.linalg.norm(line_vec)
@@ -841,7 +842,7 @@ def register_bezier_curve(
     force_recompute: bool = False,
     use_hybrid: bool = True,
     threshold: float = HYBRID_THRESHOLD,
-    force_optimizer: Optional[str] = None,
+    force_optimizer: str | None = None,
 ):
     """
     Register a cubic Bezier curve for smooth movement patterns.
@@ -1030,7 +1031,7 @@ def _rewrite_curve_registry() -> None:  # type: ignore[misc]
 def _apply_basis_terms(
     component: Component,
     time: float,
-    terms: List[BasisTermDict],
+    terms: list[BasisTermDict],
     dx: float,
     dy: float,
     duration: float,
@@ -1045,8 +1046,8 @@ def _apply_basis_terms(
 def _apply_polynomial_terms(
     component: Component,
     time: float,
-    coeffs: List[float],
-    exponents: List[float],
+    coeffs: list[float],
+    exponents: list[float],
     dy: float,
     duration: float,
 ) -> None:
@@ -1104,7 +1105,7 @@ def _apply_old_optimizer(
 def apply_bezier_movement(
     component: Component,
     time: float,
-    curve_label: Union[CurveType, str],
+    curve_label: CurveType | str,
     dx: float,
     dy: float,
     duration: float,
@@ -1159,8 +1160,8 @@ def apply_bezier_movement(
 
 
 def generate_previews_parallel(
-    preview_specs: List[Tuple[str, CurveParams, float, float, float]],
-    num_workers: Optional[int] = None,
+    preview_specs: list[tuple[str, CurveParams, float, float, float]],
+    num_workers: int | None = None,
 ):
     """Generate multiple curve previews in parallel."""
     if num_workers is None:
@@ -1179,8 +1180,8 @@ def generate_previews_parallel(
 
 
 def _generate_preview_worker(
-    args: Tuple[str, CurveParams, float, float, float]
-) -> Tuple[str, bool, str]:
+    args: tuple[str, CurveParams, float, float, float]
+) -> tuple[str, bool, str]:
     """Worker function for parallel preview generation."""
     curve_name, params, dx, dy, duration = args
     try:
@@ -1236,7 +1237,7 @@ def _generate_movement_preview(
         c1 = np.array(params["y_coeffs_1"], dtype=float)
         c2 = np.array(params["y_coeffs_2"], dtype=float)
 
-        def position_at_time(t: float) -> Tuple[float, float]:
+        def position_at_time(t: float) -> tuple[float, float]:
             if t <= T1:
                 tau = t / T1 if T1 > 0 else 0
                 x = dx1 * ease_in(np.array(tau), float(params["r_in"])).item()
@@ -1303,7 +1304,7 @@ def _generate_movement_preview(
         trail.set_data([], [])
         return current_point, trail
 
-    def update(frame: int) -> Tuple[Any, Any]:
+    def update(frame: int) -> tuple[Any, Any]:
         idx = int((frame / (PREVIEW_FRAMES - 1)) * (PREVIEW_SAMPLES - 1))
         current_point.set_data([path[idx, 0]], [path[idx, 1]])
         trail.set_data(path[: idx + 1, 0], path[: idx + 1, 1])
@@ -1361,7 +1362,7 @@ def list_curves() -> None:
     print("\n" + "=" * 80)
 
 
-def wait_for_previews(num_workers: Optional[int] = None) -> None:
+def wait_for_previews(num_workers: int | None = None) -> None:
     """Generate all queued previews in parallel using multiprocessing."""
     if not _preview_queue:
         return

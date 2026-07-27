@@ -7,7 +7,8 @@ Helper functions for component building and validation.
 from __future__ import annotations
 
 import math
-from typing import Any, Callable, TYPE_CHECKING
+from collections.abc import Callable
+from typing import Any, TYPE_CHECKING
 import warnings
 import functools
 
@@ -41,9 +42,9 @@ def time_to_dist(time: float) -> float:
     """Based on plr move speed of 311.58 studs/s"""
     return 311.58 * time
 
-def round_to_n_sig_figs(x: float | int, n: int) -> float:
+def round_to_n_sig_figs(x: float, n: int) -> float:
     """Round to n significant figures (GD uses 6)"""
-    return 0 if x == 0 else round(x, -int(math.floor(math.log10(abs(x)))) + (n - 1))
+    return 0 if x == 0 else round(x, -math.floor(math.log10(abs(x))) + (n - 1))
 
 
 class _GroupAllocatorProxy:
@@ -100,7 +101,7 @@ def init_level(level: Level) -> None:
     unknown_g.init(level)
 
 
-def group(group_id: int) -> int: """Semantic Wrapper"""; return group_id # noqa
+def group(group_id: int) -> int: """Semantic Wrapper"""; return group_id
 
 @functools.lru_cache(maxsize=4096)
 def translate_remap_string(remap_string: str) -> tuple[dict[int, int], str]:

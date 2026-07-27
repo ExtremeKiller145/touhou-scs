@@ -27,7 +27,13 @@ venvPath = "."
 venv = "venv"
 
 [tool.ruff.lint]
-ignore = ["E701", "E402"] # Ignore multiple statements on one line
+ignore = [
+    "E701",    # multiple statements on one line
+    "E402",    # module level import not at top (intentional in main.py/test.py)
+    "I001",    # import sort (not enforced on this project)
+    "PLR1722", # use sys.exit() instead of exit() (guard scripts use exit() intentionally)
+    "BLE001",  # blind exception catch (intentional in preview worker)
+]
 
 [tool.pytest.ini_options]
 addopts = "-qv"

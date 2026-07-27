@@ -9,7 +9,7 @@ from itertools import cycle
 import random
 import time
 import colorsys
-from typing import Any, Self
+from typing import Any, ClassVar, Self
 
 from touhou_scs import enums as enum
 from touhou_scs import utils as util
@@ -212,11 +212,11 @@ PICKUP_SPAWN_TIME = 0.2
 
 class pointer:
     obj_count = 250
-    pointer_comp = Component("Pointers", 0, 11).assert_spawn_order(False)
-    pointers = [unknown_g() for _ in range(obj_count)]
-    _pointer_iter = cycle(pointers)
+    pointer_comp: ClassVar[Component] = Component("Pointers", 0, 11).assert_spawn_order(False)
+    pointers: ClassVar[list[int]] = [unknown_g() for _ in range(obj_count)]
+    _pointer_iter: ClassVar = cycle(pointers)
     
-    group_registry = { g: {enum.DEBUG_UI_GROUP, g} for g in pointers }
+    group_registry: ClassVar[dict[int, set[int]]] = { g: {enum.DEBUG_UI_GROUP, g} for g in pointers }
     
     @classmethod
     def next(cls) -> int:

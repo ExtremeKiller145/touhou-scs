@@ -1,11 +1,10 @@
  
-from typing import Iterator
-
-from touhou_scs import enums as enum, lib, utils as util
-from touhou_scs.component import Component, Multitarget
-from touhou_scs.utils import unknown_g, calltracker
+from collections.abc import Iterator
 
 from gmdbuilder import from_object_string, obj_id, obj_prop
+from touhou_scs import enums as enum, lib, utils as util
+from touhou_scs.component import Component, Multitarget
+from touhou_scs.utils import calltracker, unknown_g
 
 # Hitbox is the weapon, hurtbox is the target
 BOUNDARY_HITBOX = 1
@@ -398,7 +397,7 @@ enemy_bullet_despawn = (Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, 
 # To add a new shot type: add its BulletPool to lib.py, define its despawn
 # with make_shot_despawn above, then add one entry here.
 PLAYER_SHOT_TYPES: list[tuple[lib.BulletPool, Component]] = [
-    (lib.reimuA_level1,       plr_bullet_despawn),
+    (lib.reimuA_level1, plr_bullet_despawn),
     (lib.reimuA_homing_shots, homing_bullet_despawn),
-    (lib.reimuA_bomb_balls,   bomb_bullet_despawn),
+    (lib.reimuA_bomb_balls, bomb_bullet_despawn),
 ]
