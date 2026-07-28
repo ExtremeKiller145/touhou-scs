@@ -33,6 +33,7 @@ ignore = [
     "I001",    # import sort (not enforced on this project)
     "PLR1722", # use sys.exit() instead of exit() (guard scripts use exit() intentionally)
     "BLE001",  # blind exception catch (intentional in preview worker)
+    "RUF012"
 ]
 
 [tool.pytest.ini_options]

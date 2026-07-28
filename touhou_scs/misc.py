@@ -375,11 +375,9 @@ def make_shot_despawn(name: str, damage: tuple[float, float, float, float, float
         .Spawn(0, despawn_g, True)
     )
 
-plr_bullet_despawn    = make_shot_despawn("ReimuA Regular", (-0.4, -0.5, -0.6, -0.7, -0.8), despawn2.caller)
+plr_bullet_despawn = make_shot_despawn("ReimuA Regular", (-0.4, -0.5, -0.6, -0.7, -0.8), despawn2.caller)
 homing_bullet_despawn = make_shot_despawn("ReimuA Homing",  (-0.3, -0.35, -0.4, -0.5, -0.6), despawn2.caller)
-bomb_bullet_despawn   = make_shot_despawn("ReimuA Bomb",    (-1.0, -1.2,  -1.4, -1.6, -2.0), despawn2.caller) # REPLACE WITH NON-DESPAWN BECAUSED WE DONT WANT BALLS TO DESPAWN LIKE THAT
-
-
+bomb_bullet_despawn = make_shot_despawn("ReimuA Bomb", (-1.0, -1.2,  -1.4, -1.6, -2.0), enum.EMPTY_BULLET)
 
 
 # =============================

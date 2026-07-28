@@ -7,7 +7,8 @@ Component class for building trigger sequences with method chaining.
 from __future__ import annotations
 from contextlib import contextmanager
 import functools
-from typing import Any, Callable, NamedTuple
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
 from gmdbuilder.object_types import EASING, STOP_MODE
 from gmdkit.models.prop.hsv import HSV
@@ -82,8 +83,8 @@ def _validate_params_cached(*,
         raise ValueError(f"Item ID must be a positive int in range 1-9999. Got: {item_id}")
 
 def validate_params(*,
-    positive: float | int | list[float | int] | None = None,
-    non_negative: float | int | list[float | int] | None = None,
+    positive: float | list[float | int] | None = None,
+    non_negative: float | list[float | int] | None = None,
     targets: int | list[int] | None = None,
     type: int | None = None,
     rate: float | None = None,
@@ -1108,7 +1109,7 @@ class TimedPatterns:
         if t < 0:
             raise ValueError(f"{TL} t must be non-negative. Got: {t}")
 
-        for i in range(0, numBullets):
+        for i in range(numBullets):
             b, _ = bullet.next()
             self._component.Spawn(
                 time + (i * spacing), comp.caller, True, remap={ enum.EMPTY_BULLET: b })
