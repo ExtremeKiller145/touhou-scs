@@ -20,39 +20,37 @@ GLOBAL_COLLISIONS = 17
 ppt = obj_prop.Trigger
 
 @calltracker
-def add_disable_all_bullets():
-    if add_disable_all_bullets.has_been_called:
-        raise RuntimeError("Disable All Bullets has already been added")
+def add_disable_all_prefabs():
+    if add_disable_all_prefabs.has_been_called:
+        raise RuntimeError("Disable All Prefabs has already been added")
 
-    comp = Component("Disable All Bullets", 32, editorLayer=4) \
+    comp = Component("Disable All Prefabs", 32, editorLayer=4) \
         .assert_spawn_order(False)
 
-    single = (Component("Disable Single Bullet", unknown_g(), editorLayer=6)
+    single = (Component("Disable Single Prefab", unknown_g(), editorLayer=6)
         .assert_spawn_order(False)
         .set_context(target=enum.EMPTY_BULLET)
             .Toggle(0, False)
         .clear_context()
     )
 
-    bullet_groups = (
-        list(range(lib.bullet1.min_group, lib.bullet1.max_group + 1)) +
-        list(range(lib.bullet2.min_group, lib.bullet2.max_group + 1)) +
-        list(range(lib.bullet3.min_group, lib.bullet3.max_group + 1)) +
-        list(range(lib.bullet4.min_group, lib.bullet4.max_group + 1)) +
-        list(range(lib.p_pickup.min_group, lib.p_pickup.max_group + 1)) +
-        list(range(lib.b_pickup.min_group, lib.b_pickup.max_group + 1)) +
-        list(range(lib.score_pickup.min_group, lib.score_pickup.max_group + 1)) +
-        list(range(lib.reimuA_level1.min_group, lib.reimuA_level1.max_group + 1)) +
-        list(range(lib.reimuA_homing_shots.min_group, lib.reimuA_homing_shots.max_group + 1))
-    )
+    prefab_groups = [
+        g
+        for pool in lib.registered_bullet_pools
+        for g in range(pool.min_group, pool.max_group + 1)
+    ] + [
+        g
+        for pool in lib.registered_enemy_pools
+        for g in range(pool.min_group, pool.max_group + 1)
+    ]
 
-    bullet_iter = iter(bullet_groups)
-    remaining = len(bullet_groups)
+    prefab_iter = iter(prefab_groups)
+    remaining = len(prefab_groups)
 
     def remap_disable(remap_pairs: dict[int, int], remap: util.Remap):
         for source, target in remap_pairs.items():
             if source == enum.EMPTY_BULLET:
-                remap.pair(target, next(bullet_iter))
+                remap.pair(target, next(prefab_iter))
             else:
                 remap.pair(target, enum.EMPTY_MULTITARGET)
     
@@ -102,6 +100,8 @@ def add_plr_collisions():
                 plr_hit_col_spawn = plr_hit_col.create_trigger(obj_id.Trigger.SPAWN, 0, PLR_HURT_FUNCTION)
                 plr_hit_col_spawn[ppt.Spawn.REMAPS] = { enum.EMPTY_BULLET: bullet_hitbox }
 
+    # DO NOT use the bullet pool registry because that includes pickups
+    # TODO: make separate registries for player bullets and pickups
     add_collision_trigger_remaps(lib.bullet1, "B1")
     add_collision_trigger_remaps(lib.bullet2, "B2")
     add_collision_trigger_remaps(lib.bullet3, "B3")
@@ -126,7 +126,12 @@ def add_enemy_collisions():
     if add_enemy_collisions.has_been_called:
         raise RuntimeError("Enemy collision has already been added")
 
-    enemy_groups = list(range(200, 210 + 1))
+    # Main (index 0) group of every slot across all registered enemy pools
+    enemy_groups = [
+        g
+        for pool in lib.registered_enemy_pools
+        for g in range(pool.min_group, pool.max_group + 1, pool.num_groups_per)
+    ]
 
     all_bullet_groups = [
         g for pool, _ in PLAYER_SHOT_TYPES
@@ -314,17 +319,17 @@ def add_pickup_collisions():
     magnet_col = Component("Pickup Magnet Triggers", unknown_g(), editorLayer=6) \
 
     # optimization: if replacing with multitarget, make
-    for i in range(301, 330 + 1):
+    for i in range(lib.p_pickup.min_group, lib.p_pickup.max_group + 1):
         global_col.Spawn(0, p_group, False, 
             remap={enum.EMPTY_BULLET: i, enum.EMPTY1: on_p_pickup.caller})
         with magnet_col.temp_context(groups={124}, target=i):
             magnet_col.GotoGroup(0, enum.PLR, t=0.5, dynamic=True, type=1, rate=2)
-    for i in range(331, 340 + 1):
+    for i in range(lib.b_pickup.min_group, lib.b_pickup.max_group + 1):
         global_col.Spawn(0, b_group, False, 
             remap={enum.EMPTY_BULLET: i, enum.EMPTY1: on_b_pickup.caller})
         with magnet_col.temp_context(groups={124}, target=i):
             magnet_col.GotoGroup(0, enum.PLR, t=0.5, dynamic=True, type=1, rate=2)
-    for i in range(341, 450 + 1):
+    for i in range(lib.score_pickup.min_group, lib.score_pickup.max_group + 1):
         global_col.Spawn(0, score_group, False, 
             remap={enum.EMPTY_BULLET: i, enum.EMPTY1: on_score_pickup.caller})
         with magnet_col.temp_context(groups={124}, target=i):

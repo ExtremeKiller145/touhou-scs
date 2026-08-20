@@ -12,8 +12,8 @@ init_level(level)
 from touhou_scs import enums as e
 from touhou_scs import lib
 from touhou_scs.component import BulletAlloc, Component
-from touhou_scs.lib import Stage, enemy1, rgb, save_all
-from touhou_scs.misc import add_disable_all_bullets, add_enemy_collisions, add_plr_collisions, add_pickup_collisions
+from touhou_scs.lib import Stage, yinyang, rgb, save_all
+from touhou_scs.misc import add_disable_all_prefabs, add_enemy_collisions, add_plr_collisions, add_pickup_collisions
 
 main = (Component("Main", 36, 7)
     .assert_spawn_order(False)
@@ -194,7 +194,8 @@ CHAIN_OFFSET = 1.8   # seconds between each enemy entering
 
 chain_enemies: list[tuple[int, Component]] = []
 for i in range(CHAIN_SIZE):
-    g = enemy1.next()
+    groups = yinyang.next()
+    g = groups[0]
     BulletAlloc.start()
     chain_enemies.append((g, make_patrol_enemy(g, lib.bullet1 if i % 2 == 0 else lib.bullet3)))
 
@@ -206,14 +207,14 @@ for i in range(CHAIN_SIZE):
 
 for i, (g, comp) in enumerate(chain_enemies):
     t0 = 1.0 + i * CHAIN_OFFSET
-    enemy1.spawn_enemy(Stage.stage1, t0, comp, 10, g,
+    yinyang.spawn_enemy(Stage.stage1, t0, comp, 10, (g,),
         drops=[(lib.score_pickup, randint(5,13)), (lib.p_pickup, randint(2,6))])
 
 
 Stage.stage1.Spawn(0, pos_setup.caller, True)
 
 add_enemy_collisions()
-add_disable_all_bullets()
+add_disable_all_prefabs()
 add_plr_collisions()
 add_pickup_collisions()
 save_all(level=level)

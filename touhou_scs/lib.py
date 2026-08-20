@@ -27,7 +27,8 @@ all_components: list[ComponentProtocol] = []
 
 # unfortunately has to be up here to avoid circular imports
 solid_groups_to_enforce: set[int] = set()
-_registered_bullet_pools: list["BulletPool"] = []  # populated by BulletPool.__init__; used for validation exemptions
+registered_bullet_pools: list["BulletPool"] = []  # populated by BulletPool.__init__; used for validation exemptions
+registered_enemy_pools: list["EnemyPool"] = []  # populated by EnemyPool.__init__; used by add_enemy_collisions
 def _validate_solid_groups(*specific_groups: int):
     """Ensures groups marked as solid are not component or trigger groups."""
     groups = specific_groups if specific_groups else solid_groups_to_enforce
@@ -38,7 +39,9 @@ def _validate_solid_groups(*specific_groups: int):
             if g in c.groups:
                 raise ValueError(f"Group {g} is a component caller in '{c.name}', not a solid group")
             
-            if any(pool.min_group <= g <= pool.max_group for pool in _registered_bullet_pools):
+            if any(pool.min_group <= g <= pool.max_group for pool in registered_bullet_pools):
+                continue
+            if any(pool.min_group <= g <= pool.max_group for pool in registered_enemy_pools):
                 continue
             
             for t in c.triggers:
@@ -182,7 +185,7 @@ class BulletPool:
         self.max_group = max_group
         self.has_orientation = has_orientation
         self.current = max_group
-        _registered_bullet_pools.append(self)
+        registered_bullet_pools.append(self)
         pool_size = max_group - min_group + 1
         # Reserve both the hitbox range and the collision-group range
         util.unknown_g.reserve_range(min_group, max_group + pool_size)
@@ -269,25 +272,34 @@ class Stage:
 
 class EnemyPool:
 
-    def __init__(self, min_group: int, max_group: int, despawn_setup: Component):
-        self._min_group = min_group
-        self._max_group = max_group
+    def __init__(self, min_group: int, max_group: int, despawn_setup: Component, *, num_groups_per: int = 1):
+        if (max_group - min_group + 1) % num_groups_per != 0:
+            raise ValueError(f"Pool size must be divisible by num_groups_per={num_groups_per}")
+
+        self.min_group = min_group
+        self.max_group = max_group
+        self.num_groups_per = num_groups_per
         self._despawn_setup = despawn_setup
 
         self._current = min_group
         self.__firstcall = True
-        self._off_switches = {g: unknown_g() for g in range(min_group, max_group + 1)}
+        # Keys on the first (main) group of each enemy slot
+        self._off_switches = {
+            g: unknown_g()
+            for g in range(min_group, max_group + 1, num_groups_per)
+        }
+        registered_enemy_pools.append(self)
 
-    def next(self) -> int:
-        """Cycle to next enemy group in pool"""
+    def next(self) -> tuple[int, ...]:
+        """Cycle to next enemy slot in pool. Returns a tuple of all groups for that slot."""
         if self.__firstcall:
             self.__firstcall = False
-            return self._current
+        else:
+            self._current += self.num_groups_per
+            if self._current > self.max_group:
+                self._current = self.min_group
 
-        self._current += 1
-        if self._current > self._max_group:
-            self._current = self._min_group
-        return self._current
+        return tuple(range(self._current, self._current + self.num_groups_per))
 
     @staticmethod
     def _new_drop_comp(drops: list[tuple["BulletPool", int]]) -> Component:
@@ -318,7 +330,7 @@ class EnemyPool:
 
         return comp
 
-    def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int, enemy_group: int,
+    def spawn_enemy(self, stage: Component, time: float, attack: Component, hp: int, enemy_groups: tuple[int, ...],
                     drops: list[tuple["BulletPool", int]] | None = None):
         """Spawn an enemy attack with HP/death handling.
 
@@ -326,10 +338,11 @@ class EnemyPool:
                e.g. [(lib.score_pickup, 3), (lib.p_pickup, 1)]
                Identical configs reuse the same component — no extra groups per repeated call.
         """
-        if not (self._min_group <= enemy_group <= self._max_group):
+        enemy_group = enemy_groups[0]  # main group used for HP, position, despawn
+        if not (self.min_group <= enemy_group <= self.max_group):
             raise ValueError(
                 f"spawn_enemy: enemy_group {enemy_group} is not in pool range "
-                f"{self._min_group}-{self._max_group}"
+                f"{self.min_group}-{self.max_group}"
             )
 
         self.time = time
@@ -342,6 +355,8 @@ class EnemyPool:
         drop_caller = self._new_drop_comp(drops).caller if drops else enum.EMPTY_MULTITARGET
 
         stage.TimerOp(time - enum.TICK*2, item=enemy_group, mod=hp)
+        with stage.temp_context(target=enemy_group):
+            stage.Toggle(time - enum.TICK, True)
 
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
@@ -386,7 +401,7 @@ despawner = (Component("Despawner", unknown_g(), 7)
 #     # .clear_context()
 # )
 
-enemy1 = EnemyPool(200, 211, despawner)
+yinyang = EnemyPool(6340, 6379, despawner, num_groups_per=2)
 
 # ============================================================================
 # EXPORT FUNCTIONS
