@@ -870,8 +870,8 @@ class Pointer:
 
 
 class BulletAlloc:
-    offset: float = 0
-    deferred_calls: list[tuple[float, Callable[..., Any]]] = []
+    deferred_calls: list[tuple[float, int, Callable[..., Any]]] = []  # (local_time, component_id, func)
+    component_offsets: dict[int, float] = {}  # component_id -> stage spawn time
     active: bool = False
     
     @classmethod
@@ -879,33 +879,36 @@ class BulletAlloc:
         if cls.active:
             raise RuntimeError("BulletAlloc.start: BulletAlloc already active")
         cls.active = True
-    
+
     @classmethod
-    def set_offset(cls, time: float):
+    def register_spawn_time(cls, component: Component, spawn_time: float):
+        """Called by spawn_enemy to tell BulletAlloc when this component fires on stage."""
         if not cls.active:
-            raise RuntimeError("BulletAlloc.set_offset: BulletAlloc not active")
-        cls.offset = time
-    
+            raise RuntimeError("BulletAlloc.register_spawn_time: BulletAlloc not active")
+        cls.component_offsets[id(component)] = spawn_time
+
     @classmethod
     def resolve(cls):
         if not cls.active:
-            raise RuntimeError("BulletAlloc.set_offset: BulletAlloc not active")
+            raise RuntimeError("BulletAlloc.resolve: BulletAlloc not active")
         if len(cls.deferred_calls) == 0:
             raise RuntimeError("BulletAlloc.resolve: No deferred calls to resolve")
-        
-        cls.deferred_calls.sort(key=lambda x: x[0])
-        for _, func in cls.deferred_calls:
+
+        cls.deferred_calls.sort(
+            key=lambda x: x[0] + cls.component_offsets.get(x[1], 0)
+        )
+        for _, _, func in cls.deferred_calls:
             func()
-        cls.offset = 0
         cls.deferred_calls.clear()
+        cls.component_offsets.clear()
         cls.active = False
-    
+
     @classmethod
-    def defer(cls, time: float, func: Callable[..., None]):
-        """For internal pattern methods to call"""
+    def defer(cls, time: float, component: Component, func: Callable[..., None]):
+        """Called by pattern methods to queue a bullet allocation."""
         if not cls.active:
-            raise RuntimeError("BulletAlloc.set_offset: BulletAlloc not active")
-        cls.deferred_calls.append((time + cls.offset, func))
+            raise RuntimeError("BulletAlloc.defer: BulletAlloc not active")
+        cls.deferred_calls.append((time, id(component), func))
 
 
 class InstantPatterns:
@@ -957,7 +960,7 @@ class InstantPatterns:
                 else:
                     remap.pair(target, enum.EMPTY_MULTITARGET)
 
-        BulletAlloc.defer(time, 
+        BulletAlloc.defer(time, self._component,
             lambda: Multitarget.spawn_with_remap(self._component, time, numBullets, comp, remap_arc)
         )
         return self._component
@@ -1050,7 +1053,7 @@ class InstantPatterns:
                         t=travel_time, dist=dist, type=type, rate=rate
                     )
 
-        BulletAlloc.defer(time, deferred)
+        BulletAlloc.defer(time, self._component, deferred)
 
         return self._component
 

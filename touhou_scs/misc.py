@@ -41,7 +41,7 @@ def add_disable_all_prefabs():
     ] + [
         g
         for pool in lib.registered_enemy_pools
-        for g in range(pool.min_group, pool.max_group + 1)
+        for g in range(pool.min_group, pool.max_group + 1, pool.num_groups_per)
     ]
 
     prefab_iter = iter(prefab_groups)
@@ -374,9 +374,11 @@ def make_shot_despawn(name: str, damage: tuple[float, float, float, float, float
             .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=l3)
         .set_context(groups=enum.PowerLevel.LEVEL_4)
             .TimerOp(0, item=enum.EMPTY_TARGET_GROUP, sign=enum.Item.MathOp.ADD, mod=l4)
-        .set_context(target=enum.EMPTY_TARGET_GROUP)
-            .Pulse(0, lib.HSB(50, 0.52, 0.56), fadeIn=0.1, fadeOut=0.1, exclusive=True)
         .clear_context()
+        .set_context(target=enum.EMPTY_TARGET_GROUP)
+            .Pulse(0, lib.rgb(0,0,255), fadeIn=0.1, fadeOut=0.1, exclusive=True)
+        .clear_context()
+        .Spawn(0, 451, False)
         .Spawn(0, despawn_g, True)
     )
 

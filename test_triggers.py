@@ -30,7 +30,7 @@ def reset_global_state():
     # Reset BulletAlloc class-level state so pattern tests start clean
     BulletAlloc.active = False
     BulletAlloc.deferred_calls.clear()
-    BulletAlloc.offset = 0
+    BulletAlloc.component_offsets.clear()
     yield
 
 

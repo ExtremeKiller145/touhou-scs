@@ -192,14 +192,13 @@ def make_patrol_enemy(enemy_g: int, bullet_type: lib.BulletPool) -> Component:
 CHAIN_SIZE   = 6
 CHAIN_OFFSET = 1.8   # seconds between each enemy entering
 
+BulletAlloc.start()
+
 chain_enemies: list[tuple[int, Component]] = []
 for i in range(CHAIN_SIZE):
     groups = yinyang.next()
     g = groups[0]
-    BulletAlloc.start()
     chain_enemies.append((g, make_patrol_enemy(g, lib.bullet1 if i % 2 == 0 else lib.bullet3)))
-
-    BulletAlloc.resolve()
 
 # ===========================================================================
 # SPAWN CALLS
@@ -217,4 +216,7 @@ add_enemy_collisions()
 add_disable_all_prefabs()
 add_plr_collisions()
 add_pickup_collisions()
+
+BulletAlloc.resolve()
+
 save_all(level=level)

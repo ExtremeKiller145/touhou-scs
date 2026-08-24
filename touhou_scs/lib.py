@@ -13,7 +13,7 @@ from typing import Any, ClassVar, Self
 
 from touhou_scs import enums as enum
 from touhou_scs import utils as util
-from touhou_scs.component import Component
+from touhou_scs.component import Component, BulletAlloc
 from touhou_scs.utils import unknown_g, warn
 from touhou_scs.types import ComponentProtocol, SpellProtocol, GenericObj, TriggerArea
 from dataclasses import dataclass
@@ -347,6 +347,9 @@ class EnemyPool:
 
         self.time = time
 
+        if BulletAlloc.active:
+            BulletAlloc.register_spawn_time(attack, time)
+
         util.enforce_component_targets("Spawn Enemy", attack,
             excludes={ enum.EMPTY_BULLET, enum.EMPTY1, enum.EMPTY2, enum.EMPTY_EMITTER, enum.EMPTY_MULTITARGET, enum.EMPTY_TARGET_GROUP })
 
@@ -361,7 +364,8 @@ class EnemyPool:
         with stage.temp_context(groups=off_switch):
             stage.Spawn(time, attack.caller, True)
 
-        stage.Spawn(time, 150, False,
+        ENEMY_HP_CHECK_LOOP = 150
+        stage.Spawn(time, ENEMY_HP_CHECK_LOOP, False,
             remap={enum.EMPTY_TARGET_GROUP: enemy_group, enum.EMPTY_BULLET: self._despawn_setup.caller, enum.EMPTY1: off_switch, enum.EMPTY2: drop_caller}
         )
 
