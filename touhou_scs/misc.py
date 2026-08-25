@@ -382,9 +382,10 @@ def make_shot_despawn(name: str, damage: tuple[float, float, float, float, float
         .Spawn(0, despawn_g, True)
     )
 
-plr_bullet_despawn = make_shot_despawn("ReimuA Regular", (-0.4, -0.5, -0.6, -0.7, -0.8), despawn2.caller)
+ofuda_bullet_despawn = make_shot_despawn("ReimuA Regular", (-0.4, -0.5, -0.6, -0.7, -0.8), despawn2.caller)
 homing_bullet_despawn = make_shot_despawn("ReimuA Homing",  (-0.3, -0.35, -0.4, -0.5, -0.6), despawn2.caller)
 bomb_bullet_despawn = make_shot_despawn("ReimuA Bomb", (-1.0, -1.2,  -1.4, -1.6, -2.0), enum.EMPTY_BULLET)
+needle_bullet_despawn = make_shot_despawn("ReimuA Needle", (-0.7, -0.8, -0.9/2, -1/2, -1.2/2), despawn2.caller)
 
 
 # =============================
@@ -402,7 +403,8 @@ enemy_bullet_despawn = (Component("EnemyBullet Despawn List", DESPAWN_FUNCTION, 
 # To add a new shot type: add its BulletPool to lib.py, define its despawn
 # with make_shot_despawn above, then add one entry here.
 PLAYER_SHOT_TYPES: list[tuple[lib.BulletPool, Component]] = [
-    (lib.reimuA_level1, plr_bullet_despawn),
+    (lib.reimuA_level1, ofuda_bullet_despawn),
     (lib.reimuA_homing_shots, homing_bullet_despawn),
     (lib.reimuA_bomb_balls, bomb_bullet_despawn),
+    (lib.reimuA_needles, needle_bullet_despawn),
 ]
